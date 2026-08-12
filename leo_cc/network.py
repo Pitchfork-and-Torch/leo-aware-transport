@@ -69,6 +69,10 @@ class LeoPathConfig:
     freeze_trail_s: float = 0.18
     # Optional CSV trace path (relative or absolute)
     trace_csv: Optional[str] = None
+    # Path generative profile. Default ope_v36 is frozen (suite / product lock).
+    # starlink_rtt / starlink_v1 are opt-in realism probes — they must not
+    # silently replace the OPE-era lock.
+    path_profile: str = "ope_v36"
 
 
 @dataclass
@@ -78,6 +82,67 @@ class TraceSample:
     capacity_bps: float
     loss_p: float
     reconfig: bool
+
+
+# Opt-in Starlink-inspired capacity band (starlink_v1 only). Not the suite default.
+STARLINK_V1_CAP_MIN_BPS = 40e6
+STARLINK_V1_CAP_MAX_BPS = 150e6
+
+
+def _pct(xs: list[float], p: float) -> float:
+    if not xs:
+        return float("nan")
+    s = sorted(xs)
+    if len(s) == 1:
+        return s[0]
+    k = (p / 100.0) * (len(s) - 1)
+    lo = int(math.floor(k))
+    hi = int(math.ceil(k))
+    if lo == hi:
+        return s[lo]
+    w = k - lo
+    return s[lo] * (1.0 - w) + s[hi] * w
+
+
+def walk_path_geometry(cfg: LeoPathConfig) -> dict:
+    """Time-weighted path geometry (no CCA). Used by Step 0 feasibility."""
+    path = LeoPath(cfg)
+    rtts: list[float] = []
+    caps: list[float] = []
+    losses: list[float] = []
+    steps = int(cfg.duration_s / cfg.dt_s)
+    oracle_bits = 0.0
+    for _ in range(steps):
+        st = path.step()
+        rtts.append(st.rtt_s)
+        caps.append(st.capacity_bps)
+        losses.append(st.loss_p)
+        oracle_bits += st.capacity_bps * cfg.dt_s * (1.0 - st.loss_p)
+    n = max(len(rtts), 1)
+    # Capacity-weighted RTT (ACK p95 if the pipe is always full)
+    weighted: list[float] = []
+    for r, c in zip(rtts, caps):
+        copies = max(1, int(round(c / 1e6)))
+        weighted.extend([r] * copies)
+    oracle_gp_mbps = oracle_bits / max(cfg.duration_s, 1e-9) / 1e6
+    mean_cap_mbps = (sum(caps) / n) / 1e6
+    return {
+        "seed": cfg.seed,
+        "profile": cfg.path_profile,
+        "handovers": list(path.handover_times),
+        "n_ho": len(path.handover_times),
+        "mean_cap_mbps": mean_cap_mbps,
+        "min_cap_mbps": min(caps) / 1e6,
+        "max_cap_mbps": max(caps) / 1e6,
+        "oracle_gp_mbps": oracle_gp_mbps,
+        "path_p50_ms": _pct(rtts, 50) * 1000,
+        "path_p95_ms": _pct(rtts, 95) * 1000,
+        "path_p99_ms": _pct(rtts, 99) * 1000,
+        "path_max_ms": max(rtts) * 1000,
+        "cap_weighted_p95_ms": _pct(weighted, 95) * 1000,
+        "frac_cap_ge_75": sum(1 for c in caps if c >= 75e6) / n,
+        "mean_loss_p": sum(losses) / n,
+    }
 
 
 def load_trace_csv(path: str | Path) -> list[TraceSample]:
@@ -147,6 +212,7 @@ def generate_synthetic_starlink_trace(
     dt_s: float = 0.05,
     seed: int = 13,
     handover_interval_s: float = 12.0,
+    path_profile: str = "ope_v36",
 ) -> Path:
     """Write a synthetic Starlink-class CSV for offline replay demos."""
     path = Path(path)
@@ -157,6 +223,7 @@ def generate_synthetic_starlink_trace(
         seed=seed,
         handover_interval_s=handover_interval_s,
         handover_jitter_s=4.0,
+        path_profile=path_profile,
     )
     # Use generative model at finer step then downsample rows
     gen = LeoPath(cfg)
@@ -193,6 +260,8 @@ class LeoPath:
         self._reconfig_until = -1.0
         self._freeze_until = -1.0
         self._next_cap = 0.0
+        self._ho_spike_until = -1.0
+        self._ho_spike_s = 0.0
         self.handover_times: list[float] = []
         self._trace: Optional[list[TraceSample]] = None
         self._trace_i = 0
@@ -207,6 +276,8 @@ class LeoPath:
             self._rtt = 0.04
             self._cap = 80e6
             self._next_ho = float("inf")
+        elif (cfg.path_profile or "ope_v36").lower() == "starlink_v1" and not cfg.trace_csv:
+            self._cap = (STARLINK_V1_CAP_MIN_BPS + STARLINK_V1_CAP_MAX_BPS) / 2
 
     def _sample_ho_time(self, after: float) -> float:
         c = self.cfg
@@ -214,20 +285,46 @@ class LeoPath:
             -c.handover_jitter_s, c.handover_jitter_s
         )
 
-    def _peek_next_path(self) -> tuple[float, float]:
-        """Non-consuming peek of next hop RTT/cap (honest ASCENT freeze-lead).
+    def _draw_epoch_rtt_cap(self) -> tuple[float, float]:
+        """Consume RNG for the next epoch (rtt, cap). Shared by peek + reconfigure.
 
-        Uses the same draw sequence as `_do_reconfigure` but restores RNG state
-        so multi-seed path identity stays identical to endpoint-only runs.
+        ope_v36 draw order is frozen (must stay bit-identical to v3.6/v3.7).
+        starlink_* profiles use a different sequence on purpose.
         """
         c = self.cfg
-        st = self.rng.getstate()
+        profile = (c.path_profile or "ope_v36").lower()
+        if profile in ("starlink_rtt", "starlink_v1"):
+            # Cruise RTT in a Starlink-like 40-75 ms band; rare sat ~50-100 ms.
+            # HO transients are applied separately (not epoch-sticky).
+            rtt = 0.030 + self.rng.uniform(0.010, 0.045)
+            if self.rng.random() < 0.12:
+                rtt += self.rng.uniform(0.010, 0.025)
+            if c.isl_enabled:
+                rtt += c.isl_extra_rtt_s * self.rng.uniform(0.5, 2.0)
+            cap_lo = (
+                STARLINK_V1_CAP_MIN_BPS if profile == "starlink_v1" else c.capacity_min_bps
+            )
+            cap_hi = (
+                STARLINK_V1_CAP_MAX_BPS if profile == "starlink_v1" else c.capacity_max_bps
+            )
+            cap = self.rng.uniform(cap_lo, cap_hi)
+            return rtt, cap
         rtt = c.rtt_base_s + self.rng.uniform(c.rtt_jump_min_s, c.rtt_jump_max_s)
         if self.rng.random() < 0.25:
             rtt += self.rng.uniform(0.03, 0.08)
         if c.isl_enabled:
             rtt += c.isl_extra_rtt_s * self.rng.uniform(0.5, 2.0)
         cap = self.rng.uniform(c.capacity_min_bps, c.capacity_max_bps)
+        return rtt, cap
+
+    def _peek_next_path(self) -> tuple[float, float]:
+        """Non-consuming peek of next hop RTT/cap (honest ASCENT freeze-lead).
+
+        Uses the same draw sequence as `_do_reconfigure` but restores RNG state
+        so multi-seed path identity stays identical to endpoint-only runs.
+        """
+        st = self.rng.getstate()
+        rtt, cap = self._draw_epoch_rtt_cap()
         self.rng.setstate(st)
         return rtt, cap
 
@@ -235,12 +332,15 @@ class LeoPath:
         c = self.cfg
         self.epoch += 1
         self.handover_times.append(self.t)
-        self._rtt = c.rtt_base_s + self.rng.uniform(c.rtt_jump_min_s, c.rtt_jump_max_s)
-        if self.rng.random() < 0.25:
-            self._rtt += self.rng.uniform(0.03, 0.08)
-        if c.isl_enabled:
-            self._rtt += c.isl_extra_rtt_s * self.rng.uniform(0.5, 2.0)
-        self._cap = self.rng.uniform(c.capacity_min_bps, c.capacity_max_bps)
+        self._rtt, self._cap = self._draw_epoch_rtt_cap()
+        profile = (c.path_profile or "ope_v36").lower()
+        if profile in ("starlink_rtt", "starlink_v1"):
+            # Brief HO RTT spike (loss window), not a 12s high-RTT epoch.
+            self._ho_spike_s = self.rng.uniform(0.020, 0.055)
+            self._ho_spike_until = self.t + c.reconfig_loss_window_s
+        else:
+            self._ho_spike_s = 0.0
+            self._ho_spike_until = -1.0
         self._next_cap = self._cap
         self._reconfig_until = self.t + c.reconfig_loss_window_s
         self._freeze_until = self.t + c.freeze_trail_s
@@ -316,7 +416,13 @@ class LeoPath:
 
         if not c.terrestrial:
             flicker = 1.0 + 0.03 * math.sin(self.t * 1.7 + self.epoch)
-            cap = max(c.capacity_min_bps * 0.5, self._cap * flicker)
+            profile = (c.path_profile or "ope_v36").lower()
+            cap_floor = (
+                STARLINK_V1_CAP_MIN_BPS * 0.5
+                if profile == "starlink_v1"
+                else c.capacity_min_bps * 0.5
+            )
+            cap = max(cap_floor, self._cap * flicker)
         else:
             cap = self._cap
 
@@ -325,9 +431,13 @@ class LeoPath:
         else:
             loss_p = c.steady_loss_p
 
+        rtt = self._rtt
+        if self.t < self._ho_spike_until:
+            rtt += self._ho_spike_s
+
         freeze_rem = max(0.0, self._freeze_until - self.t)
         st = PathState(
-            rtt_s=self._rtt,
+            rtt_s=rtt,
             capacity_bps=cap,
             loss_p=loss_p,
             reconfigured=reconfigured,

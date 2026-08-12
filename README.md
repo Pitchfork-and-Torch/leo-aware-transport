@@ -168,7 +168,9 @@ Means only - do not market peaks. **OPE-fair timeline** (path identity identical
 | LeoAware v3.6 Keel | 58.27 | 152.1 | first OPE-fair dual-gate pass |
 | LeoAware v3.5 Tide | 76.27 | 147.39 | coupled-RNG era (historical) |
 
-v3.7 dual gate is **relative to BBR on the OPE-fair path**. Coupled-era absolute bars (gp≥75 / p95≤138.8) mixed different orbits per CCA and are not comparable.
+v3.7 dual gate is **relative to BBR on the OPE-fair path** (research-only). Coupled-era absolute bars (gp≥75 / p95≤138.8) mixed different orbits per CCA and are not comparable.
+
+**v3.8 Step 0 (not a Current bump):** on the frozen OPE path, those absolute bars are **geometrically impossible** (oracle gp mean 60.48; path-base p95 mean 142.32). LeoAware is already ~97% of oracle. See `docs/leoaware_v38_step0_feasibility.md`. Do not market +0.5 vs BBR as a paid Optimizer breakthrough.
 
 ### Hybrid fuse ablation (fast, seeds 13+7)
 
@@ -192,12 +194,14 @@ Integrity: `python -m experiments.test_ascent_d_integrity` (green).
 v3.7 OCE Current: Orbit Capacity Echo + SER-lite on top of v3.6 Keel/OPE.  
 v3.3-A rails retained: hybrid fuse, ASCENT-D erase-on-fail.  
 Log: `docs/experiment_log.md`. Design: `docs/leoaware_v37_oce.md`.  
-Archive: `results/archive/20260812-v37-oce/`.
+Archive: `results/archive/20260812-v37-oce/`.  
+v3.8 Step 0 feasibility (absolute bars infeasible on this path): `docs/leoaware_v38_step0_feasibility.md`.
 
 Reproduce:
 
 ```bash
 python -m experiments.test_ascent_d_integrity
+python -m experiments.ope_feasibility
 python -m experiments.run_suite
 python -m experiments.multi_seed
 python -m experiments.run_ablation --fast --seeds 13,7

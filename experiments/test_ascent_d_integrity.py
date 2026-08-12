@@ -117,4 +117,6 @@ if __name__ == "__main__":
     test_fail_closed_no_rate_change()
     test_plain_unit()
     test_role_reject()
+    from experiments.test_ope_integrity import run_all as run_ope
+    run_ope()
     print("ALL ASCENT-D integrity tests passed")
