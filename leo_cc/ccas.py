@@ -256,7 +256,7 @@ class BbrCCA(BaseCCA):
 
 class LeoAwareCCA(BaseCCA):
     """
-    LeoAware v3.3-A - hybrid fuse (OrbitStack).
+    LeoAware v3.3-C - hybrid fuse + DTCE (OrbitStack).
 
     Endpoint-first (works with zero network cooperation). Optional ASCENT /
     path hints accelerate reconfig handling when available. Optional OrbCC-style
@@ -287,6 +287,12 @@ class LeoAwareCCA(BaseCCA):
       - Orb-only util-MD: U high AND qlen non-trivial outside freeze/reprobe
       - _enter_reprobe refuses orb* while suppressed; endpoint cut stays 0.58
       - Public suite default remains endpoint-only
+
+    v3.3-C DTCE (PR C):
+      - cruise_bw_ring / cruise_rtt_ring (maxlen 8) capture stable cruise only
+      - post-hop race: lo~p25 / hi~p75 envelope for ~1.5s; continuity reclaims hi
+      - redraw-down abandons envelope; fair_mode skips race
+      - rings NOT cleared on REPROBE (cross-epoch memory only)
 
     Related: LeoCC response-interval outliers; SaTCP freeze; OrbCC pathID/U;
     BBR delivery-rate without stale min-RTT across epochs.
@@ -349,6 +355,14 @@ class LeoAwareCCA(BaseCCA):
         self._assist_suppress_s = 2.0
         self.orb_reprobe_suppressed = 0
         self._last_path_id_change_t = -1e9
+        # DTCE (PR C): cross-epoch cruise envelope
+        self.cruise_bw_ring: Deque[float] = deque(maxlen=8)
+        self.cruise_rtt_ring: Deque[float] = deque(maxlen=8)
+        self._cruise_stable_acks = 0
+        self.posthop_track = "idle"  # idle | race | hi | lo
+        self._envelope_hi = 0.0
+        self._envelope_lo = 0.0
+        self._race_until = -1.0
 
     @staticmethod
     def _median(xs: list[float]) -> float:
@@ -363,6 +377,36 @@ class LeoAwareCCA(BaseCCA):
             return 0.0
         devs = sorted(abs(x - med) for x in xs)
         return devs[len(devs) // 2]
+
+    @staticmethod
+    def _pct(xs: list[float], q: float) -> float:
+        if not xs:
+            return 0.0
+        s = sorted(xs)
+        if len(s) == 1:
+            return s[0]
+        idx = max(0, min(len(s) - 1, int(q * (len(s) - 1))))
+        return s[idx]
+
+    def _capture_cruise_sample(self, t: float, rtt_s: float, delay_ratio: float) -> None:
+        """Record stable cruise samples into envelope rings (never clear rings on REPROBE)."""
+        age = t - self.last_reconfig_t
+        if self.fair_mode or self.bw_est <= 0 or self.min_rtt >= 1e17:
+            self._cruise_stable_acks = 0
+            return
+        if (
+            self.mode == "cruise"
+            and delay_ratio < 1.35
+            and age > 1.2
+            and t >= self.reprobe_until
+            and t >= self.freeze_until
+        ):
+            self._cruise_stable_acks += 1
+            if self._cruise_stable_acks >= 2:
+                self.cruise_bw_ring.append(self.bw_est)
+                self.cruise_rtt_ring.append(rtt_s if rtt_s > 0 else self.min_rtt)
+        else:
+            self._cruise_stable_acks = 0
 
     def _update_rtt_stats(self, rtt_s: float) -> None:
         if self.rtt_ewma <= 0:
@@ -552,6 +596,35 @@ class LeoAwareCCA(BaseCCA):
         self.loss_burst.clear()
         self._minrtt_age_t = t
         self.mode = f"reprobe:{reason}"
+        # DTCE: set post-hop envelope race (do not clear cruise rings)
+        self._cruise_stable_acks = 0
+        if not self.fair_mode:
+            bws = list(self.cruise_bw_ring)
+            if len(bws) >= 2:
+                lo = self._pct(bws, 0.25)
+                hi = self._pct(bws, 0.75)
+            elif self.prior_bw > 0:
+                lo = self.prior_bw * 0.70
+                hi = self.prior_bw * 1.05
+            else:
+                lo = self.bw_est if self.bw_est > 0 else 0.0
+                hi = max(lo * 1.15, lo)
+            if predicted_cap > 0:
+                hi = max(hi, predicted_cap * 0.95)
+            if lo > 0 and hi >= lo:
+                self._envelope_lo = lo
+                self._envelope_hi = hi
+                self.posthop_track = "race"
+                self._race_until = t + 1.5
+                # Seed bw from lo, pace toward hi
+                self.bw_est = max(self.bw_est, lo * 0.85)
+                self.pacing_rate_bps = max(self.pacing_rate_bps, hi * 0.90)
+            else:
+                self.posthop_track = "idle"
+                self._race_until = -1.0
+        else:
+            self.posthop_track = "idle"
+            self._race_until = -1.0
 
     def on_path_hint(
         self,
@@ -849,6 +922,36 @@ class LeoAwareCCA(BaseCCA):
             self.high_delay_streak += 1
         else:
             self.high_delay_streak = max(0, self.high_delay_streak - 1)
+
+        # DTCE post-hop race (~1.5s): continuity reclaims hi; redraw-down abandons
+        if (
+            not self.fair_mode
+            and self.posthop_track in ("race", "hi", "lo")
+            and t < self._race_until
+            and self._envelope_hi > 0
+        ):
+            measured = self.bw_est if self.bw_est > 0 else 0.0
+            if delay_ratio < 1.30 and measured >= 0.80 * self._envelope_hi:
+                self.posthop_track = "hi"
+                self.bw_est = max(self.bw_est, 0.55 * self.bw_est + 0.45 * self._envelope_hi)
+                target_bdp = self._envelope_hi * sizing_rtt / 8.0 if sizing_rtt > 0 else self.cwnd
+                self.cwnd = max(self.cwnd, min(self.cwnd * 1.08 + MSS, target_bdp * 1.05))
+                self.pacing_rate_bps = max(self.pacing_rate_bps, self._envelope_hi * 1.05)
+                self.mode = "dtce_hi"
+            elif delay_ratio > 1.55:
+                self.posthop_track = "lo"
+                self.bw_est = min(self.bw_est if self.bw_est > 0 else self._envelope_lo, self._envelope_lo * 1.05)
+                self.mode = "dtce_lo"
+            else:
+                self.posthop_track = "race"
+                floor_bdp = self._envelope_lo * sizing_rtt / 8.0 if sizing_rtt > 0 else self.cwnd
+                self.cwnd = max(self.cwnd, min(self.cwnd + MSS * 0.5, max(floor_bdp, 8 * MSS)))
+                self.pacing_rate_bps = max(self.pacing_rate_bps, self._envelope_hi * 0.85)
+                self.mode = "dtce_race"
+        elif t >= self._race_until and self.posthop_track != "idle":
+            self.posthop_track = "idle"
+
+        self._capture_cruise_sample(t, rtt_s, delay_ratio)
 
         if self.cwnd < self.ssthresh or self.mode in (
             "startup",
