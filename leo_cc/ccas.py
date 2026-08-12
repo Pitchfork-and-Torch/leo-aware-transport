@@ -256,7 +256,7 @@ class BbrCCA(BaseCCA):
 
 class LeoAwareCCA(BaseCCA):
     """
-    LeoAware v3.3-A - hybrid fuse (OrbitStack).
+    LeoAware v3.3-A' / v3.4-p95 - hybrid fuse + endpoint p95 reclaim (OrbitStack).
 
     Endpoint-first (works with zero network cooperation). Optional ASCENT /
     path hints accelerate reconfig handling when available. Optional OrbCC-style
@@ -287,6 +287,13 @@ class LeoAwareCCA(BaseCCA):
       - Orb-only util-MD: U high AND qlen non-trivial outside freeze/reprobe
       - _enter_reprobe refuses orb* while suppressed; endpoint cut stays 0.58
       - Public suite default remains endpoint-only
+
+    v3.3-A' / v3.4-p95 reclaim (endpoint multi-seed p95 under BBR):
+      - Cruise delay_yield earlier (ratio ~1.45+) + BDP overshoot cap when delayed
+      - Soften post-hop max-filter / prior floor when delay elevated
+      - REPROBE fill ceiling lower + earlier stable/delay exit (no full DTCE)
+      - Sizing RTT leans on recent median when delay_ratio risk is high
+      - Hybrid fuse rails unchanged; suite default still endpoint-only
 
     Related: LeoCC response-interval outliers; SaTCP freeze; OrbCC pathID/U;
     BBR delivery-rate without stale min-RTT across epochs.
@@ -773,28 +780,35 @@ class LeoAwareCCA(BaseCCA):
             pct = 0.70 if self.fair_mode else 0.82
             pct_val = vals[int(pct * (len(vals) - 1))]
             max_val = vals[-1]
+            # v3.4-p95: keep optimistic pacing, but soft max-filter only when
+            # delay is still healthy (avoids queue spikes on seeds 7/99).
             if (
                 not self.fair_mode
-                and age < 1.0
+                and age < 0.85
                 and len(vals) >= 3
-                and delay_ratio_early < 1.50
+                and delay_ratio_early < 1.28
             ):
-                self.bw_est = max(pct_val, 0.55 * pct_val + 0.45 * max_val)
+                self.bw_est = max(pct_val, 0.70 * pct_val + 0.30 * max_val)
             else:
                 self.bw_est = pct_val
             if self.prior_bw > 0 and age < 2.0 and not self.fair_mode:
-                floor_frac = max(0.42, 0.72 - 0.14 * age)
-                if delay_ratio_early < 1.6:
+                floor_frac = max(0.38, 0.68 - 0.15 * age)
+                if delay_ratio_early < 1.35:
                     self.bw_est = max(self.bw_est, self.prior_bw * floor_frac)
+                elif delay_ratio_early < 1.55:
+                    # Soft floor only - do not hard-hold prior under delay risk
+                    self.bw_est = max(self.bw_est, self.prior_bw * floor_frac * 0.72)
             elif self.prior_bw > 0 and age < 1.5:
-                self.bw_est = max(self.bw_est, self.prior_bw * 0.55)
+                self.bw_est = max(self.bw_est, self.prior_bw * 0.50)
             if self.hint_capacity_bps > 0:
                 self.bw_est = 0.72 * self.bw_est + 0.28 * self.hint_capacity_bps
 
         if self.bw_est > 0:
-            self.pacing_rate_bps = self.bw_est * (
-                1.35 if t < self.reprobe_until else (1.0 if self.fair_mode else 1.08)
+            # Reclaim: pacing can stay a bit optimistic; cwnd is delay-capped below
+            pace_gain = 1.35 if t < self.reprobe_until else (
+                1.0 if self.fair_mode else (1.04 if delay_ratio_early > 1.45 else 1.08)
             )
+            self.pacing_rate_bps = self.bw_est * pace_gain
         elif self.prior_bw > 0:
             self.pacing_rate_bps = self.prior_bw * 0.65
 
@@ -802,16 +816,24 @@ class LeoAwareCCA(BaseCCA):
         if t < self.reprobe_until:
             in_b = t >= self.reprobe_phase_b
             self.mode = "reprobe_fill" if in_b else "reprobe_explore"
-            growth = (1.55 if in_b else 1.25) * (0.9 if self.fair_mode else 1.0)
+            growth = (1.42 if in_b else 1.22) * (0.9 if self.fair_mode else 1.0)
             self.cwnd += bytes_acked * growth
-            ceiling = max(96 * MSS, self.prior_bdp * 1.65)
+            # v3.4-p95: lower fill ceiling so fill does not overshoot into 150-175 ms
+            ceiling = max(80 * MSS, self.prior_bdp * 1.35)
             if self.bw_est > 0 and self.min_rtt < 1e17:
-                ceiling = max(ceiling, 2.0 * self.bw_est * self.min_rtt / 8.0)
+                ceiling = max(ceiling, 1.55 * self.bw_est * self.min_rtt / 8.0)
             if self.hint_capacity_bps > 0 and self.min_rtt < 1e17:
                 ceiling = max(
-                    ceiling, 1.5 * self.hint_capacity_bps * self.min_rtt / 8.0
+                    ceiling, 1.35 * self.hint_capacity_bps * self.min_rtt / 8.0
                 )
             self.cwnd = min(self.cwnd, ceiling)
+            # Early exit: stable fill OR delay building during fill
+            delay_exit = (
+                in_b
+                and self.min_rtt < 1e17
+                and delay_ratio_early > 1.55
+                and self.stable_acks >= 1
+            )
             if (
                 in_b
                 and self.bw_est > 0
@@ -819,10 +841,10 @@ class LeoAwareCCA(BaseCCA):
                 and self.rtt_var_ewma < 0.32 * max(self.min_rtt, 0.02)
             ):
                 self.stable_acks += 1
-                if self.stable_acks >= 3:
-                    self.reprobe_until = t
-                    self.mode = "cruise"
-                    self.ssthresh = self.cwnd
+            if delay_exit or (in_b and self.stable_acks >= 2):
+                self.reprobe_until = t
+                self.mode = "cruise"
+                self.ssthresh = self.cwnd
             return
 
         if lost > 0 and self.min_rtt < 1e17 and rtt_s > 1.45 * self.min_rtt:
@@ -833,10 +855,13 @@ class LeoAwareCCA(BaseCCA):
         sizing_rtt = self.min_rtt if self.min_rtt < 1e17 else max(rtt_s, 0.02)
         if len(self.rtt_hist) >= 8 and self.min_rtt < 1e17:
             recent_med = self._median(list(self.rtt_hist)[-8:])
+            # Soft sizing bias toward recent median under delay risk (no min death spiral)
             if recent_med > 1.7 * self.min_rtt:
-                sizing_rtt = 0.40 * self.min_rtt + 0.60 * recent_med
+                sizing_rtt = 0.32 * self.min_rtt + 0.68 * recent_med
+            elif recent_med > 1.25 * self.min_rtt:
+                sizing_rtt = 0.55 * self.min_rtt + 0.45 * recent_med
             else:
-                sizing_rtt = 0.75 * self.min_rtt + 0.25 * recent_med
+                sizing_rtt = 0.72 * self.min_rtt + 0.28 * recent_med
         bdp = 10 * MSS
         if sizing_rtt > 0 and self.bw_est > 0:
             bdp = self.bw_est * sizing_rtt / 8.0
@@ -845,7 +870,7 @@ class LeoAwareCCA(BaseCCA):
         if len(self.rtt_hist) >= 12:
             path_floor = max(min(list(self.rtt_hist)[-12:]), sizing_rtt * 0.85)
         delay_ratio = rtt_s / max(path_floor, 1e-4)
-        if delay_ratio > 1.5:
+        if delay_ratio > 1.40:
             self.high_delay_streak += 1
         else:
             self.high_delay_streak = max(0, self.high_delay_streak - 1)
@@ -858,28 +883,48 @@ class LeoAwareCCA(BaseCCA):
             "ascent_freeze",
         ):
             self.mode = "startup"
-            self.cwnd += bytes_acked * (1.15 if self.fair_mode else 1.35)
+            self.cwnd += bytes_acked * (1.15 if self.fair_mode else 1.28)
+            # Cap startup overshoot when delay is already elevated
+            if delay_ratio > 1.45 and self.bw_est > 0:
+                self.cwnd = min(self.cwnd, bdp * 1.08)
             if self.cwnd >= bdp * 0.88 and self.bw_est > 0:
                 self.mode = "cruise"
                 self.ssthresh = self.cwnd
         else:
-            # fair_mode: AIMD-ish around 1.0x BDP; else mild probe 1.18x
-            target = (1.02 if self.fair_mode else 1.18) * bdp
+            # fair_mode: AIMD-ish around 1.0x BDP; else mild probe with delay-aware cap
+            if self.fair_mode:
+                target = 1.02 * bdp
+            elif delay_ratio > 1.55 or self.high_delay_streak >= 3:
+                target = 1.05 * bdp
+            elif delay_ratio > 1.35:
+                target = 1.10 * bdp
+            else:
+                target = 1.15 * bdp
             if self.fair_mode and (delay_ratio > 1.45 or self.high_delay_streak >= 3):
                 self.cwnd = max(4 * MSS, self.cwnd * 0.92)
                 self.mode = "fair_yield"
-            elif delay_ratio > 2.0:
-                self.cwnd = max(4 * MSS, self.cwnd - MSS * 0.2)
+            elif delay_ratio > 1.85 or self.high_delay_streak >= 5:
+                # Strong yield when queue risk is high
+                self.cwnd = max(4 * MSS, self.cwnd * 0.96)
+                self.mode = "delay_yield"
+            elif delay_ratio > 1.45:
+                # Early mild yield (v3.3-A only acted above 2.0)
+                self.cwnd = max(4 * MSS, self.cwnd - MSS * 0.35)
+                if self.cwnd > target:
+                    self.cwnd = max(4 * MSS, min(self.cwnd, target * 1.05))
                 self.mode = "delay_yield"
             elif self.cwnd < target:
-                step = MSS * (0.45 if self.fair_mode else 0.95)
+                step = MSS * (0.45 if self.fair_mode else 0.85)
                 self.cwnd += step
                 self.mode = "cruise"
-            elif self.cwnd > target * 1.2:
-                self.cwnd -= MSS * (0.2 if self.fair_mode else 0.12)
+            elif self.cwnd > target * 1.12:
+                self.cwnd -= MSS * (0.2 if self.fair_mode else 0.18)
                 self.mode = "cruise"
             else:
                 self.mode = "cruise"
+            # Hard cap above ~1.08x BDP when delay risk present
+            if delay_ratio > 1.35 and self.bw_est > 0:
+                self.cwnd = min(self.cwnd, bdp * 1.08)
             self.cwnd = max(4 * MSS, self.cwnd)
 
     def on_loss(self, t: float, bytes_lost: int, congestive: bool) -> None:

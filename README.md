@@ -155,16 +155,18 @@ Scenarios in `experiments/run_suite.py`:
 
 Metrics: goodput, avg / p95 / p99 RTT, loss rate, utilization, Jain index, handover count.
 
-### Primary objective: multi-seed `leo_fast_ho` (LeoAware v3.3-A)
+### Primary objective: multi-seed `leo_fast_ho`
 
-Seeds 13,7,42,99,123 · 90s · **endpoint-only** default (public suite).
+Seeds 13,7,42,99,123 · 90s · **endpoint-only** default (public suite).  
+Public p95 gate: Leo p95 mean ≤ BBR p95 (138.8). Do not market peaks.
 
 | CCA | Goodput mean | p95 mean | Notes |
 |-----|-------------:|---------:|-------|
 | CUBIC | 5.47 | 124.8 | Collapses under mobility |
 | BBRv3approx | 70.88 | 138.8 | Reference |
-| **LeoAware v3.3-A** | **78.06** | 149.7 | **gp beats BBR; p95 residual** |
-| LeoAware v3.1 (prior gate) | 68.98 | 133.6 | p95 under BBR historical |
+| LeoAware v3.1 | 68.98 | 133.6 | **Public p95-under-BBR historical gate** |
+| LeoAware v3.3-A | 78.06 | 149.7 | gp win / **p95 residual** (not public p95 gate) |
+| LeoAware v3.4-p95 (WIP) | 73.57 | 138.37 | p95 ≤ BBR; gp > BBR; **gp floor 75 miss** (~1.4 Mbps) |
 
 ### Hybrid fuse ablation (fast, seeds 13+7)
 
@@ -185,7 +187,9 @@ Integrity: `python -m experiments.test_ascent_d_integrity` (green).
 | leo_single | LeoAware | 71.88 | 111.9 |
 | terrestrial | LeoAware | 77.86 | 40.0 |
 
-v3.3-A levers: hybrid fuse (`_should_suppress_orb_reprobe`), ASCENT-D erase-on-fail, path-aware BDP. Log: `docs/experiment_log.md`. Design: `docs/leoaware_v33_hybrid_fuse.md`, `docs/ascent_d_orbcc_hybrid.md`.
+v3.3-A rails: hybrid fuse (`_should_suppress_orb_reprobe`), ASCENT-D erase-on-fail, path-aware BDP.  
+v3.4-p95 WIP: delay-aware cruise / REPROBE fill ceilings (endpoint multi-seed reclaim).  
+Log: `docs/experiment_log.md`. Design: `docs/leoaware_v33_hybrid_fuse.md`, `docs/ascent_d_orbcc_hybrid.md`.
 
 Reproduce:
 

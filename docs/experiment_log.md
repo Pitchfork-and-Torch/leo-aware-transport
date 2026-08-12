@@ -320,13 +320,84 @@ Archive: `results/archive/current/`, `results/ablation/`
 
 | Scenario | v3.2 LeoAware gp / p95 | v3.3 gp / p95 | BBR gp | Decision |
 |----------|-----------------------:|--------------:|-------:|----------|
-| leo_fast_ho | 66.56 / 155.0 | **78.06 / 149.7** | 70.88 | **ACCEPT (beats BBR)** |
-| leo_single | 61.47 / 128.0 | **72.38 / 141.6** | 58.39 | ACCEPT gp |
+| leo_fast_ho | 66.56 / 155.0 | **78.06 / 149.7** | 70.88 | **gp beats BBR; p95 residual (not public p95 gate)** |
+| leo_single | 61.47 / 128.0 | **72.38 / 141.6** | 58.39 | gp win; p95 not under BBR |
 | terrestrial | 77.35 / 40.0 | **77.43 / 40.0** | 78.81 | no regress |
 
 Archive: `results/archive/20260811-v33-hybrid-fuse/`
 
-**Decision: ACCEPT v3.3 A+C** for hybrid fuse rails + endpoint multi-seed win vs BBR on leo_fast_ho.
+**Decision: ACCEPT v3.3-A hybrid fuse rails** + endpoint multi-seed **goodput** win vs BBR. **Do not** market multi-seed p95 under BBR (149.7 residual). Public Current-tab p95 gate remains open until a reclaim PR clears it.
+
+---
+
+## v3.3-A' / v3.4-p95 reclaim (endpoint multi-seed) - Jon decide
+
+**Date:** 2026-08-12  
+**Branch:** `pr-p95-reclaim`  
+**Hypothesis:** Pull multi-seed `leo_fast_ho` p95 mean under BBR (138.8) while keeping gp ≥ 75 and terrestrial ≥ 77, via delay-aware cruise / fill ceilings (not full DTCE).
+
+### Levers (`leo_cc/ccas.py` only; hybrid fuse rails unchanged)
+
+1. **Cruise delay_yield earlier** - act from delay_ratio ~1.45 (was 2.0); strong yield ~1.85 / streak ≥5
+2. **BDP overshoot cap** when delayed - target 1.05-1.15x BDP; hard cap ~1.08x under delay risk
+3. **Soft max-filter** - only age < 0.85s and delay_ratio_early < 1.28; 70/30 pct/max blend
+4. **Prior floor soft under delay** - full prior only when delay healthy
+5. **REPROBE fill** - ceiling 1.55x BDP (was 2.0); prior_bdp 1.35x; growth milder; exit at stable_acks ≥2 or delay fill exit
+6. **Sizing RTT** - more recent-median weight when med ≫ min
+7. **No DTCE** - full DTCE remains closed (PR #2 NOT ACCEPT)
+
+### Multi-seed endpoint (90s, seeds 13,7,42,99,123) - locked
+
+| CCA | gp mean | p95 mean | vs BBR (70.88 / 138.8) |
+|-----|--------:|---------:|------------------------|
+| CUBIC | 5.47 | 124.8 | collapse |
+| BBRv3approx | 70.88 | 138.8 | reference |
+| LeoAware v3.3-A (prior) | 78.06 | 149.7 | gp win / p95 residual |
+| **LeoAware v3.4-p95** | **73.57** | **138.37** | **p95 ≤ BBR; gp > BBR; gp floor 75 miss** |
+| LeoAware v3.1 SoT | 68.98 | 133.6 | historical p95-under-BBR gate |
+
+Per-seed LeoAware `leo_fast_ho` (archive raw):
+
+| seed | gp | p95 |
+|-----:|---:|----:|
+| 13 | 77.05 | 165.4 |
+| 7 | 83.54 | 111.1 |
+| 42 | 79.02 | 154.9 |
+| 99 | 65.54 | 149.5 |
+| 123 | 62.71 | 111.0 |
+
+### Other scenarios (same multi-seed run)
+
+| Scenario | LeoAware gp | p95 | note |
+|----------|------------:|----:|------|
+| leo_single | 62.65 | 160.5 | gp still > BBR 58.39; p95 up (not primary) |
+| terrestrial | **78.20** | 40.0 | ≥ 77 @ 40 ms **PASS** |
+
+### Ablation / integrity
+
+| Check | Result |
+|-------|--------|
+| `test_ascent_d_integrity` | PASS |
+| Suite default | still endpoint-only |
+| Hybrid fuse rails | unchanged |
+| Failed re-tunes (not shipped) | v2 relax → 64.4 / 154.9; clean-path 1.18 micro → 71.5 / 158.6 |
+
+Archives:
+- **Locked:** `results/archive/20260812-p95-reclaim/`
+- Orphaned re-tunes: `20260812-p95-reclaim-v2`, `20260812-p95-reclaim-v1b`
+
+### Gate scorecard (session bar)
+
+| Check | Bar | Result |
+|-------|-----|--------|
+| gp mean | ≥ 75.0 | **73.57 FAIL floor** (still > BBR 70.88) |
+| p95 mean | ≤ 138.8 | **138.37 PASS** |
+| Pareto alt | gp ≥ 69.5 and p95 ≤ 130 | FAIL p95 alt |
+| terrestrial | ≥ 77 @ 40 | **78.20 PASS** |
+| integrity | green | PASS |
+
+**Decision: PARTIAL - Jon / Optimizer decide.**  
+p95 non-negotiable is green; product gp floor 75 is ~1.4 Mbps short. Prefer this over v3.3-A residual for any p95-honest table. **Do not** bump landing Current tab until dual-gate (gp≥75 and p95≤138.8) or explicit Jon accept of 73.6/138.4. Do not merge without Jon.
 
 ---
 
