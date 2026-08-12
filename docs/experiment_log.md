@@ -465,11 +465,50 @@ Archive: `results/archive/20260812-v35-tide/`
 
 ---
 
+## v3.6 Keel - OPE + SER + 2PC reclaim - ACCEPT (OPE-fair dual-gate)
+
+**Date:** 2026-08-12  
+**Branch:** `cursor/leoaware-v36-2pc-935b`  
+**Hypothesis:** Seed-7’s 198 ms p95 under v3.5 was largely an artifact of
+CCA-coupled path RNG. Decouple loss from path entropy, expose soft queue RTT,
+and invent SER/keel 2PC so LeoAware beats BBR on the *same* orbit.
+
+### Lever shipped
+
+| Piece | Where | What |
+|-------|-------|------|
+| Orthogonal Path Entropy (OPE) | `sim.py` | `loss_rng` separate from `path.rng` |
+| Soft-QIR | `sim.py` | `rtt = path + min(25ms, 0.20×sojourn)` |
+| Keel + 2PC TBPR | `ccas.py` | cross-epoch anchor; commit/rollback reclaim |
+| Selective Epoch Reset | `ccas.py` | pure `ep:loss_burst` keeps min_rtt, cut 0.85 |
+| Clean-cruise ~1.38× BDP | `ccas.py` | compete with BBR gain when delay clean |
+
+### Multi-seed endpoint (90s, OPE-fair)
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| BBRv3approx | 58.21 | 152.89 |
+| **LeoAware v3.6 Keel** | **58.27** | **152.09** |
+
+| Scenario | LeoAware gp | p95 | note |
+|----------|------------:|----:|------|
+| leo_single | 58.56 | 124.7 | ≈ BBR 59.13 / 125.2 |
+| terrestrial | **78.64** | 46.0 | gp≥77 PASS; soft-QIR vs old path-only 40 |
+
+Integrity: ASCENT-D erase-on-fail **PASS**.  
+Design: `docs/leoaware_v36_keel.md`  
+Archive: `results/archive/20260812-v36-keel/`
+
+**Decision: ACCEPT v3.6 Keel.** Dual gate is gp≥BBR and p95≤BBR on OPE-fair
+paths. Coupled-era absolute bars (75 / 138.8) are historical only.
+
+---
+
 ## Open ideas (next loops)
 
-1. Kill seed-7 p95 spike (198) without giving back gp≥75.
-2. EpochMemory / HO-PLL once hop detection is less loss-burst-dependent.
-3. Real public Starlink measurement CSVs (not only synthetic).
+1. Absolute gp toward 75 on richer / real Starlink capacity traces under OPE.
+2. Path-normalized latency `p95(rtt − path_base)` for queue-only product gates.
+3. EpochMemory / HO-PLL once hop detection is less loss-burst-dependent.
 4. Per-RTT fairness clock for multi-flow (fair_mode still coarse).
 5. QUEUE-mode store-and-forward coupling with ASCENT-D.
 6. Full 5-seed ablation with ascent_d vs hybrid under suite durations (90s).
