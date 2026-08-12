@@ -1,0 +1,17 @@
+[project]
+name = "leo-aware-transport"
+version = "0.1.0"
+description = "LEO-aware congestion control research prototype (Starlink-class dynamics)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=1.24",
+  "matplotlib>=3.7",
+  "pandas>=2.0",
+]
+
+[project.scripts]
+leo-run = "experiments.run_suite:main"
+
+[tool.setuptools.packages.find]
+include = ["leo_cc*", "experiments*"]
