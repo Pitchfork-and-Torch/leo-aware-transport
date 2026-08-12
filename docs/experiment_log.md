@@ -504,14 +504,44 @@ paths. Coupled-era absolute bars (75 / 138.8) are historical only.
 
 ---
 
+## v3.7 OCE - Orbit Capacity Echo + SER-lite - ACCEPT
+
+**Date:** 2026-08-12  
+**Branch:** `cursor/leoaware-v37-oce-935b`  
+**Hypothesis:** Widen the thin v3.6 dual-gate margin with a transactional
+post-SER capacity chase and SER-lite for ACK-freeze+loss without RTT jump.
+
+### Lever shipped
+
+| Piece | What |
+|-------|------|
+| Orbit Capacity Echo | After SER, ~3 RTT chase delivery→bw_est / 1.42× BDP; rollback on delay>1.30 |
+| SER-lite | `ack_ia+loss_burst` w/o rtt_mad keeps min_rtt, cut 0.80 |
+
+### Multi-seed endpoint (90s, OPE-fair)
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| BBRv3approx | 58.21 | 152.89 |
+| LeoAware v3.6 | 58.27 | 152.09 |
+| **LeoAware v3.7 OCE** | **58.78** | **152.09** |
+
+Terrestrial ~78.65 @ 46 ms. Integrity PASS.  
+Design: `docs/leoaware_v37_oce.md`  
+Archive: `results/archive/20260812-v37-oce/`
+
+**Decision: ACCEPT v3.7 OCE** (wider dual-gate margin on fair timeline).
+
+---
+
 ## Open ideas (next loops)
 
 1. Absolute gp toward 75 on richer / real Starlink capacity traces under OPE.
 2. Path-normalized latency `p95(rtt − path_base)` for queue-only product gates.
-3. EpochMemory / HO-PLL once hop detection is less loss-burst-dependent.
-4. Per-RTT fairness clock for multi-flow (fair_mode still coarse).
-5. QUEUE-mode store-and-forward coupling with ASCENT-D.
-6. Full 5-seed ablation with ascent_d vs hybrid under suite durations (90s).
+3. Close seed-13 remaining ~1 Mbps gp gap to BBR.
+4. EpochMemory / HO-PLL once hop detection is less loss-burst-dependent.
+5. Per-RTT fairness clock for multi-flow (fair_mode still coarse).
+6. QUEUE-mode store-and-forward coupling with ASCENT-D.
 
 ---
 

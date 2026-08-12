@@ -155,7 +155,7 @@ Scenarios in `experiments/run_suite.py`:
 
 Metrics: goodput, avg / p95 / p99 RTT, loss rate, utilization, Jain index, handover count.
 
-### Primary objective: multi-seed `leo_fast_ho` (LeoAware v3.6 Keel)
+### Primary objective: multi-seed `leo_fast_ho` (LeoAware v3.7 OCE)
 
 Seeds 13,7,42,99,123 · 90s · **endpoint-only** default (public suite).  
 Means only - do not market peaks. **OPE-fair timeline** (path identity identical across CCAs).
@@ -164,11 +164,11 @@ Means only - do not market peaks. **OPE-fair timeline** (path identity identical
 |-----|-------------:|---------:|-------|
 | CUBIC | 5.56 | 130.4 | Collapses under mobility |
 | BBRv3approx | 58.21 | 152.9 | OPE+soft-QIR reference |
-| **LeoAware v3.6 Keel** | **58.27** | **152.1** | **gp≥BBR and p95≤BBR PASS** |
+| **LeoAware v3.7 OCE** | **58.78** | **152.1** | **widened dual-gate vs BBR** |
+| LeoAware v3.6 Keel | 58.27 | 152.1 | first OPE-fair dual-gate pass |
 | LeoAware v3.5 Tide | 76.27 | 147.39 | coupled-RNG era (historical) |
-| LeoAware v3.4-p95 | 73.57 | 138.37 | coupled-RNG era (historical) |
 
-v3.6 dual gate is **relative to BBR on the OPE-fair path**. Coupled-era absolute bars (gp≥75 / p95≤138.8) mixed different orbits per CCA and are not comparable.
+v3.7 dual gate is **relative to BBR on the OPE-fair path**. Coupled-era absolute bars (gp≥75 / p95≤138.8) mixed different orbits per CCA and are not comparable.
 
 ### Hybrid fuse ablation (fast, seeds 13+7)
 
@@ -189,10 +189,10 @@ Integrity: `python -m experiments.test_ascent_d_integrity` (green).
 | leo_single | LeoAware | 71.88 | 111.9 |
 | terrestrial | LeoAware | 77.86 | 40.0 |
 
-v3.6 Keel Current: OPE sim integrity + SER + keel 2PC; dual-gate vs BBR on fair timeline.  
+v3.7 OCE Current: Orbit Capacity Echo + SER-lite on top of v3.6 Keel/OPE.  
 v3.3-A rails retained: hybrid fuse, ASCENT-D erase-on-fail.  
-Log: `docs/experiment_log.md`. Design: `docs/leoaware_v36_keel.md`.  
-Archive: `results/archive/20260812-v36-keel/`.
+Log: `docs/experiment_log.md`. Design: `docs/leoaware_v37_oce.md`.  
+Archive: `results/archive/20260812-v37-oce/`.
 
 Reproduce:
 
