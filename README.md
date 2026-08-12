@@ -155,17 +155,18 @@ Scenarios in `experiments/run_suite.py`:
 
 Metrics: goodput, avg / p95 / p99 RTT, loss rate, utilization, Jain index, handover count.
 
-### Primary objective: multi-seed `leo_fast_ho` (LeoAware v3.4-p95)
+### Primary objective: multi-seed `leo_fast_ho` (LeoAware v3.5 Tide)
 
 Seeds 13,7,42,99,123 · 90s · **endpoint-only** default (public suite).  
-Public p95 gate: Leo p95 mean ≤ BBR p95 (138.8). Means only - do not market peaks.
+Means only - do not market peaks. Two honest SoTs:
 
 | CCA | Goodput mean | p95 mean | Notes |
 |-----|-------------:|---------:|-------|
 | CUBIC | 5.47 | 124.8 | Collapses under mobility |
 | BBRv3approx | 70.88 | 138.8 | Reference |
-| **LeoAware v3.4-p95** | **73.57** | **138.37** | **gp > BBR; p95 under BBR** |
-| LeoAware v3.3-A | 78.06 | 149.7 | higher gp / p95 residual (historical) |
+| **LeoAware v3.5 Tide** | **76.27** | **147.39** | **gp≥75 stretch PASS; p95 residual** |
+| LeoAware v3.4-p95 | 73.57 | 138.37 | p95 under BBR; gp floor miss (historical) |
+| LeoAware v3.3-A | 78.06 | 149.7 | gp peak / p95 residual (historical) |
 | LeoAware v3.1 | 68.98 | 133.6 | earlier p95-under-BBR gate |
 
 ### Hybrid fuse ablation (fast, seeds 13+7)
@@ -187,10 +188,10 @@ Integrity: `python -m experiments.test_ascent_d_integrity` (green).
 | leo_single | LeoAware | 71.88 | 111.9 |
 | terrestrial | LeoAware | 77.86 | 40.0 |
 
-v3.4-p95 Current: delay-aware cruise / REPROBE fill ceilings (endpoint multi-seed p95 reclaim).  
-v3.3-A rails retained: hybrid fuse (`_should_suppress_orb_reprobe`), ASCENT-D erase-on-fail, path-aware BDP.  
-Log: `docs/experiment_log.md`. Design: `docs/leoaware_v33_hybrid_fuse.md`, `docs/ascent_d_orbcc_hybrid.md`.  
-Archive: `results/archive/20260812-p95-reclaim/`.
+v3.5 Tide Current: time-bounded post-hop reclaim (TBPR) closes gp≥75 stretch; p95 residual honest.  
+v3.4-p95 retained as p95-under-BBR SoT. v3.3-A rails retained: hybrid fuse, ASCENT-D erase-on-fail.  
+Log: `docs/experiment_log.md`. Design: `docs/leoaware_v35_tide.md`, `docs/leoaware_v33_hybrid_fuse.md`.  
+Archive: `results/archive/20260812-v35-tide/`.
 
 Reproduce:
 

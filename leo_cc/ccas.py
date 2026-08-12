@@ -256,7 +256,7 @@ class BbrCCA(BaseCCA):
 
 class LeoAwareCCA(BaseCCA):
     """
-    LeoAware v3.3-A' / v3.4-p95 - hybrid fuse + endpoint p95 reclaim (OrbitStack).
+    LeoAware v3.5 Tide - Time-bounded post-hop reclaim (OrbitStack).
 
     Endpoint-first (works with zero network cooperation). Optional ASCENT /
     path hints accelerate reconfig handling when available. Optional OrbCC-style
@@ -294,6 +294,16 @@ class LeoAwareCCA(BaseCCA):
       - REPROBE fill ceiling lower + earlier stable/delay exit (no full DTCE)
       - Sizing RTT leans on recent median when delay_ratio risk is high
       - Hybrid fuse rails unchanged; suite default still endpoint-only
+
+    v3.5 Tide (novel):
+      - Time-bounded post-hop reclaim (TBPR): for ~2.5 RTT after REPROBE exit, if
+        live delay_ratio < 1.18 and no delay streak, temporarily target 1.20× BDP
+        with a slightly larger AIMD step. Aborts if delay_ratio > 1.28.
+      - Does NOT change REPROBE detection/cut policy (instrumentation showed
+        on_loss loss-burst REPROBE is the primary hop detector; gating it
+        regresses). Does NOT raise REPROBE fill ceilings (DTCE failure mode).
+      - Closes v3.4 stretch floor (gp≥75) on multi-seed leo_fast_ho; p95 residual
+        vs BBR documented honestly (see experiment_log / leoaware_v35_tide.md).
 
     Related: LeoCC response-interval outliers; SaTCP freeze; OrbCC pathID/U;
     BBR delivery-rate without stale min-RTT across epochs.
@@ -356,6 +366,8 @@ class LeoAwareCCA(BaseCCA):
         self._assist_suppress_s = 2.0
         self.orb_reprobe_suppressed = 0
         self._last_path_id_change_t = -1e9
+        # v3.5 Tide: time-bounded post-hop reclaim
+        self._reclaim_until = -1.0
 
     @staticmethod
     def _median(xs: list[float]) -> float:
@@ -558,6 +570,7 @@ class LeoAwareCCA(BaseCCA):
         self._pace_credit = max(self._pace_credit, self.cwnd * 1.2)
         self.loss_burst.clear()
         self._minrtt_age_t = t
+        self._reclaim_until = -1.0
         self.mode = f"reprobe:{reason}"
 
     def on_path_hint(
@@ -845,6 +858,8 @@ class LeoAwareCCA(BaseCCA):
                 self.reprobe_until = t
                 self.mode = "cruise"
                 self.ssthresh = self.cwnd
+                rtt_ref = self.min_rtt if self.min_rtt < 1e17 else 0.04
+                self._reclaim_until = t + max(0.15, 2.5 * rtt_ref)
             return
 
         if lost > 0 and self.min_rtt < 1e17 and rtt_s > 1.45 * self.min_rtt:
@@ -892,12 +907,27 @@ class LeoAwareCCA(BaseCCA):
                 self.ssthresh = self.cwnd
         else:
             # fair_mode: AIMD-ish around 1.0x BDP; else mild probe with delay-aware cap
+            # v3.5 TBPR: short post-hop reclaim if delay clean (cruise only)
+            age = t - self.last_reconfig_t
+            if self._reclaim_until < 0 and 0.15 < age < 1.0:
+                rtt_ref = self.min_rtt if self.min_rtt < 1e17 else 0.04
+                self._reclaim_until = t + max(0.15, 2.5 * rtt_ref)
+            if delay_ratio > 1.28:
+                self._reclaim_until = min(self._reclaim_until, t)  # abort
+            reclaim = (
+                not self.fair_mode
+                and t < self._reclaim_until
+                and delay_ratio < 1.18
+                and self.high_delay_streak == 0
+            )
             if self.fair_mode:
                 target = 1.02 * bdp
             elif delay_ratio > 1.55 or self.high_delay_streak >= 3:
                 target = 1.05 * bdp
             elif delay_ratio > 1.35:
                 target = 1.10 * bdp
+            elif reclaim:
+                target = 1.20 * bdp
             else:
                 target = 1.15 * bdp
             if self.fair_mode and (delay_ratio > 1.45 or self.high_delay_streak >= 3):
@@ -914,7 +944,7 @@ class LeoAwareCCA(BaseCCA):
                     self.cwnd = max(4 * MSS, min(self.cwnd, target * 1.05))
                 self.mode = "delay_yield"
             elif self.cwnd < target:
-                step = MSS * (0.45 if self.fair_mode else 0.85)
+                step = MSS * (0.45 if self.fair_mode else (1.05 if reclaim else 0.85))
                 self.cwnd += step
                 self.mode = "cruise"
             elif self.cwnd > target * 1.12:
