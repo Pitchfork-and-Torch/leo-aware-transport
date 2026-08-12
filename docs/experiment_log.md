@@ -542,6 +542,7 @@ Archive: `results/archive/20260812-v37-oce/`
 4. EpochMemory / HO-PLL once hop detection is less loss-burst-dependent.
 5. Per-RTT fairness clock for multi-flow (fair_mode still coarse).
 6. QUEUE-mode store-and-forward coupling with ASCENT-D.
+7. Full 5-seed ablation with ascent_d vs hybrid under suite durations (90s).
 
 ---
 
