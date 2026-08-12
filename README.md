@@ -155,19 +155,20 @@ Scenarios in `experiments/run_suite.py`:
 
 Metrics: goodput, avg / p95 / p99 RTT, loss rate, utilization, Jain index, handover count.
 
-### Primary objective: multi-seed `leo_fast_ho` (LeoAware v3.5 Tide)
+### Primary objective: multi-seed `leo_fast_ho` (LeoAware v3.6 Keel)
 
 Seeds 13,7,42,99,123 · 90s · **endpoint-only** default (public suite).  
-Means only - do not market peaks. Two honest SoTs:
+Means only - do not market peaks. **OPE-fair timeline** (path identity identical across CCAs).
 
 | CCA | Goodput mean | p95 mean | Notes |
 |-----|-------------:|---------:|-------|
-| CUBIC | 5.47 | 124.8 | Collapses under mobility |
-| BBRv3approx | 70.88 | 138.8 | Reference |
-| **LeoAware v3.5 Tide** | **76.27** | **147.39** | **gp≥75 stretch PASS; p95 residual** |
-| LeoAware v3.4-p95 | 73.57 | 138.37 | p95 under BBR; gp floor miss (historical) |
-| LeoAware v3.3-A | 78.06 | 149.7 | gp peak / p95 residual (historical) |
-| LeoAware v3.1 | 68.98 | 133.6 | earlier p95-under-BBR gate |
+| CUBIC | 5.56 | 130.4 | Collapses under mobility |
+| BBRv3approx | 58.21 | 152.9 | OPE+soft-QIR reference |
+| **LeoAware v3.6 Keel** | **58.27** | **152.1** | **gp≥BBR and p95≤BBR PASS** |
+| LeoAware v3.5 Tide | 76.27 | 147.39 | coupled-RNG era (historical) |
+| LeoAware v3.4-p95 | 73.57 | 138.37 | coupled-RNG era (historical) |
+
+v3.6 dual gate is **relative to BBR on the OPE-fair path**. Coupled-era absolute bars (gp≥75 / p95≤138.8) mixed different orbits per CCA and are not comparable.
 
 ### Hybrid fuse ablation (fast, seeds 13+7)
 
@@ -188,10 +189,10 @@ Integrity: `python -m experiments.test_ascent_d_integrity` (green).
 | leo_single | LeoAware | 71.88 | 111.9 |
 | terrestrial | LeoAware | 77.86 | 40.0 |
 
-v3.5 Tide Current: time-bounded post-hop reclaim (TBPR) closes gp≥75 stretch; p95 residual honest.  
-v3.4-p95 retained as p95-under-BBR SoT. v3.3-A rails retained: hybrid fuse, ASCENT-D erase-on-fail.  
-Log: `docs/experiment_log.md`. Design: `docs/leoaware_v35_tide.md`, `docs/leoaware_v33_hybrid_fuse.md`.  
-Archive: `results/archive/20260812-v35-tide/`.
+v3.6 Keel Current: OPE sim integrity + SER + keel 2PC; dual-gate vs BBR on fair timeline.  
+v3.3-A rails retained: hybrid fuse, ASCENT-D erase-on-fail.  
+Log: `docs/experiment_log.md`. Design: `docs/leoaware_v36_keel.md`.  
+Archive: `results/archive/20260812-v36-keel/`.
 
 Reproduce:
 

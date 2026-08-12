@@ -256,7 +256,7 @@ class BbrCCA(BaseCCA):
 
 class LeoAwareCCA(BaseCCA):
     """
-    LeoAware v3.5 Tide - Time-bounded post-hop reclaim (OrbitStack).
+    LeoAware v3.6 Keel - Cross-epoch delay anchor + 2PC reclaim (OrbitStack).
 
     Endpoint-first (works with zero network cooperation). Optional ASCENT /
     path hints accelerate reconfig handling when available. Optional OrbCC-style
@@ -295,15 +295,22 @@ class LeoAwareCCA(BaseCCA):
       - Sizing RTT leans on recent median when delay_ratio risk is high
       - Hybrid fuse rails unchanged; suite default still endpoint-only
 
-    v3.5 Tide (novel):
-      - Time-bounded post-hop reclaim (TBPR): for ~2.5 RTT after REPROBE exit, if
-        live delay_ratio < 1.18 and no delay streak, temporarily target 1.20× BDP
-        with a slightly larger AIMD step. Aborts if delay_ratio > 1.28.
-      - Does NOT change REPROBE detection/cut policy (instrumentation showed
-        on_loss loss-burst REPROBE is the primary hop detector; gating it
-        regresses). Does NOT raise REPROBE fill ceilings (DTCE failure mode).
-      - Closes v3.4 stretch floor (gp≥75) on multi-seed leo_fast_ho; p95 residual
-        vs BBR documented honestly (see experiment_log / leoaware_v35_tide.md).
+    v3.5 Tide:
+      - Time-bounded post-hop reclaim (TBPR) after REPROBE→cruise.
+
+    v3.6 Keel (novel; pairs with sim OPE + soft-QIR):
+      - Cross-Epoch Delay Anchor ("keel"): preserve pre-hop min_rtt across REPROBE
+        invalidation so TBPR/yield still see inflation when live RTT ≫ prior base.
+      - Two-Phase Commit reclaim: commit_cwnd at reclaim arm; if keel_ratio or
+        delay_ratio spikes, abort TBPR and roll cwnd back to the commit point.
+      - REPROBE fill ceiling uses min(min_rtt, keel·1.2) when inflated vs keel
+        (stops fill from racing a soft-QIR standing queue).
+      - Selective Epoch Reset (SER): pure ep:loss_burst (RTT-stable mobility) keeps
+        min_rtt, applies a mild cut, and uses a short fill — full invalidate stays
+        for rtt_mad/ack_ia. Loss-burst remains the hop *signal*; it no longer
+        destroys the delay floor on every mobility mark.
+      - Clean-cruise target raised (~1.35× BDP) so OPE-fair paths can beat BBR
+        goodput while delay_yield + keel 2PC hold p95.
 
     Related: LeoCC response-interval outliers; SaTCP freeze; OrbCC pathID/U;
     BBR delivery-rate without stale min-RTT across epochs.
@@ -366,8 +373,11 @@ class LeoAwareCCA(BaseCCA):
         self._assist_suppress_s = 2.0
         self.orb_reprobe_suppressed = 0
         self._last_path_id_change_t = -1e9
-        # v3.5 Tide: time-bounded post-hop reclaim
+        # v3.5 Tide / v3.6 Keel: time-bounded post-hop reclaim + 2PC
         self._reclaim_until = -1.0
+        self._keel_rtt = 0.0
+        self._commit_cwnd = 0.0
+        self.keel_rollbacks = 0
 
     @staticmethod
     def _median(xs: list[float]) -> float:
@@ -508,6 +518,43 @@ class LeoAwareCCA(BaseCCA):
         if reason.startswith("orb") and self._should_suppress_orb_reprobe(t):
             self.orb_reprobe_suppressed += 1
             return
+
+        # v3.6 Selective Epoch Reset: pure loss_burst = RTT-stable mobility.
+        # Keep min_rtt (delay floor), mild cut, short fill. Full invalidate remains
+        # for rtt_mad / ack_ia / combined reasons.
+        if reason == "ep:loss_burst" and not self.fair_mode:
+            if self.min_rtt < 1e17 and self.bw_est > 0:
+                self.prior_bdp = max(8 * MSS, self.bw_est * self.min_rtt / 8.0)
+                self.prior_bw = self.bw_est
+            if self.min_rtt < 1e17:
+                if self._keel_rtt <= 0:
+                    self._keel_rtt = self.min_rtt
+                elif self.min_rtt <= 1.15 * self._keel_rtt:
+                    self._keel_rtt = 0.75 * self._keel_rtt + 0.25 * self.min_rtt
+            self.last_reconfig_t = t
+            self.reconfigs_detected += 1
+            self._last_signal_confidence = max(0.0, min(1.0, float(confidence)))
+            self.cwnd = max(6 * MSS, self.cwnd * 0.85)
+            self.ssthresh = self.cwnd
+            self.bw_samples.clear()
+            self.delivered_marks.clear()
+            if self.prior_bw > 0:
+                self.bw_est = self.prior_bw * 0.90
+            rtt_ref = self.min_rtt if self.min_rtt < 1e17 else 0.04
+            self.pacing_rate_bps = max(
+                self.prior_bw * 0.95 if self.prior_bw > 0 else 0.0,
+                self.cwnd * 8 / max(rtt_ref, 0.02) * 1.8,
+            )
+            self._pace_credit = max(self._pace_credit, self.cwnd * 1.1)
+            self.loss_burst.clear()
+            self.reprobe_phase_b = t + 0.04
+            self.reprobe_until = t + 0.10
+            self.stable_acks = 0
+            self._reclaim_until = t + max(0.12, 2.2 * rtt_ref)
+            self._commit_cwnd = self.cwnd
+            self.mode = "ser:loss_burst"
+            return
+
         # Preserve prior scale as soft ceiling knowledge
         if self.min_rtt < 1e17 and self.bw_est > 0:
             self.prior_bdp = max(8 * MSS, self.bw_est * self.min_rtt / 8.0)
@@ -515,12 +562,21 @@ class LeoAwareCCA(BaseCCA):
         elif self.prior_bw <= 0 and predicted_cap > 0:
             self.prior_bw = predicted_cap
 
+        # v3.6 Keel: cross-epoch delay anchor (refuse poison seep upward)
+        if self.min_rtt < 1e17:
+            if self._keel_rtt <= 0:
+                self._keel_rtt = self.min_rtt
+            elif self.min_rtt <= 1.15 * self._keel_rtt:
+                self._keel_rtt = 0.75 * self._keel_rtt + 0.25 * self.min_rtt
+            # else: keep keel; JUMP adoption happens later from stable cruise min
+
         self.last_reconfig_t = t
         self.reconfigs_detected += 1
         conf = max(0.0, min(1.0, float(confidence)))
         self._last_signal_confidence = conf
         if reason.startswith("hint"):
             self._last_assist_reconfig_t = t
+        self._commit_cwnd = 0.0
         rtt_ref = self.min_rtt if self.min_rtt < 1e17 else (
             predicted_rtt if predicted_rtt > 0 else 0.04
         )
@@ -546,7 +602,7 @@ class LeoAwareCCA(BaseCCA):
         elif reason.startswith("hint"):
             cut = 0.62
         else:
-            cut = 0.58  # exact v3.1 endpoint cut
+            cut = 0.58  # rtt_mad / ack_ia endpoint cut
         if conf >= 0.9:
             cut = min(0.70, cut + 0.04)
         if self.fair_mode:
@@ -832,13 +888,20 @@ class LeoAwareCCA(BaseCCA):
             growth = (1.42 if in_b else 1.22) * (0.9 if self.fair_mode else 1.0)
             self.cwnd += bytes_acked * growth
             # v3.4-p95: lower fill ceiling so fill does not overshoot into 150-175 ms
+            # v3.6 Keel: when live/min RTT inflates vs keel, size ceiling on keel
+            ceil_rtt = self.min_rtt if self.min_rtt < 1e17 else 0.0
+            if self._keel_rtt > 0 and ceil_rtt > 0 and ceil_rtt > 1.2 * self._keel_rtt:
+                ceil_rtt = self._keel_rtt * 1.2
             ceiling = max(80 * MSS, self.prior_bdp * 1.35)
-            if self.bw_est > 0 and self.min_rtt < 1e17:
-                ceiling = max(ceiling, 1.55 * self.bw_est * self.min_rtt / 8.0)
-            if self.hint_capacity_bps > 0 and self.min_rtt < 1e17:
+            if self.bw_est > 0 and ceil_rtt > 0:
+                ceiling = max(ceiling, 1.55 * self.bw_est * ceil_rtt / 8.0)
+            if self.hint_capacity_bps > 0 and ceil_rtt > 0:
                 ceiling = max(
-                    ceiling, 1.35 * self.hint_capacity_bps * self.min_rtt / 8.0
+                    ceiling, 1.35 * self.hint_capacity_bps * ceil_rtt / 8.0
                 )
+            # Soft-QIR standing queue: tighten fill if delay already elevated
+            if delay_ratio_early > 1.40 and self.bw_est > 0 and ceil_rtt > 0:
+                ceiling = min(ceiling, 1.25 * self.bw_est * ceil_rtt / 8.0)
             self.cwnd = min(self.cwnd, ceiling)
             # Early exit: stable fill OR delay building during fill
             delay_exit = (
@@ -860,6 +923,7 @@ class LeoAwareCCA(BaseCCA):
                 self.ssthresh = self.cwnd
                 rtt_ref = self.min_rtt if self.min_rtt < 1e17 else 0.04
                 self._reclaim_until = t + max(0.15, 2.5 * rtt_ref)
+                self._commit_cwnd = self.cwnd  # 2PC commit point
             return
 
         if lost > 0 and self.min_rtt < 1e17 and rtt_s > 1.45 * self.min_rtt:
@@ -907,17 +971,41 @@ class LeoAwareCCA(BaseCCA):
                 self.ssthresh = self.cwnd
         else:
             # fair_mode: AIMD-ish around 1.0x BDP; else mild probe with delay-aware cap
-            # v3.5 TBPR: short post-hop reclaim if delay clean (cruise only)
+            # v3.5/v3.6 TBPR + Keel 2PC: short post-hop reclaim if delay clean
             age = t - self.last_reconfig_t
+            keel_ratio = (
+                rtt_s / self._keel_rtt if self._keel_rtt > 0 else delay_ratio
+            )
             if self._reclaim_until < 0 and 0.15 < age < 1.0:
                 rtt_ref = self.min_rtt if self.min_rtt < 1e17 else 0.04
                 self._reclaim_until = t + max(0.15, 2.5 * rtt_ref)
-            if delay_ratio > 1.28:
-                self._reclaim_until = min(self._reclaim_until, t)  # abort
+                if self._commit_cwnd <= 0:
+                    self._commit_cwnd = self.cwnd
+            # Abort + optional rollback if delay or keel sight sees queue risk
+            if delay_ratio > 1.28 or keel_ratio > 1.38:
+                if (
+                    self._commit_cwnd > 0
+                    and t < self._reclaim_until
+                    and self.cwnd > self._commit_cwnd * 1.05
+                    and (delay_ratio > 1.40 or keel_ratio > 1.45)
+                ):
+                    self.cwnd = max(4 * MSS, self._commit_cwnd)
+                    self.keel_rollbacks += 1
+                self._reclaim_until = min(self._reclaim_until, t)
+                self._commit_cwnd = 0.0
+            # Very-clean post-hop: slightly stronger reclaim target
+            clean_boost = (
+                not self.fair_mode
+                and t < self._reclaim_until
+                and delay_ratio < 1.12
+                and keel_ratio < 1.15
+                and self.high_delay_streak == 0
+            )
             reclaim = (
                 not self.fair_mode
                 and t < self._reclaim_until
                 and delay_ratio < 1.18
+                and keel_ratio < 1.25
                 and self.high_delay_streak == 0
             )
             if self.fair_mode:
@@ -926,10 +1014,17 @@ class LeoAwareCCA(BaseCCA):
                 target = 1.05 * bdp
             elif delay_ratio > 1.35:
                 target = 1.10 * bdp
+            elif clean_boost or (
+                reclaim and delay_ratio < 1.15 and keel_ratio < 1.18
+            ):
+                target = 1.38 * bdp
             elif reclaim:
-                target = 1.20 * bdp
+                target = 1.28 * bdp
+            elif delay_ratio < 1.18 and self.high_delay_streak == 0 and not self.fair_mode:
+                # v3.6 clean-cruise: compete with BBR gain on OPE-fair paths
+                target = 1.38 * bdp
             else:
-                target = 1.15 * bdp
+                target = 1.18 * bdp
             if self.fair_mode and (delay_ratio > 1.45 or self.high_delay_streak >= 3):
                 self.cwnd = max(4 * MSS, self.cwnd * 0.92)
                 self.mode = "fair_yield"
@@ -944,7 +1039,14 @@ class LeoAwareCCA(BaseCCA):
                     self.cwnd = max(4 * MSS, min(self.cwnd, target * 1.05))
                 self.mode = "delay_yield"
             elif self.cwnd < target:
-                step = MSS * (0.45 if self.fair_mode else (1.05 if reclaim else 0.85))
+                if self.fair_mode:
+                    step = MSS * 0.45
+                elif target >= 1.30 * bdp:
+                    step = MSS * 1.20
+                elif reclaim:
+                    step = MSS * 1.10
+                else:
+                    step = MSS * 0.90
                 self.cwnd += step
                 self.mode = "cruise"
             elif self.cwnd > target * 1.12:
@@ -956,6 +1058,12 @@ class LeoAwareCCA(BaseCCA):
             if delay_ratio > 1.35 and self.bw_est > 0:
                 self.cwnd = min(self.cwnd, bdp * 1.08)
             self.cwnd = max(4 * MSS, self.cwnd)
+            # v3.6: adopt keel toward healthy cruise min (downward or mild up)
+            if self.min_rtt < 1e17 and age > 1.5 and self._keel_rtt > 0:
+                if self.min_rtt < self._keel_rtt:
+                    self._keel_rtt = 0.7 * self._keel_rtt + 0.3 * self.min_rtt
+                elif self.min_rtt < 1.2 * self._keel_rtt and delay_ratio < 1.2:
+                    self._keel_rtt = 0.88 * self._keel_rtt + 0.12 * self.min_rtt
 
     def on_loss(self, t: float, bytes_lost: int, congestive: bool) -> None:
         self.on_delivered(bytes_lost)
