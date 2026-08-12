@@ -401,13 +401,77 @@ p95 mean under BBR (**138.37 ≤ 138.8**); goodput still beats BBR (**73.57 > 70
 
 ---
 
+## v3.5 Tide - Time-bounded post-hop reclaim - ACCEPT (gp≥75 stretch)
+
+**Date:** 2026-08-12  
+**Branch:** `cursor/leoaware-v35-tide-935b`  
+**Hypothesis:** Close the v3.4 stretch floor (gp≥75) with a *time-bounded* post-hop
+cruise reclaim that does not replay DTCE fill-ceiling failure or REPROBE-policy
+thrash.
+
+### What was tried overnight (negative results, equal care)
+
+| Idea | Result |
+|------|--------|
+| HO-interval PLL + phase-gated detect | PLL poisoned by false REPROBEs; pre_tide drained cwnd (seed 7 → 42 Mbps) |
+| Graduated / ghost / shadow REPROBE | Over-ghosted true hops; RTT fusion alone under-detects |
+| Rate-gated REPROBE | Delivery rate lags path changes ~1 RTT — poor hop veto in slot sim |
+| HO-paced loss-burst REPROBE | Instrumental finding: `on_loss→ep:loss_burst` is the **primary hop detector**; pacing it regresses |
+| EpochMemory / QCP / SRLB continuous boost | p95 blowups or gp collapse |
+| Loose TBPR (shipped) | **gp 76.27 / p95 147.39** — stretch floor PASS |
+
+**Key instrumentation finding:** In this slot sim, RTT fusion fires ~3–5 times/90s;
+loss-burst REPROBE supplies ~45–50. Do not gate that path without a better hop detector.
+
+### Lever shipped (`leo_cc/ccas.py`)
+
+**TBPR only:** after REPROBE→cruise, for ~2.5 RTT, if `delay_ratio < 1.18` and no
+delay streak, target 1.20× BDP / step 1.05×MSS. Abort if `delay_ratio > 1.28`.
+No REPROBE cut/detect change. No fill-ceiling raise.
+
+### Multi-seed endpoint (90s, seeds 13,7,42,99,123)
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| BBRv3approx | 70.88 | 138.8 |
+| LeoAware v3.4-p95 | 73.57 | 138.37 |
+| LeoAware v3.3-A | 78.06 | 149.7 |
+| **LeoAware v3.5 Tide** | **76.27** | **147.39** |
+
+Per-seed LeoAware: 13→78.95/167.7 · 7→73.46/198.3 · 42→69.54/139.1 · 99→88.39/123.7 · 123→71.02/108.1
+
+### Other scenarios (full multi_seed archive)
+
+| Scenario | LeoAware gp | p95 | note |
+|----------|------------:|----:|------|
+| leo_single | 57.25 | 134.0 | below v3.4 62.65; still near BBR 58.39 |
+| terrestrial | **78.22** | 40.0 | ≥ 77 @ 40 ms **PASS** |
+
+### Gate scorecard
+
+| Check | Bar | Result |
+|-------|-----|--------|
+| gp mean | ≥ 75.0 | **76.27 PASS** |
+| p95 mean | ≤ 138.8 | **147.39 FAIL residual** (better than v3.3-A 149.7) |
+| beats BBR gp | > 70.88 | PASS |
+| terrestrial | ≥ 77 @ 40 | **78.22 PASS** |
+| integrity | green | PASS |
+
+Design: `docs/leoaware_v35_tide.md`  
+Archive: `results/archive/20260812-v35-tide/`
+
+**Decision: ACCEPT v3.5 Tide for gp≥75 stretch.** Do not market p95-under-BBR
+(v3.4 remains that SoT). Seed-7 p95 spike (198) is the open reclaim problem.
+
+---
+
 ## Open ideas (next loops)
 
-1. EpochMemory prototype bank (stretch after A/C).
-2. Real public Starlink measurement CSVs (not only synthetic).
-3. Per-RTT fairness clock for multi-flow (fair_mode still coarse).
-4. QUEUE-mode store-and-forward coupling with ASCENT-D.
-5. Further cut leo_single p95 while keeping the gp lift.
+1. Kill seed-7 p95 spike (198) without giving back gp≥75.
+2. EpochMemory / HO-PLL once hop detection is less loss-burst-dependent.
+3. Real public Starlink measurement CSVs (not only synthetic).
+4. Per-RTT fairness clock for multi-flow (fair_mode still coarse).
+5. QUEUE-mode store-and-forward coupling with ASCENT-D.
 6. Full 5-seed ablation with ascent_d vs hybrid under suite durations (90s).
 
 ---
