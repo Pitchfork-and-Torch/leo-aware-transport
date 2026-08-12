@@ -72,9 +72,17 @@ here. The dual gate is:
 | BBRv3approx | **58.21** | **152.89** |
 | **LeoAware v3.6 Keel** | **58.27** | **152.09** |
 
-Per-seed LeoAware: 13→66.8/153 · 7→55.5/146 · 42→50.7/186 · 99→74.3/126 · 123→43.8/149
+Per-seed LeoAware:
 
-Terrestrial: ~78.6 Mbps @ ~46 ms p95 (soft-QIR adds sojourn vs old path-only 40 ms).
+| seed | gp | p95 |
+|-----:|---:|----:|
+| 13 | 67.11 | 153.4 |
+| 7 | 55.54 | 146.0 |
+| 42 | 50.70 | 186.0 |
+| 99 | 74.26 | 126.1 |
+| 123 | 43.76 | 149.0 |
+
+Terrestrial: **78.64 Mbps @ 46 ms p95** (soft-QIR adds sojourn vs old path-only 40 ms; gp≥77 PASS).
 
 ## Decision
 
