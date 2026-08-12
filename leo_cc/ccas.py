@@ -256,7 +256,7 @@ class BbrCCA(BaseCCA):
 
 class LeoAwareCCA(BaseCCA):
     """
-    LeoAware v3.6 Keel - Cross-epoch delay anchor + 2PC reclaim (OrbitStack).
+    LeoAware v3.7 OCE - Orbit Capacity Echo + SER-lite (OrbitStack).
 
     Endpoint-first (works with zero network cooperation). Optional ASCENT /
     path hints accelerate reconfig handling when available. Optional OrbCC-style
@@ -298,19 +298,19 @@ class LeoAwareCCA(BaseCCA):
     v3.5 Tide:
       - Time-bounded post-hop reclaim (TBPR) after REPROBE→cruise.
 
-    v3.6 Keel (novel; pairs with sim OPE + soft-QIR):
-      - Cross-Epoch Delay Anchor ("keel"): preserve pre-hop min_rtt across REPROBE
-        invalidation so TBPR/yield still see inflation when live RTT ≫ prior base.
-      - Two-Phase Commit reclaim: commit_cwnd at reclaim arm; if keel_ratio or
-        delay_ratio spikes, abort TBPR and roll cwnd back to the commit point.
-      - REPROBE fill ceiling uses min(min_rtt, keel·1.2) when inflated vs keel
-        (stops fill from racing a soft-QIR standing queue).
-      - Selective Epoch Reset (SER): pure ep:loss_burst (RTT-stable mobility) keeps
-        min_rtt, applies a mild cut, and uses a short fill — full invalidate stays
-        for rtt_mad/ack_ia. Loss-burst remains the hop *signal*; it no longer
-        destroys the delay floor on every mobility mark.
-      - Clean-cruise target raised (~1.35× BDP) so OPE-fair paths can beat BBR
-        goodput while delay_yield + keel 2PC hold p95.
+    v3.6 Keel (pairs with sim OPE + soft-QIR):
+      - Cross-Epoch Delay Anchor ("keel") + 2PC TBPR rollback.
+      - Selective Epoch Reset (SER): pure ep:loss_burst keeps min_rtt.
+      - Clean-cruise ~1.38× BDP on OPE-fair paths.
+
+    v3.7 OCE (novel):
+      - Orbit Capacity Echo: after SER/SER-lite, for ~3 RTT if delay stays clean,
+        chase delivery-rate into bw_est and push toward ~1.42× BDP; abort to the
+        OCE commit cwnd if delay_ratio > 1.30 (transactional echo).
+      - SER-lite: ack_ia+loss_burst without rtt_mad/loss_rtt keeps min_rtt (ACK
+        freeze ≠ path RTT jump); cut 0.80, short fill — full invalidate stays for
+        true RTT-jump reasons.
+      - Widens OPE-fair dual-gate margin vs BBR without re-gating loss_burst detect.
 
     Related: LeoCC response-interval outliers; SaTCP freeze; OrbCC pathID/U;
     BBR delivery-rate without stale min-RTT across epochs.
@@ -378,6 +378,11 @@ class LeoAwareCCA(BaseCCA):
         self._keel_rtt = 0.0
         self._commit_cwnd = 0.0
         self.keel_rollbacks = 0
+        # v3.7 OCE: transactional post-SER capacity echo
+        self._oce_until = -1.0
+        self._oce_commit = 0.0
+        self.oce_echos = 0
+        self.ser_lite_count = 0
 
     @staticmethod
     def _median(xs: list[float]) -> float:
@@ -519,10 +524,19 @@ class LeoAwareCCA(BaseCCA):
             self.orb_reprobe_suppressed += 1
             return
 
-        # v3.6 Selective Epoch Reset: pure loss_burst = RTT-stable mobility.
-        # Keep min_rtt (delay floor), mild cut, short fill. Full invalidate remains
-        # for rtt_mad / ack_ia / combined reasons.
-        if reason == "ep:loss_burst" and not self.fair_mode:
+        # v3.6/v3.7 Selective Epoch Reset family: RTT-stable mobility keeps min_rtt.
+        # - pure ep:loss_burst → SER (cut 0.85)
+        # - ack_ia+loss_burst without rtt_mad/loss_rtt → SER-lite (cut 0.80)
+        # Full invalidate remains for true RTT-jump reasons.
+        ser_lite = (
+            not self.fair_mode
+            and self.min_rtt < 1e17
+            and "loss_burst" in reason
+            and "rtt_mad" not in reason
+            and "loss_rtt" not in reason
+            and reason != "ep:loss_burst"
+        )
+        if (reason == "ep:loss_burst" and not self.fair_mode) or ser_lite:
             if self.min_rtt < 1e17 and self.bw_est > 0:
                 self.prior_bdp = max(8 * MSS, self.bw_est * self.min_rtt / 8.0)
                 self.prior_bw = self.bw_est
@@ -534,7 +548,8 @@ class LeoAwareCCA(BaseCCA):
             self.last_reconfig_t = t
             self.reconfigs_detected += 1
             self._last_signal_confidence = max(0.0, min(1.0, float(confidence)))
-            self.cwnd = max(6 * MSS, self.cwnd * 0.85)
+            cut = 0.80 if ser_lite else 0.85
+            self.cwnd = max(6 * MSS, self.cwnd * cut)
             self.ssthresh = self.cwnd
             self.bw_samples.clear()
             self.delivered_marks.clear()
@@ -547,12 +562,19 @@ class LeoAwareCCA(BaseCCA):
             )
             self._pace_credit = max(self._pace_credit, self.cwnd * 1.1)
             self.loss_burst.clear()
-            self.reprobe_phase_b = t + 0.04
-            self.reprobe_until = t + 0.10
+            self.reprobe_phase_b = t + (0.05 if ser_lite else 0.04)
+            self.reprobe_until = t + (0.12 if ser_lite else 0.10)
             self.stable_acks = 0
             self._reclaim_until = t + max(0.12, 2.2 * rtt_ref)
             self._commit_cwnd = self.cwnd
-            self.mode = "ser:loss_burst"
+            # v3.7 OCE arm: transactional capacity chase after SER family
+            self._oce_until = t + max(0.18, 3.0 * rtt_ref)
+            self._oce_commit = self.cwnd
+            if ser_lite:
+                self.ser_lite_count += 1
+                self.mode = f"ser_lite:{reason}"
+            else:
+                self.mode = "ser:loss_burst"
             return
 
         # Preserve prior scale as soft ceiling knowledge
@@ -1054,6 +1076,33 @@ class LeoAwareCCA(BaseCCA):
                 self.mode = "cruise"
             else:
                 self.mode = "cruise"
+
+            # v3.7 Orbit Capacity Echo: after SER, chase live delivery if delay clean
+            if (
+                not self.fair_mode
+                and t < self._oce_until
+                and self.bw_est > 0
+            ):
+                if delay_ratio > 1.30:
+                    if self._oce_commit > 0 and self.cwnd > self._oce_commit * 1.05:
+                        self.cwnd = max(4 * MSS, self._oce_commit)
+                    self._oce_until = t
+                elif delay_ratio < 1.14 and self.high_delay_streak == 0:
+                    rate = self._delivery_rate_sample(t)
+                    if rate > self.bw_est * 1.01:
+                        self.bw_est = 0.65 * self.bw_est + 0.35 * rate
+                        if sizing_rtt > 0:
+                            bdp = self.bw_est * sizing_rtt / 8.0
+                    oce_target = 1.42 * bdp
+                    if self.cwnd < oce_target:
+                        self.cwnd += MSS * 1.35
+                        self.pacing_rate_bps = max(
+                            self.pacing_rate_bps, self.bw_est * 1.12
+                        )
+                        if self.mode != "oce_echo":
+                            self.oce_echos += 1
+                        self.mode = "oce_echo"
+
             # Hard cap above ~1.08x BDP when delay risk present
             if delay_ratio > 1.35 and self.bw_est > 0:
                 self.cwnd = min(self.cwnd, bdp * 1.08)
