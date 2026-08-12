@@ -299,8 +299,13 @@ class LeoAwareCCA(BaseCCA):
       - Time-bounded post-hop reclaim (TBPR) after REPROBE→cruise.
 
     v3.6 Keel (pairs with sim OPE + soft-QIR):
-      - Cross-Epoch Delay Anchor ("keel") + 2PC TBPR rollback.
-      - Selective Epoch Reset (SER): pure ep:loss_burst keeps min_rtt.
+      - Cross-Epoch Delay Anchor ("keel"): preserve pre-hop min_rtt across REPROBE
+        invalidation so TBPR/yield still see inflation when live RTT ≫ prior base.
+      - Two-Phase Commit reclaim: commit_cwnd at reclaim arm; if keel_ratio or
+        delay_ratio spikes, abort TBPR and roll cwnd back to the commit point.
+      - REPROBE fill ceiling uses min(min_rtt, keel·1.2) when inflated vs keel.
+      - Selective Epoch Reset (SER): pure ep:loss_burst keeps min_rtt, mild cut,
+        short fill — full invalidate stays for rtt_mad/ack_ia.
       - Clean-cruise ~1.38× BDP on OPE-fair paths.
 
     v3.7 OCE (novel):
