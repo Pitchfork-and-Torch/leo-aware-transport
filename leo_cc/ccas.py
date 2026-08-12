@@ -256,7 +256,7 @@ class BbrCCA(BaseCCA):
 
 class LeoAwareCCA(BaseCCA):
     """
-    LeoAware v3.2 - sender-side LEO-aware congestion control (OrbitStack).
+    LeoAware v3.3-A - hybrid fuse (OrbitStack).
 
     Endpoint-first (works with zero network cooperation). Optional ASCENT /
     path hints accelerate reconfig handling when available. Optional OrbCC-style
@@ -280,6 +280,13 @@ class LeoAwareCCA(BaseCCA):
       - Optional on_orb_signal: pathID reconfig + utilization AIMD (OrbCC hybrid)
       - Confidence-conditioned REPROBE cuts (endpoint vs ASCENT-D vs Orb pathID)
       - Mobility taxonomy reinforced when in-network qLen is near empty
+
+    v3.3-A hybrid fuse (PR A):
+      - _should_suppress_orb_reprobe: assist 2.0s / freeze / REPROBE / detect_cooldown
+      - Hybrid: never util-MD; Orb pathID REPROBE only when not suppressed
+      - Orb-only util-MD: U high AND qlen non-trivial outside freeze/reprobe
+      - _enter_reprobe refuses orb* while suppressed; endpoint cut stays 0.58
+      - Public suite default remains endpoint-only
 
     Related: LeoCC response-interval outliers; SaTCP freeze; OrbCC pathID/U;
     BBR delivery-rate without stale min-RTT across epochs.
@@ -339,7 +346,9 @@ class LeoAwareCCA(BaseCCA):
         self.ascent_d_applied = 0
         # Assist primary: ASCENT/hint reconfigs suppress Orb pathID REPROBE
         self._last_assist_reconfig_t = -1e9
-        self._assist_suppress_s = 1.25
+        self._assist_suppress_s = 2.0
+        self.orb_reprobe_suppressed = 0
+        self._last_path_id_change_t = -1e9
 
     @staticmethod
     def _median(xs: list[float]) -> float:
@@ -455,6 +464,18 @@ class LeoAwareCCA(BaseCCA):
         reason = "+".join(reasons) if reasons else "fused"
         return hit, score, reason
 
+    def _should_suppress_orb_reprobe(self, t: float) -> bool:
+        """PR A: block Orb pathID REPROBE when assist/freeze/REPROBE owns the hop."""
+        if (t - self._last_assist_reconfig_t) <= self._assist_suppress_s:
+            return True
+        if t < self.reprobe_until:
+            return True
+        if t < self.freeze_until or self.pending_reprobe_after_freeze:
+            return True
+        if (t - self.last_reconfig_t) < self.detect_cooldown:
+            return True
+        return False
+
     def _enter_reprobe(
         self,
         t: float,
@@ -464,6 +485,10 @@ class LeoAwareCCA(BaseCCA):
         predicted_rtt: float = 0.0,
         confidence: float = 0.6,
     ) -> None:
+        # Belt-and-suspenders: never apply Orb cut while suppress active
+        if reason.startswith("orb") and self._should_suppress_orb_reprobe(t):
+            self.orb_reprobe_suppressed += 1
+            return
         # Preserve prior scale as soft ceiling knowledge
         if self.min_rtt < 1e17 and self.bw_est > 0:
             self.prior_bdp = max(8 * MSS, self.bw_est * self.min_rtt / 8.0)
@@ -502,8 +527,9 @@ class LeoAwareCCA(BaseCCA):
         elif reason.startswith("hint"):
             cut = 0.62
         else:
-            cut = 0.58
-        cut = min(0.72, cut + 0.04 * conf)
+            cut = 0.58  # exact v3.1 endpoint cut
+        if conf >= 0.9:
+            cut = min(0.70, cut + 0.04)
         if self.fair_mode:
             cut *= 0.95
         self.cwnd = max(6 * MSS, self.cwnd * cut)
@@ -584,53 +610,47 @@ class LeoAwareCCA(BaseCCA):
                 self.bw_est = 0.55 * capacity_bps
 
     def on_orb_signal(self, t: float, sig: "OrbSignal") -> None:
-        """OrbCC-hybrid: pathID reconfig + empty-queue mobility + soft util MD.
-
-        Full OrbCC AIMD every slot over-controls this educational sim and
-        regresses terrestrial. Hybrid path keeps the high-value pieces:
-        pathID change detection and near-empty qLen mobility taxonomy, with
-        utilization used only for mild MD when the queue is clearly building.
-        """
+        """PR A hybrid fuse: pathID + mobility; util-MD only in Orb-only mode."""
         if not self.use_orb_signals:
             return
         bdp = sig.bw_bps * max(sig.avg_rtt_s, 1e-3) / 8.0
 
-        # Path-change detection (OrbCC-style). ASCENT assist is primary:
-        # if a hint reconfig fired recently, only update path_id (no second REPROBE).
         if self.last_path_id is not None and sig.path_id != self.last_path_id:
             self.orb_path_changes += 1
             self.last_path_id = sig.path_id
-            assist_silent = (t - self._last_assist_reconfig_t) > self._assist_suppress_s
-            not_in_reprobe = t - self.last_reconfig_t > self.detect_cooldown * 0.9
-            if assist_silent and not_in_reprobe:
-                pred_cap = sig.bw_bps if sig.bw_bps > 0 else 0.0
+            self._last_path_id_change_t = t
+            if self._should_suppress_orb_reprobe(t):
+                self.orb_reprobe_suppressed += 1
+                if sig.bw_bps > 0 and (t < self.reprobe_until or t < self.freeze_until):
+                    if self.bw_est > 0:
+                        self.bw_est = 0.92 * self.bw_est + 0.08 * sig.bw_bps
+                    else:
+                        self.bw_est = sig.bw_bps * 0.55
+                    self.hint_capacity_bps = max(self.hint_capacity_bps, sig.bw_bps)
+            else:
                 self._enter_reprobe(
                     t,
                     "orb:path_id",
-                    predicted_cap=pred_cap,
+                    predicted_cap=sig.bw_bps if sig.bw_bps > 0 else 0.0,
                     predicted_rtt=float(sig.avg_rtt_s or 0.0),
                     confidence=0.95,
                 )
         else:
             self.last_path_id = sig.path_id
 
-        # Near-empty buffer + loss => mobility (not congestion)
-        if sig.qlen_bytes < 0.1 * max(bdp, 1.0):
-            self._mark_recent_loss_as_mobility(t)
+        # Mobility marks only in Orb-only mode near path events (not hybrid).
+        if not self.use_path_hints:
+            near = (t - self.last_reconfig_t) < 1.2 or (t - self._last_path_id_change_t) < 1.0
+            if near and sig.qlen_bytes < 0.1 * max(bdp, 1.0):
+                self._mark_recent_loss_as_mobility(t)
 
         if t < self.reprobe_until or t < self.freeze_until:
             return
 
-        # When ASCENT path hints are also enabled, Orb stays secondary:
-        # pathID + mobility only. Util MD was measured to fight freeze/REPROBE
-        # and tank hybrid multi-seed (seed-13 hybrid 49 vs ascent_d 76).
+        # Hybrid: never util-MD
         if self.use_path_hints:
-            if sig.bw_bps > 0 and self.bw_est > 0 and t - self.last_reconfig_t > 1.0:
-                self.bw_est = 0.99 * self.bw_est + 0.01 * sig.bw_bps
             return
 
-        # Soft MD only when clearly over target AND queue is non-trivial.
-        # Orb-only mode (no ASCENT): optional utilization assist.
         if (
             sig.bottleneck_u >= self.orb_eta * 1.08
             and sig.qlen_bytes > 0.35 * max(bdp, 1.0)
@@ -688,6 +708,7 @@ class LeoAwareCCA(BaseCCA):
                 "hint:freeze_end",
                 predicted_cap=self.hint_capacity_bps,
                 predicted_rtt=rtt_s,
+                confidence=0.88,
             )
 
         # During freeze: measure but do not grow aggressively

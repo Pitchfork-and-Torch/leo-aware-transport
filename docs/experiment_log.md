@@ -252,15 +252,53 @@ Archive: `results/ablation/`
 
 ---
 
+## v3.3 - Hybrid fuse (A) + false-REPROBE budget (C)
+
+**Date:** 2026-08-11
+**Branch:** `pr-a-hybrid-fuse`
+**Hypothesis:** (A) Stop hybrid over-cut by letting ASCENT own freeze/capacity seed and Orb pathID own the REPROBE cut (queued across freeze), with no hybrid util-MD. (C) Time-based false-REPROBE budget raises fusion threshold on healthy paths to close the leo_fast_ho gap vs BBR.
+
+### Code (`leo_cc/ccas.py`)
+
+- Hybrid invert: ASCENT reconfig seeds capacity without cut when Orb is on; Orb pathID REPROBE queued across freeze
+- `_should_suppress_orb_reprobe` for orb-only; hybrid belt allows Orb cut after freeze
+- Hybrid: never util-MD; never Orb empty-queue mobility marks
+- Endpoint cut fixed at 0.58; false-REPROBE budget raises score_threshold when exhausted
+- Design: `docs/leoaware_v33_hybrid_fuse.md`
+
+### Fast ablation accept (45s, seeds 13+7)
+
+| Check | Result |
+|-------|--------|
+| integrity | PASS |
+| ascent_d_noisy applied=0 == endpoint | PASS |
+| hybrid leo_single gp >= 0.95x endpoint | PASS (72.6 / 69.2) |
+| hybrid leo_fast_ho gp >= orb-3 | PASS (85.5 / 82.1) |
+| hybrid p95 <= endpoint | PASS (100.5 / 123.9) |
+| terrestrial >= 76 @ 40ms | PASS |
+
+### Multi-seed endpoint (90s, seeds 13,7,42,99,123)
+
+| Scenario | v3.2 LeoAware gp / p95 | v3.3 gp / p95 | BBR gp | Decision |
+|----------|-----------------------:|--------------:|-------:|----------|
+| leo_fast_ho | 66.56 / 155.0 | **78.06 / 149.7** | 70.88 | **ACCEPT (beats BBR)** |
+| leo_single | 61.47 / 128.0 | **72.38 / 141.6** | 58.39 | ACCEPT gp |
+| terrestrial | 77.35 / 40.0 | **77.43 / 40.0** | 78.81 | no regress |
+
+Archive: `results/archive/20260811-v33-hybrid-fuse/`
+
+**Decision: ACCEPT v3.3 A+C** for hybrid fuse rails + endpoint multi-seed win vs BBR on leo_fast_ho.
+
+---
+
 ## Open ideas (next loops)
 
-1. Close remaining multi-seed goodput gap to BBR without breaching p95 (endpoint path).
+1. EpochMemory prototype bank (stretch after A/C).
 2. Real public Starlink measurement CSVs (not only synthetic).
 3. Per-RTT fairness clock for multi-flow (fair_mode still coarse).
 4. QUEUE-mode store-and-forward coupling with ASCENT-D.
-5. Reduce residual false REPROBE count (still tens per run) without missing true HOs.
-6. Hybrid goodput: fuse ASCENT freeze + Orb pathID without over-cut on calm LEO.
-7. Full 5-seed ablation with ascent_d vs endpoint under suite durations (90s).
+5. Further cut leo_single p95 while keeping the gp lift.
+6. Full 5-seed ablation with ascent_d vs hybrid under suite durations (90s).
 
 ---
 
