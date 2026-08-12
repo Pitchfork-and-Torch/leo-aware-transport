@@ -98,6 +98,9 @@ def main() -> None:
                             "avg_rtt_ms": m.avg_rtt_s * 1000,
                             "p95_rtt_ms": m.p95_rtt_s * 1000,
                             "p99_rtt_ms": m.p99_rtt_s * 1000,
+                            "p95_path_rtt_ms": m.p95_path_rtt_s * 1000,
+                            "p95_excess_rtt_ms": m.p95_excess_rtt_s * 1000,
+                            "mean_excess_rtt_ms": m.mean_excess_rtt_s * 1000,
                             "loss_rate": m.loss_rate,
                             "jain_fairness": fair,
                             "handovers": len(res.handovers),
@@ -110,7 +113,7 @@ def main() -> None:
     df.to_csv(out_dir / "multi_seed_raw.csv", index=False)
     agg = (
         df.groupby(["scenario", "cca"], as_index=False)[
-            ["goodput_mbps", "p95_rtt_ms", "loss_rate"]
+            ["goodput_mbps", "p95_rtt_ms", "p95_path_rtt_ms", "p95_excess_rtt_ms", "loss_rate"]
         ]
         .agg(["mean", "std", "min", "max"])
     )
@@ -126,6 +129,8 @@ def main() -> None:
             goodput_std=("goodput_mbps", "std"),
             p95_mean=("p95_rtt_ms", "mean"),
             p95_std=("p95_rtt_ms", "std"),
+            p95_path_mean=("p95_path_rtt_ms", "mean"),
+            p95_excess_mean=("p95_excess_rtt_ms", "mean"),
             loss_mean=("loss_rate", "mean"),
             n=("seed", "count"),
         )
