@@ -440,6 +440,13 @@ No REPROBE cut/detect change. No fill-ceiling raise.
 
 Per-seed LeoAware: 13→78.95/167.7 · 7→73.46/198.3 · 42→69.54/139.1 · 99→88.39/123.7 · 123→71.02/108.1
 
+### Other scenarios (full multi_seed archive)
+
+| Scenario | LeoAware gp | p95 | note |
+|----------|------------:|----:|------|
+| leo_single | 57.25 | 134.0 | below v3.4 62.65; still near BBR 58.39 |
+| terrestrial | **78.22** | 40.0 | ≥ 77 @ 40 ms **PASS** |
+
 ### Gate scorecard
 
 | Check | Bar | Result |
@@ -447,7 +454,8 @@ Per-seed LeoAware: 13→78.95/167.7 · 7→73.46/198.3 · 42→69.54/139.1 · 99
 | gp mean | ≥ 75.0 | **76.27 PASS** |
 | p95 mean | ≤ 138.8 | **147.39 FAIL residual** (better than v3.3-A 149.7) |
 | beats BBR gp | > 70.88 | PASS |
-| integrity | green | see CI / local run |
+| terrestrial | ≥ 77 @ 40 | **78.22 PASS** |
+| integrity | green | PASS |
 
 Design: `docs/leoaware_v35_tide.md`  
 Archive: `results/archive/20260812-v35-tide/`
