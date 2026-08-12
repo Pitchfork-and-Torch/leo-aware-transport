@@ -534,11 +534,53 @@ Archive: `results/archive/20260812-v37-oce/`
 
 ---
 
+## v3.8 Step 0 - absolute dual-gate feasibility (OPE) - REJECT / WIP
+
+**Date:** 2026-08-12  
+**Branch:** `cursor/v38-step0-feasibility-586b`  
+**Hypothesis:** Before more CCA state machines, measure whether gp≥75 AND p95≤138.8 can exist on the frozen OPE generative path.
+
+### Method
+
+- Keep OPE (path identity across CCAs).
+- Freeze soft-QIR α=0.20 / 25 ms cap (`leo_cc/sim.py`).
+- Add ACK diagnostic `p95(rtt − path_base)` (does not replace absolute p95).
+- Oracle gp = ∫ capacity×(1−loss_p) dt. Path-base p95 from `walk_path_geometry`.
+
+### ope_v36 lock (suite default) - 90s leo_fast_ho seeds 13,7,42,99,123
+
+| | oracle gp | path p95 | LeoAware gp | LeoAware p95 | LeoAware p95 path | LeoAware p95 excess |
+|--|----------:|---------:|------------:|-------------:|------------------:|--------------------:|
+| mean | **60.48** | **142.32** | 58.78 | 152.09 | 142.32 | 13.6 |
+
+Per-seed oracle / path p95: 13→70.11/141.4 · 7→57.77/136.0 · 42→53.29/182.0 · 99→76.49/121.3 · 123→44.75/131.0
+
+LeoAware is **97.2% of oracle** (headroom ~1.7 Mbps). Target 75 is +14.5 Mbps above the ceiling. Path-base p95 142.32 already exceeds 138.8 with zero queue.
+
+### Opt-in profiles (not default)
+
+| profile | oracle gp | path p95 | 75/138.8 possible? |
+|---------|----------:|---------:|--------------------|
+| ope_v36 | 60.48 | 142.32 | **No** |
+| starlink_rtt | 60.07 | 70.79 | **No** (p95 yes, gp no) |
+| starlink_v1 | 84.03 | 70.79 | geometry only (not a CCA lock) |
+
+### Decision
+
+**REJECT / WIP — STOP CCA theater.** Absolute product dual-gate is impossible on `ope_v36`. Do not ship +0.5 vs BBR as an Optimizer breakthrough. Escalate capacity/HO realism to Jon (`docs/leoaware_v38_capacity_model.md`). No Current bump. No CA/DLC/LSG this loop.
+
+Integrity: ASCENT-D + OPE path identity **PASS**. Terrestrial gp≥77 **PASS**; p95 46 ms (path 40 + QIR 6) noted honestly.
+
+Archive: `results/archive/20260812-v38-step0/`  
+Design: `docs/leoaware_v38_step0_feasibility.md`
+
+---
+
 ## Open ideas (next loops)
 
-1. Absolute gp toward 75 on richer / real Starlink capacity traces under OPE.
-2. Path-normalized latency `p95(rtt − path_base)` for queue-only product gates.
-3. Close seed-13 remaining ~1 Mbps gp gap to BBR.
+1. **Jon gate:** keep 75/138.8 and change default path (`starlink_v1` or real CSVs), or keep `ope_v36` and re-derive product bars.
+2. After a new path lock: CA → DLC → LSG (not before).
+3. Path-normalized latency `p95(rtt − path_base)` as a *secondary* queue metric (now implemented; still not the product gate).
 4. EpochMemory / HO-PLL once hop detection is less loss-burst-dependent.
 5. Per-RTT fairness clock for multi-flow (fair_mode still coarse).
 6. QUEUE-mode store-and-forward coupling with ASCENT-D.

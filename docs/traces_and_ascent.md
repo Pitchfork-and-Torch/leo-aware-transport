@@ -19,8 +19,19 @@ Generate synthetic Starlink-class traces:
 
 ```bash
 python -c "from leo_cc.network import generate_synthetic_starlink_trace; generate_synthetic_starlink_trace('traces/demo.csv', seed=13)"
+python -c "from leo_cc.network import generate_synthetic_starlink_trace; generate_synthetic_starlink_trace('traces/starlink_v1_seed13.csv', seed=13, path_profile='starlink_v1')"
 python -m experiments.run_trace_suite
 ```
+
+`LeoPathConfig.path_profile` (generative, not CSV):
+
+| Value | Role |
+|-------|------|
+| `ope_v36` (default) | Frozen v3.6/v3.7 path. Suite lock. Absolute 75/138.8 infeasible (see v3.8 Step 0). |
+| `starlink_rtt` | Opt-in: cruise RTT 40–75 ms; HO spike only in the loss window. Same 20–120 Mbps band. |
+| `starlink_v1` | Opt-in: `starlink_rtt` + 40–150 Mbps cap band. Not the product lock. |
+
+Do not change the suite default without a Jon gate decision. Spec: `docs/leoaware_v38_capacity_model.md`.
 
 ## ASCENT freeze hints
 

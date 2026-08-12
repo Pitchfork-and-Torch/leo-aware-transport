@@ -11,9 +11,9 @@ v3.6 physics (Orthogonal Path Entropy + optional soft-QIR):
 - Mobility/path RNG is isolated from per-packet loss RNG so a CCA that
   triggers more loss_burst events cannot rewrite the orbital timeline
   (same seed ⇒ identical HO/RTT/cap timeline across CCAs).
-- ACK RTT may include a soft-capped bottleneck sojourn (soft-QIR). Default
-  weight is modest so delay controllers see queues without rewriting the
-  latency floor set by orbital geometry.
+- ACK RTT may include a soft-capped bottleneck sojourn (soft-QIR). Alpha is
+  frozen at SOFT_QIR_ALPHA=0.20 (v3.8 Step 0); do not retune it as a p95 lever.
+  FlowLog.samples_path_rtt records path-base RTT for p95(rtt − path_base).
 
 Optional control-plane modes (ablation):
 - path_hint_mode="direct": call on_path_hint from PathState (legacy)
@@ -41,6 +41,11 @@ from leo_cc.ascent_path_hint import (
 )
 from leo_cc.orb_signals import InNetworkTelemetry
 
+# Frozen v3.6+ soft-QIR (Step 0). Do not retune α as a p95 lever.
+# rtt_sample = path_base + min(SOFT_QIR_CAP_S, SOFT_QIR_ALPHA * sojourn)
+SOFT_QIR_ALPHA = 0.20
+SOFT_QIR_CAP_S = 0.025
+
 
 @dataclass
 class Packet:
@@ -62,6 +67,7 @@ class FlowLog:
     delivered_bytes: float = 0.0
     lost_bytes: float = 0.0
     samples_rtt: list = field(default_factory=list)
+    samples_path_rtt: list = field(default_factory=list)
 
 
 @dataclass
@@ -72,6 +78,8 @@ class SimResult:
     cca_names: list[str]
     ascent_ingest: Optional[IngestStats] = None
     orb_samples: int = 0
+    soft_qir_alpha: float = SOFT_QIR_ALPHA
+    soft_qir_cap_s: float = SOFT_QIR_CAP_S
 
 
 class Flow:
@@ -80,7 +88,7 @@ class Flow:
         self.cca = cca
         self.seq = 0
         self.log = FlowLog()
-        self.pending_acks: deque[tuple[float, int, float]] = deque()  # (deliver_t, bytes, send_rtt)
+        self.pending_acks: deque[tuple[float, int, float, float]] = deque()  # (deliver_t, bytes, ack_rtt, path_rtt)
         self.last_goodput_mark = 0.0
         self.bytes_since_mark = 0
 
@@ -208,12 +216,13 @@ def run_sim(
         # Deliver due ACKs (RTT sample frozen at drain: path + queue sojourn)
         for fl in flows:
             while fl.pending_acks and fl.pending_acks[0][0] <= t:
-                _deliver_t, nbytes, rtt_sample = fl.pending_acks.popleft()
+                _deliver_t, nbytes, rtt_sample, path_rtt = fl.pending_acks.popleft()
                 rtt_sample = max(1e-4, rtt_sample)
                 fl.cca.on_ack(t, rtt_sample, nbytes, lost=0)
                 fl.log.delivered_bytes += nbytes
                 fl.bytes_since_mark += nbytes
                 fl.log.samples_rtt.append(rtt_sample)
+                fl.log.samples_path_rtt.append(max(0.0, path_rtt))
                 inflight_pkts[fl.id] = max(0, inflight_pkts[fl.id] - 1)
 
         # Drain bottleneck
@@ -232,14 +241,11 @@ def run_sim(
                 inflight_pkts[fl.id] = max(0, inflight_pkts[fl.id] - 1)
                 fl.log.loss_events.append((t, "mobility"))
             else:
-                # Soft Queue-Inclusive RTT (soft-QIR):
-                # rtt = path_base + min(cap, alpha * sojourn). Alpha kept low so
-                # orbital geometry still sets the latency floor; delay CCAs still
-                # observe standing-queue inflation.
+                # Soft Queue-Inclusive RTT (soft-QIR, α frozen — see SOFT_QIR_*).
                 sojourn_s = max(0.0, t - pkt.send_t)
-                q_rtt_s = min(0.025, 0.20 * sojourn_s)
+                q_rtt_s = min(SOFT_QIR_CAP_S, SOFT_QIR_ALPHA * sojourn_s)
                 rtt_sample = st.rtt_s + q_rtt_s
-                fl.pending_acks.append((t + st.rtt_s, pkt.size, rtt_sample))
+                fl.pending_acks.append((t + st.rtt_s, pkt.size, rtt_sample, st.rtt_s))
 
         if orb is not None:
             orb.on_drain(drained)
@@ -303,4 +309,6 @@ def run_sim(
         cca_names=[fl.cca.name for fl in flows],
         ascent_ingest=ingest_stats,
         orb_samples=orb_samples,
+        soft_qir_alpha=SOFT_QIR_ALPHA,
+        soft_qir_cap_s=SOFT_QIR_CAP_S,
     )

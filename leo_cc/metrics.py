@@ -19,6 +19,10 @@ class FlowMetrics:
     loss_rate: float
     utilization: float
     retrans_proxy: float
+    # Secondary diagnostic (does NOT replace absolute ACK p95 product gate)
+    p95_path_rtt_s: float = float("nan")
+    p95_excess_rtt_s: float = float("nan")
+    mean_excess_rtt_s: float = float("nan")
 
 
 def _pct(xs: Sequence[float], p: float) -> float:
@@ -35,6 +39,16 @@ def summarize_flow(name: str, log: FlowLog, duration_s: float, capacity_ref: flo
     total = log.delivered_bytes + lost
     loss_rate = lost / total if total > 0 else 0.0
     util = goodput / capacity_ref if capacity_ref > 0 else 0.0
+    path_rtts = getattr(log, "samples_path_rtt", None) or []
+    if path_rtts and len(path_rtts) == len(log.samples_rtt):
+        excess = [max(0.0, a - p) for a, p in zip(log.samples_rtt, path_rtts)]
+        p95_path = _pct(path_rtts, 95)
+        p95_excess = _pct(excess, 95)
+        mean_excess = float(np.mean(excess)) if excess else float("nan")
+    else:
+        p95_path = float("nan")
+        p95_excess = float("nan")
+        mean_excess = float("nan")
     return FlowMetrics(
         name=name,
         goodput_bps=goodput,
@@ -44,6 +58,9 @@ def summarize_flow(name: str, log: FlowLog, duration_s: float, capacity_ref: flo
         loss_rate=loss_rate,
         utilization=util,
         retrans_proxy=loss_rate,
+        p95_path_rtt_s=p95_path,
+        p95_excess_rtt_s=p95_excess,
+        mean_excess_rtt_s=mean_excess,
     )
 
 
