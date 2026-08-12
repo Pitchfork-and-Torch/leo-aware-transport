@@ -547,7 +547,7 @@ Archive: `results/archive/20260812-v37-oce/`
 - Add ACK diagnostic `p95(rtt − path_base)` (does not replace absolute p95).
 - Oracle gp = ∫ capacity×(1−loss_p) dt. Path-base p95 from `walk_path_geometry`.
 
-### ope_v36 lock (suite default) - 90s leo_fast_ho seeds 13,7,42,99,123
+### ope_v36 research path - 90s leo_fast_ho seeds 13,7,42,99,123
 
 | | oracle gp | path p95 | LeoAware gp | LeoAware p95 | LeoAware p95 path | LeoAware p95 excess |
 |--|----------:|---------:|------------:|-------------:|------------------:|--------------------:|
@@ -557,13 +557,13 @@ Per-seed oracle / path p95: 13→70.11/141.4 · 7→57.77/136.0 · 42→53.29/18
 
 LeoAware is **97.2% of oracle** (headroom ~1.7 Mbps). Target 75 is +14.5 Mbps above the ceiling. Path-base p95 142.32 already exceeds 138.8 with zero queue.
 
-### Opt-in profiles (not default)
+### Opt-in profiles (Step 0; v3.9 promotes starlink_v1 to product lock)
 
 | profile | oracle gp | path p95 | 75/138.8 possible? |
 |---------|----------:|---------:|--------------------|
 | ope_v36 | 60.48 | 142.32 | **No** |
 | starlink_rtt | 60.07 | 70.79 | **No** (p95 yes, gp no) |
-| starlink_v1 | 84.03 | 70.79 | geometry only (not a CCA lock) |
+| starlink_v1 | 84.03 | 70.79 | geometry only (not a CCA lock in Step 0) |
 
 ### Decision
 
@@ -576,11 +576,45 @@ Design: `docs/leoaware_v38_step0_feasibility.md`
 
 ---
 
+## v3.9 Crest - starlink_v1 product-lock era (CCA chase)
+
+**Date:** 2026-08-12  
+**Branch:** `cursor/v39-starlink-v1-ae43`  
+**Hypothesis:** Keep absolute bars gp≥75 AND p95≤138.8. Switch the **product-lock path** to documented `starlink_v1` (new harness era). Chase CA-hard → DLC + LSG → freeze-only anticipator on that path. Never gate `ep:loss_burst`. No DTCE / ghost REPROBE / EpochMemory.
+
+### Era split
+
+| Era | Path | Gate |
+|-----|------|------|
+| Research | `ope_v36` | relative vs BBR (v3.7 Current until this PR ACCEPTs) |
+| **Product** | **`starlink_v1`** | **absolute 75 / 138.8** |
+| Next | real Starlink CSV | same bars unless re-derived |
+
+`multi_seed` / `run_suite` default `--path-profile starlink_v1`. Research: `--path-profile ope_v36`. Soft-QIR α frozen 0.20. Secondary metric: `p95(rtt − path_base)`.
+
+### Code
+
+- `leo_cc/harness.py` — product vs research constants
+- `LeoAwareCCA` v3.9: CA-hard, Dual-Ledger Cruise, Local Surplus Guard, freeze-only anticipator
+- Step 0 tooling from PR #8 reused (path profiles, feasibility walk, excess-RTT)
+
+### Multi-seed lock (90s, seeds 13,7,42,99,123, endpoint)
+
+*Filled after `python -m experiments.multi_seed --tag 20260812-v39-starlink-v1`.*
+
+ACCEPT only if gp≥75 AND p95≤138.8 AND terr≥77 AND integrity green. Else REJECT/WIP — bars unchanged. No paid landing bump.
+
+Design: `docs/leoaware_v39_starlink_v1.md`  
+Eras: `docs/harness_eras.md`  
+CSV next: `docs/starlink_csv_ingest.md`
+
+---
+
 ## Open ideas (next loops)
 
-1. **Jon gate:** keep 75/138.8 and change default path (`starlink_v1` or real CSVs), or keep `ope_v36` and re-derive product bars.
-2. After a new path lock: CA → DLC → LSG (not before).
-3. Path-normalized latency `p95(rtt − path_base)` as a *secondary* queue metric (now implemented; still not the product gate).
+1. **Ingest real Starlink CSVs** as successor product lock (`docs/starlink_csv_ingest.md`).
+2. Path-normalized latency `p95(rtt − path_base)` as a *secondary* queue metric (implemented; still not the product gate).
+3. Close remaining gp gap to oracle on `starlink_v1` if dual-gate misses.
 4. EpochMemory / HO-PLL once hop detection is less loss-burst-dependent.
 5. Per-RTT fairness clock for multi-flow (fair_mode still coarse).
 6. QUEUE-mode store-and-forward coupling with ASCENT-D.

@@ -71,7 +71,7 @@ def test_ope_v36_geometry_stable():
 
 
 def test_ope_v36_absolute_bars_infeasible():
-    """Guard: default generative path must not silently be raised to fake 75/138.8."""
+    """Guard: research generative default must not silently be raised to fake 75/138.8."""
     oracles = []
     p95s = []
     for seed in (13, 7, 42, 99, 123):
@@ -113,7 +113,7 @@ def test_excess_rtt_diagnostic():
 
 
 def test_starlink_profile_is_opt_in():
-    """starlink_v1 must not change default ope_v36 geometry."""
+    """starlink_v1 must not change frozen ope_v36 generative identity."""
     a = walk_path_geometry(
         LeoPathConfig(duration_s=30, handover_interval_s=12, handover_jitter_s=4, seed=42)
     )
@@ -138,7 +138,65 @@ def test_starlink_profile_is_opt_in():
     assert a["path_p95_ms"] == b["path_p95_ms"]
     assert a["handovers"] == b["handovers"]
     assert c["path_p95_ms"] != a["path_p95_ms"] or c["mean_cap_mbps"] != a["mean_cap_mbps"]
-    print("ok: starlink_v1 is opt-in; ope_v36 default unchanged")
+    print("ok: starlink_v1 is a distinct profile; ope_v36 generative default unchanged")
+
+
+def test_starlink_v1_geometry_allows_absolute_bars():
+    """Product-lock path must make gp≥75 AND p95≤138.8 geometrically possible."""
+    from leo_cc.harness import PRODUCT_GP_BAR, PRODUCT_P95_BAR, PRODUCT_PATH_PROFILE, PRODUCT_SEEDS
+
+    assert PRODUCT_PATH_PROFILE == "starlink_v1"
+    oracles = []
+    p95s = []
+    for seed in PRODUCT_SEEDS:
+        g = walk_path_geometry(
+            LeoPathConfig(
+                duration_s=90,
+                handover_interval_s=12,
+                handover_jitter_s=4,
+                seed=seed,
+                path_profile=PRODUCT_PATH_PROFILE,
+            )
+        )
+        oracles.append(g["oracle_gp_mbps"])
+        p95s.append(g["path_p95_ms"])
+    oracle_mean = sum(oracles) / len(oracles)
+    p95_mean = sum(p95s) / len(p95s)
+    assert oracle_mean >= PRODUCT_GP_BAR, oracle_mean
+    assert p95_mean <= PRODUCT_P95_BAR, p95_mean
+    print(
+        f"ok: starlink_v1 geometry allows absolute bars "
+        f"(oracle {oracle_mean:.2f} / path p95 {p95_mean:.2f})"
+    )
+
+
+def test_loss_burst_not_gated():
+    """v3.9 must still REPROBE on ep:loss_burst (primary hop detector)."""
+    cca = LeoAwareCCA()
+    cca.min_rtt = 0.05
+    cca.rtt_hist.extend([0.05, 0.051, 0.049, 0.05])
+    cca.last_reconfig_t = -10.0
+    rec0 = cca.reconfigs_detected
+    t = 5.0
+    cca.on_loss(t, 1200, congestive=False)
+    cca.on_loss(t + 0.05, 1200, congestive=False)
+    assert cca.reconfigs_detected == rec0 + 1, (
+        cca.reconfigs_detected,
+        cca.mode,
+    )
+    assert cca.mode == "ser:loss_burst" or cca.mode.startswith("ser"), cca.mode
+    print("ok: ep:loss_burst still enters SER/REPROBE")
+
+
+def test_ca_does_not_fire_during_reprobe():
+    cca = LeoAwareCCA()
+    cca.min_rtt = 0.05
+    cca.bw_est = 80e6
+    cca.reprobe_until = 10.0
+    cca.rtt_hist.extend([0.05] * 20)
+    hit = cca._crest_hit(t=1.0, rtt_s=0.09, delay_ratio=1.8)
+    assert hit is False
+    print("ok: CA-hard does not abort during REPROBE")
 
 
 def run_all() -> None:
@@ -148,6 +206,9 @@ def run_all() -> None:
     test_ope_v36_absolute_bars_infeasible()
     test_excess_rtt_diagnostic()
     test_starlink_profile_is_opt_in()
+    test_starlink_v1_geometry_allows_absolute_bars()
+    test_loss_burst_not_gated()
+    test_ca_does_not_fire_during_reprobe()
     print("ALL OPE integrity tests passed")
 
 

@@ -69,9 +69,10 @@ class LeoPathConfig:
     freeze_trail_s: float = 0.18
     # Optional CSV trace path (relative or absolute)
     trace_csv: Optional[str] = None
-    # Path generative profile. Default ope_v36 is frozen (suite / product lock).
-    # starlink_rtt / starlink_v1 are opt-in realism probes — they must not
-    # silently replace the OPE-era lock.
+    # Generative profile. Default ope_v36 is the *frozen research* identity
+    # (v3.6/v3.7 relative-BBR era). Product-lock harnesses (multi_seed /
+    # run_suite) pass starlink_v1 explicitly — see leo_cc/harness.py.
+    # Do not silently retune ope_v36 draws.
     path_profile: str = "ope_v36"
 
 
@@ -84,7 +85,7 @@ class TraceSample:
     reconfig: bool
 
 
-# Opt-in Starlink-inspired capacity band (starlink_v1 only). Not the suite default.
+# starlink_v1 product-lock capacity band (cruise RTT model is in _draw_epoch_rtt_cap).
 STARLINK_V1_CAP_MIN_BPS = 40e6
 STARLINK_V1_CAP_MAX_BPS = 150e6
 

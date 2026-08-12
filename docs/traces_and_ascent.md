@@ -27,11 +27,12 @@ python -m experiments.run_trace_suite
 
 | Value | Role |
 |-------|------|
-| `ope_v36` (default) | Frozen v3.6/v3.7 path. Suite lock. Absolute 75/138.8 infeasible (see v3.8 Step 0). |
-| `starlink_rtt` | Opt-in: cruise RTT 40–75 ms; HO spike only in the loss window. Same 20–120 Mbps band. |
-| `starlink_v1` | Opt-in: `starlink_rtt` + 40–150 Mbps cap band. Not the product lock. |
+| `ope_v36` | Frozen v3.6/v3.7 research path (`LeoPathConfig` default). Absolute 75/138.8 infeasible. |
+| `starlink_rtt` | Cruise RTT 40–75 ms; HO spike only in the loss window. Same 20–120 Mbps band. |
+| `starlink_v1` | **Product lock** (`multi_seed` / `run_suite` default): `starlink_rtt` + 40–150 Mbps. |
 
-Do not change the suite default without a Jon gate decision. Spec: `docs/leoaware_v38_capacity_model.md`.
+Era table: `docs/harness_eras.md`. Capacity: `docs/leoaware_v38_capacity_model.md`.
+Real CSV ingest (next): `docs/starlink_csv_ingest.md`.
 
 ## ASCENT freeze hints
 

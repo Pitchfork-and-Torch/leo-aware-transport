@@ -256,7 +256,10 @@ class BbrCCA(BaseCCA):
 
 class LeoAwareCCA(BaseCCA):
     """
-    LeoAware v3.7 OCE - Orbit Capacity Echo + SER-lite (OrbitStack).
+    LeoAware v3.9 Crest - CA-hard + Dual-Ledger Cruise + LSG (OrbitStack).
+
+    Product lock era is starlink_v1 (absolute gp≥75 AND p95≤138.8).
+    ope_v36 remains the research relative-BBR path. Do not mix eras.
 
     Endpoint-first (works with zero network cooperation). Optional ASCENT /
     path hints accelerate reconfig handling when available. Optional OrbCC-style
@@ -317,6 +320,19 @@ class LeoAwareCCA(BaseCCA):
         true RTT-jump reasons.
       - Widens OPE-fair dual-gate margin vs BBR without re-gating loss_burst detect.
 
+    v3.9 Crest (starlink_v1 product-lock era):
+      - Crest Abort (CA-hard): abort TBPR/OCE reclaim on RTT crest
+        (rtt > k×recent_median, k≈1.35) with 2-sample hysteresis or
+        crest+rising delay_ratio. Cruise/reclaim only — never during REPROBE
+        explore/fill. Never gates ep:loss_burst.
+      - Dual-Ledger Cruise (DLC): cwnd_safe vs cwnd_tide; fly tide only if
+        delay is clean AND no crest. Stretch cap ≤1.42× BDP. Not DTCE (no
+        cross-epoch fill race).
+      - Local Surplus Guard (LSG): cruise stretch only if delivery EWMA
+        ≥ ~0.85×prior_bw and local RTT is healthy. No seed-id branching.
+      - Optional freeze-only anticipator: ACK-IA growth freeze only; never
+        suppresses detection.
+
     Related: LeoCC response-interval outliers; SaTCP freeze; OrbCC pathID/U;
     BBR delivery-rate without stale min-RTT across epochs.
     """
@@ -329,6 +345,10 @@ class LeoAwareCCA(BaseCCA):
         fair_mode: bool = False,
         use_orb_signals: bool = False,
         orb_eta: float = 0.95,
+        use_ca: bool = True,
+        use_dlc: bool = True,
+        use_lsg: bool = True,
+        use_anticipator: bool = True,
         **kw,
     ):
         super().__init__(**kw)
@@ -336,6 +356,10 @@ class LeoAwareCCA(BaseCCA):
         self.fair_mode = fair_mode
         self.use_orb_signals = use_orb_signals
         self.orb_eta = float(orb_eta)
+        self.use_ca = bool(use_ca)
+        self.use_dlc = bool(use_dlc)
+        self.use_lsg = bool(use_lsg)
+        self.use_anticipator = bool(use_anticipator)
         self.rtt_hist: Deque[float] = deque(maxlen=48)
         self.ack_times: Deque[float] = deque(maxlen=40)
         self.bw_samples: Deque[tuple[float, float]] = deque(maxlen=48)
@@ -388,6 +412,15 @@ class LeoAwareCCA(BaseCCA):
         self._oce_commit = 0.0
         self.oce_echos = 0
         self.ser_lite_count = 0
+        # v3.9 Crest: CA-hard / DLC / LSG / freeze-only anticipator
+        self._crest_streak = 0
+        self._prev_delay_ratio = 1.0
+        self._ca_hold_until = -1.0
+        self._anticipator_until = -1.0
+        self.ca_aborts = 0
+        self.dlc_tide_flights = 0
+        self.lsg_clamps = 0
+        self.anticipator_holds = 0
 
     @staticmethod
     def _median(xs: list[float]) -> float:
@@ -514,6 +547,64 @@ class LeoAwareCCA(BaseCCA):
         if (t - self.last_reconfig_t) < self.detect_cooldown:
             return True
         return False
+
+    def _crest_hit(self, t: float, rtt_s: float, delay_ratio: float) -> bool:
+        """CA-hard crest: rtt > k×recent_median (k≈1.35), cruise/reclaim only.
+
+        Hysteresis: 2 consecutive crest samples, or crest + rising delay_ratio.
+        Never fires during REPROBE explore/fill.
+        """
+        if not self.use_ca or self.fair_mode:
+            self._crest_streak = 0
+            return False
+        if t < self.reprobe_until:
+            self._crest_streak = 0
+            return False
+        if len(self.rtt_hist) < 8:
+            return False
+        hist = list(self.rtt_hist)
+        med = self._median(hist[:-1] if len(hist) > 1 else hist)
+        if med <= 1e-6:
+            return False
+        k = 1.35  # mid of [1.30, 1.45]
+        crest = rtt_s > k * med
+        rising = delay_ratio > self._prev_delay_ratio + 0.02
+        if crest:
+            self._crest_streak += 1
+        else:
+            self._crest_streak = 0
+        return self._crest_streak >= 2 or (crest and rising)
+
+    def _lsg_surplus_ok(self, t: float, delay_ratio: float) -> bool:
+        """Stretch only if delivery recovered vs prior_bw and RTT is healthy.
+
+        Does not veto an armed OCE/TBPR window (those have CA + delay abort).
+        No seed-id branching.
+        """
+        if not self.use_lsg or self.fair_mode:
+            return True
+        if t < self._oce_until or t < self._reclaim_until:
+            return True
+        if delay_ratio >= 1.18 or self.high_delay_streak > 0:
+            return False
+        rate = self.rate_ewma if self.rate_ewma > 0 else self._delivery_rate_sample(t)
+        if self.prior_bw > 1e6 and rate > 0:
+            return rate >= 0.85 * self.prior_bw
+        return delay_ratio < 1.12
+
+    def _apply_crest_abort(self, t: float, bdp: float) -> None:
+        """Abort TBPR/OCE reclaim and drop to the safe ledger."""
+        safe = max(4 * MSS, 1.08 * bdp if bdp > 0 else self.cwnd)
+        if self._commit_cwnd > 0:
+            safe = min(safe, max(4 * MSS, self._commit_cwnd))
+        if self.cwnd > safe * 1.02:
+            self.cwnd = safe
+            self.ca_aborts += 1
+            self.mode = "ca_abort"
+        self._reclaim_until = min(self._reclaim_until, t)
+        self._oce_until = min(self._oce_until, t)
+        rtt_ref = self.min_rtt if self.min_rtt < 1e17 else 0.04
+        self._ca_hold_until = t + max(0.04, 0.5 * rtt_ref)
 
     def _enter_reprobe(
         self,
@@ -828,6 +919,17 @@ class LeoAwareCCA(BaseCCA):
             # Endpoint confidence from fusion score (capped below assist paths)
             ep_conf = min(0.85, 0.45 + 0.12 * max(0.0, score))
             self._enter_reprobe(t, f"ep:{reason}", confidence=ep_conf)
+            self._anticipator_until = -1.0  # REPROBE owns the hop; never suppress detect
+        elif (
+            self.use_anticipator
+            and not self.fair_mode
+            and "ack_ia" in reason
+            and t >= self.reprobe_until
+        ):
+            # Freeze-only HO anticipator: hold growth, never detect-suppress.
+            if t >= self._anticipator_until:
+                self.anticipator_holds += 1
+            self._anticipator_until = t + 0.12
 
         if rtt_s < self.min_rtt:
             self.min_rtt = rtt_s
@@ -980,6 +1082,7 @@ class LeoAwareCCA(BaseCCA):
             self.high_delay_streak += 1
         else:
             self.high_delay_streak = max(0, self.high_delay_streak - 1)
+        crest = self._crest_hit(t, rtt_s, delay_ratio)
 
         if self.cwnd < self.ssthresh or self.mode in (
             "startup",
@@ -1008,6 +1111,9 @@ class LeoAwareCCA(BaseCCA):
                 self._reclaim_until = t + max(0.15, 2.5 * rtt_ref)
                 if self._commit_cwnd <= 0:
                     self._commit_cwnd = self.cwnd
+            # v3.9 CA-hard: abort TBPR/OCE on crest (cruise/reclaim only)
+            if crest:
+                self._apply_crest_abort(t, bdp)
             # Abort + optional rollback if delay or keel sight sees queue risk
             if delay_ratio > 1.28 or keel_ratio > 1.38:
                 if (
@@ -1027,6 +1133,7 @@ class LeoAwareCCA(BaseCCA):
                 and delay_ratio < 1.12
                 and keel_ratio < 1.15
                 and self.high_delay_streak == 0
+                and not crest
             )
             reclaim = (
                 not self.fair_mode
@@ -1034,9 +1141,46 @@ class LeoAwareCCA(BaseCCA):
                 and delay_ratio < 1.18
                 and keel_ratio < 1.25
                 and self.high_delay_streak == 0
+                and not crest
             )
+            delay_clean = (
+                delay_ratio < 1.18
+                and self.high_delay_streak == 0
+                and not crest
+            )
+            lsg_ok = self._lsg_surplus_ok(t, delay_ratio)
             if self.fair_mode:
                 target = 1.02 * bdp
+            elif self.use_dlc:
+                # Dual-Ledger: safe vs tide. Fly tide only if delay clean, no
+                # crest, and LSG surplus. Stretch cap ≤ 1.42× BDP. Not DTCE.
+                cwnd_safe = 1.08 * bdp
+                if delay_ratio > 1.55 or self.high_delay_streak >= 3:
+                    cwnd_safe = 1.05 * bdp
+                elif delay_ratio > 1.35:
+                    cwnd_safe = 1.08 * bdp
+                if t < self._oce_until and delay_ratio < 1.14:
+                    cwnd_tide = 1.42 * bdp
+                elif clean_boost or (
+                    reclaim and delay_ratio < 1.15 and keel_ratio < 1.18
+                ):
+                    cwnd_tide = 1.38 * bdp
+                elif reclaim:
+                    cwnd_tide = 1.28 * bdp
+                elif delay_ratio < 1.18:
+                    cwnd_tide = 1.32 * bdp
+                else:
+                    cwnd_tide = 1.20 * bdp
+                cwnd_tide = min(cwnd_tide, 1.42 * bdp)
+                would_tide = delay_clean
+                if would_tide and not lsg_ok:
+                    self.lsg_clamps += 1
+                fly_tide = would_tide and lsg_ok and t >= self._ca_hold_until
+                if fly_tide:
+                    target = cwnd_tide
+                    self.dlc_tide_flights += 1
+                else:
+                    target = cwnd_safe
             elif delay_ratio > 1.55 or self.high_delay_streak >= 3:
                 target = 1.05 * bdp
             elif delay_ratio > 1.35:
@@ -1052,6 +1196,15 @@ class LeoAwareCCA(BaseCCA):
                 target = 1.38 * bdp
             else:
                 target = 1.18 * bdp
+            # Freeze-only anticipator: hold growth, never suppress detect
+            anticipator_hold = (
+                self.use_anticipator
+                and not self.fair_mode
+                and t < self._anticipator_until
+                and t >= self.reprobe_until
+            )
+            if anticipator_hold:
+                target = min(target, self.cwnd)
             if self.fair_mode and (delay_ratio > 1.45 or self.high_delay_streak >= 3):
                 self.cwnd = max(4 * MSS, self.cwnd * 0.92)
                 self.mode = "fair_yield"
@@ -1065,6 +1218,8 @@ class LeoAwareCCA(BaseCCA):
                 if self.cwnd > target:
                     self.cwnd = max(4 * MSS, min(self.cwnd, target * 1.05))
                 self.mode = "delay_yield"
+            elif anticipator_hold:
+                self.mode = "anticipator_freeze"
             elif self.cwnd < target:
                 if self.fair_mode:
                     step = MSS * 0.45
@@ -1087,6 +1242,8 @@ class LeoAwareCCA(BaseCCA):
                 not self.fair_mode
                 and t < self._oce_until
                 and self.bw_est > 0
+                and not crest
+                and not anticipator_hold
             ):
                 if delay_ratio > 1.30:
                     if self._oce_commit > 0 and self.cwnd > self._oce_commit * 1.05:
@@ -1118,6 +1275,8 @@ class LeoAwareCCA(BaseCCA):
                     self._keel_rtt = 0.7 * self._keel_rtt + 0.3 * self.min_rtt
                 elif self.min_rtt < 1.2 * self._keel_rtt and delay_ratio < 1.2:
                     self._keel_rtt = 0.88 * self._keel_rtt + 0.12 * self.min_rtt
+
+        self._prev_delay_ratio = delay_ratio
 
     def on_loss(self, t: float, bytes_lost: int, congestive: bool) -> None:
         self.on_delivered(bytes_lost)

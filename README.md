@@ -66,6 +66,7 @@ leo_cc/
   ascent_d.py         # ASCENT-D P9: RS(255,223) + erase-on-fail
   ascent_path_hint.py # PATHHINT units + fail-closed ingest
   orb_signals.py      # OrbCC-style synthetic telemetry (optional)
+  harness.py          # product vs research era constants (starlink_v1 / ope_v36)
   metrics.py          # Goodput, RTT percentiles, loss, Jain fairness
   plotting.py         # Timeseries + throughput-latency figures
 experiments/
@@ -75,6 +76,9 @@ experiments/
   demo.py
 docs/
   architecture.md
+  harness_eras.md
+  leoaware_v39_starlink_v1.md
+  starlink_csv_ingest.md
   ascent_d_orbcc_hybrid.md
   related_work.md
   cloudflare_starlink_bridge.md
@@ -155,10 +159,24 @@ Scenarios in `experiments/run_suite.py`:
 
 Metrics: goodput, avg / p95 / p99 RTT, loss rate, utilization, Jain index, handover count.
 
-### Primary objective: multi-seed `leo_fast_ho` (LeoAware v3.7 OCE)
+### Primary objective: multi-seed `leo_fast_ho`
 
 Seeds 13,7,42,99,123 · 90s · **endpoint-only** default (public suite).  
-Means only - do not market peaks. **OPE-fair timeline** (path identity identical across CCAs).
+Means only - do not market peaks.
+
+**Harness eras — do not mix in one Current table** (`docs/harness_eras.md`):
+
+| Era | Path | Dual-gate |
+|-----|------|-----------|
+| Research (v3.6–v3.7) | `ope_v36` | relative vs BBR on the same orbit |
+| **Product (v3.9)** | **`starlink_v1`** | **absolute gp≥75 AND p95≤138.8** |
+| Historical | coupled-RNG | v3.4/v3.5 numbers; different orbit per CCA |
+
+`python -m experiments.multi_seed` defaults to **`starlink_v1`**. Research: `--path-profile ope_v36`.
+
+#### Current (research): LeoAware v3.7 OCE on `ope_v36`
+
+OPE-fair timeline (path identity identical across CCAs).
 
 | CCA | Goodput mean | p95 mean | Notes |
 |-----|-------------:|---------:|-------|
@@ -170,7 +188,13 @@ Means only - do not market peaks. **OPE-fair timeline** (path identity identical
 
 v3.7 dual gate is **relative to BBR on the OPE-fair path** (research-only). Coupled-era absolute bars (gp≥75 / p95≤138.8) mixed different orbits per CCA and are not comparable.
 
-**v3.8 Step 0 (not a Current bump):** on the frozen OPE path, those absolute bars are **geometrically impossible** (oracle gp mean 60.48; path-base p95 mean 142.32). LeoAware is already ~97% of oracle. See `docs/leoaware_v38_step0_feasibility.md`. Do not market +0.5 vs BBR as a paid Optimizer breakthrough.
+**v3.8 Step 0:** on `ope_v36` those absolute bars are **geometrically impossible** (oracle gp mean 60.48; path-base p95 mean 142.32). LeoAware is already ~97% of oracle. See `docs/leoaware_v38_step0_feasibility.md`.
+
+#### v3.9 WIP: product lock on `starlink_v1`
+
+Jon/Steward: keep absolute 75/138.8, switch product path to `starlink_v1`, re-lock CCA (CA → DLC → LSG). **Not a Current bump until dual-gate ACCEPT.** No paid OrbitStack landing copy. Real Starlink CSVs next: `docs/starlink_csv_ingest.md`.
+
+Design: `docs/leoaware_v39_starlink_v1.md`. Archive tag: `20260812-v39-starlink-v1`.
 
 ### Hybrid fuse ablation (fast, seeds 13+7)
 
@@ -195,7 +219,8 @@ v3.7 OCE Current: Orbit Capacity Echo + SER-lite on top of v3.6 Keel/OPE.
 v3.3-A rails retained: hybrid fuse, ASCENT-D erase-on-fail.  
 Log: `docs/experiment_log.md`. Design: `docs/leoaware_v37_oce.md`.  
 Archive: `results/archive/20260812-v37-oce/`.  
-v3.8 Step 0 feasibility (absolute bars infeasible on this path): `docs/leoaware_v38_step0_feasibility.md`.
+v3.8 Step 0: `docs/leoaware_v38_step0_feasibility.md`.  
+v3.9 WIP product era: `docs/leoaware_v39_starlink_v1.md` / `docs/harness_eras.md`.
 
 Reproduce:
 
@@ -204,6 +229,7 @@ python -m experiments.test_ascent_d_integrity
 python -m experiments.ope_feasibility
 python -m experiments.run_suite
 python -m experiments.multi_seed
+python -m experiments.multi_seed --path-profile ope_v36
 python -m experiments.run_ablation --fast --seeds 13,7
 # inspect results/summary.csv and plots
 ```
@@ -226,11 +252,11 @@ See `docs/cloudflare_starlink_bridge.md` for a fuller write-up. Short version:
 
 - Packet-level fidelity is simplified (slot sim, not ns-3 / full QUIC state machine).
 - BBRv3approx is educational, not a production BBR port.
-- No real Starlink trace replay yet (hooks are ready for CSV RTT/capacity traces).
+- No real Starlink trace replay yet (CSV hooks + ingest stub: `docs/starlink_csv_ingest.md`).
 - Multipath is optional/simplified (ISL delay only).
 - Not production-hardened (no pacing timer fidelity, ECN, or ACK aggregation).
 
-Natural next steps: real measurement traces, quiche controller port, multipath, ML handover prediction, in-network assists (OrbCC-class), kernel/eBPF experiments.
+Natural next steps: real measurement traces as successor product lock, quiche controller port, multipath, ML handover prediction, in-network assists (OrbCC-class), kernel/eBPF experiments.
 
 ---
 

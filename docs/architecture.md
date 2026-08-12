@@ -52,3 +52,5 @@ Enough fidelity for CCA research under LEO dynamics, minimal deps, fast suite ru
 LeoAware defaults to **endpoint-only** detection (`use_path_hints=False`). Baselines never receive privileged reconfiguration signals. That keeps the comparison honest for the "no network cooperation" claim.
 
 v3.6+ **OPE:** mobility loss uses a dedicated `loss_rng`, so a CCA cannot rewrite the HO/RTT/cap timeline. v3.8 Step 0 **freezes** soft-QIR α=0.20. ACK logs include path-base RTT so `p95(rtt − path_base)` is a secondary diagnostic — it does not replace absolute ACK p95.
+
+v3.9 **eras:** `ope_v36` is the research relative-BBR path; **`starlink_v1` is the product-lock default** for `multi_seed` / `run_suite`. Never mix eras in a Current hero table (`docs/harness_eras.md`).

@@ -202,17 +202,23 @@ def main() -> None:
         print(f"wrote traces under {tdir}")
 
     locked = verdicts.get("ope_v36", next(iter(verdicts.values())))
-    print("\n=== Step 0 decision (ope_v36 lock) ===")
+    print("\n=== Step 0 decision (ope_v36 research path) ===")
     if not locked["absolute_dual_gate_possible"]:
         print(
-            "STOP CCA theater: absolute gp≥75 AND p95≤138.8 is not feasible "
-            "on the frozen OPE generative path. Escalate capacity/HO realism "
-            "to Jon. Relative≈BBR remains research-only."
+            "ope_v36: absolute gp≥75 AND p95≤138.8 is not feasible. "
+            "This is the research relative-BBR era, not the product lock. "
+            "Product lock is starlink_v1 (see leo_cc/harness.py)."
         )
     else:
         print(
-            "Geometry does not forbid the absolute bars. CCA chase (CA→DLC→LSG) "
-            "is still in play."
+            "Geometry does not forbid the absolute bars on this profile."
+        )
+    sv1 = verdicts.get("starlink_v1")
+    if sv1:
+        print(
+            f"starlink_v1 product era: oracle_gp={sv1['oracle_gp_mean']:.2f}  "
+            f"path_p95={sv1['path_p95_mean']:.2f}  "
+            f"absolute dual-gate possible={sv1['absolute_dual_gate_possible']}"
         )
     print(f"Wrote {out_dir}")
 
