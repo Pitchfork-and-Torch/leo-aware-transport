@@ -7,6 +7,14 @@ One or more flows share a bottleneck buffer. Each slot:
 3) Drain bottleneck by capacity
 4) Deliver ACKs after RTT delay; apply congestive vs non-congestive loss
 
+v3.6 physics (Orthogonal Path Entropy + optional soft-QIR):
+- Mobility/path RNG is isolated from per-packet loss RNG so a CCA that
+  triggers more loss_burst events cannot rewrite the orbital timeline
+  (same seed ⇒ identical HO/RTT/cap timeline across CCAs).
+- ACK RTT may include a soft-capped bottleneck sojourn (soft-QIR). Default
+  weight is modest so delay controllers see queues without rewriting the
+  latency floor set by orbital geometry.
+
 Optional control-plane modes (ablation):
 - path_hint_mode="direct": call on_path_hint from PathState (legacy)
 - path_hint_mode="ascent_d": encode PathState as ASCENT-D, decode fail-closed
@@ -131,6 +139,9 @@ def run_sim(
     mode = (path_hint_mode or "direct").lower()
     ingest_stats = IngestStats() if mode in ("ascent_d", "ascent_plain") else None
     noise_rng = random.Random(cfg.seed ^ 0xA5CE)
+    # Orthogonal Path Entropy (OPE): loss draws must not consume path.rng.
+    # Same seed + scenario ⇒ identical HO/RTT/cap timeline across CCAs.
+    loss_rng = random.Random(cfg.seed ^ 0x10CC)
     orb = InNetworkTelemetry(switch_id=orb_switch_id) if use_orb_telemetry else None
     orb_samples = 0
     prev_epoch = -1
@@ -194,13 +205,11 @@ def run_sim(
         prev_epoch = st.epoch
         prev_freeze = freeze_now
 
-        # Deliver due ACKs
+        # Deliver due ACKs (RTT sample frozen at drain: path + queue sojourn)
         for fl in flows:
             while fl.pending_acks and fl.pending_acks[0][0] <= t:
-                deliver_t, nbytes, send_rtt = fl.pending_acks.popleft()
-                rtt = max(1e-4, send_rtt)  # path RTT at send
-                # Actual RTT sample uses path RTT at delivery approx
-                rtt_sample = st.rtt_s
+                _deliver_t, nbytes, rtt_sample = fl.pending_acks.popleft()
+                rtt_sample = max(1e-4, rtt_sample)
                 fl.cca.on_ack(t, rtt_sample, nbytes, lost=0)
                 fl.log.delivered_bytes += nbytes
                 fl.bytes_since_mark += nbytes
@@ -215,18 +224,22 @@ def run_sim(
             buffer_bytes -= pkt.size
             drained += pkt.size
             fl = flows[pkt.flow_id]
-            # Non-congestive loss around reconfig (same RNG as path for reproducibility)
-            lost = False
-            if path.rng.random() < st.loss_p:
-                lost = True
+            # OPE: mobility loss uses loss_rng, never path.rng
+            if loss_rng.random() < st.loss_p:
                 fl.log.lost_bytes += pkt.size
                 # on_loss already accounts for inflight via on_delivered
                 fl.cca.on_loss(t, pkt.size, congestive=False)
                 inflight_pkts[fl.id] = max(0, inflight_pkts[fl.id] - 1)
                 fl.log.loss_events.append((t, "mobility"))
             else:
-                # ACK after RTT
-                fl.pending_acks.append((t + st.rtt_s, pkt.size, st.rtt_s))
+                # Soft Queue-Inclusive RTT (soft-QIR):
+                # rtt = path_base + min(cap, alpha * sojourn). Alpha kept low so
+                # orbital geometry still sets the latency floor; delay CCAs still
+                # observe standing-queue inflation.
+                sojourn_s = max(0.0, t - pkt.send_t)
+                q_rtt_s = min(0.025, 0.20 * sojourn_s)
+                rtt_sample = st.rtt_s + q_rtt_s
+                fl.pending_acks.append((t + st.rtt_s, pkt.size, rtt_sample))
 
         if orb is not None:
             orb.on_drain(drained)
