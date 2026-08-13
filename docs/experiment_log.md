@@ -688,6 +688,33 @@ PASS under Halo WIP, but research goal (clear BBR) **FAIL**.
 Design: `docs/leoaware_v310_halo_reject.md`  
 Archive: `results/archive/20260813-v310-halo/`
 
+## v3.10-QSP - queue-sojourn pacing - REJECT
+
+**Date:** 2026-08-13  
+**Branch:** `cursor/v310-halo-84b8`  
+**Hypothesis:** Invert visible soft-QIR excess and discount pace only (α frozen
+0.20; no cruise-BDP raise) for a Pareto vs Crest 82.09/76.26.
+
+### Scorecard (starlink_v1, 90s, seeds 13,7,42,99,123)
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| Crest | 82.089 | 76.264 |
+| QSP on | 82.047 | 76.264 |
+| BBR | 82.439 | 76.664 |
+
+Terr 78.623 @ 46 ms (both). Absolute bars PASS. Pareto vs Crest **FAIL**
+(gp down, p95 flat — path-dominated).
+
+**Decision: REJECT.** `use_qsp=False`. Crest stays default.  
+Design: `docs/leoaware_v310_qsp_reject.md`  
+Archive: `results/archive/20260813-v310-qsp/`
+
+Skipped this loop: SkyPulse (assist), seed-99 hole (oracle 74.63 — geometry),
+real CSV (none in-repo), Halo/Pulse/EpochMemory (already REJECT).
+
+---
+
 ### Side delivery: `starlink_v2` opt-in flicker
 
 Mid-epoch capacity steps (~2.8s) under OPE. First Crest probe: BBR 92.56 /

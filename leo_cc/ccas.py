@@ -344,6 +344,10 @@ class LeoAwareCCA(BaseCCA):
         live rate (BBR max-filter gap without abandoning hop invalidation).
       - Default ON; near no-op on sticky starlink_v1.
 
+    v3.10-QSP (this cook): Queue-Sojourn Pacing. Invert visible soft-QIR
+      excess (α stays frozen 0.20) and discount pace_gain only. Never raises
+      cruise BDP. Default OFF until 5-seed Pareto vs Crest.
+
     Related: LeoCC response-interval outliers; SaTCP freeze; OrbCC pathID/U;
     BBR delivery-rate without stale min-RTT across epochs.
     """
@@ -363,6 +367,7 @@ class LeoAwareCCA(BaseCCA):
         use_halo: bool = False,
         use_orbit_pulse: bool = False,
         use_cfr: bool = False,
+        use_qsp: bool = False,
         **kw,
     ):
         super().__init__(**kw)
@@ -379,6 +384,9 @@ class LeoAwareCCA(BaseCCA):
         self.use_halo = bool(use_halo)
         self.use_orbit_pulse = bool(use_orbit_pulse)
         self.use_cfr = bool(use_cfr)
+        # v3.10-QSP: queue-sojourn pacing (pace-only; never raises cruise BDP).
+        # Default OFF until a 5-seed Pareto vs Crest ACCEPT.
+        self.use_qsp = bool(use_qsp)
         self.rtt_hist: Deque[float] = deque(maxlen=48)
         self.ack_times: Deque[float] = deque(maxlen=40)
         self.bw_samples: Deque[tuple[float, float]] = deque(maxlen=48)
@@ -452,6 +460,8 @@ class LeoAwareCCA(BaseCCA):
         self._cfr_cooldown_until = -1.0
         self.cfr_cuts = 0
         self.cre_lifts = 0
+        self._qsp_excess = 0.0
+        self.qsp_discounts = 0
 
     @staticmethod
     def _median(xs: list[float]) -> float:
@@ -944,6 +954,30 @@ class LeoAwareCCA(BaseCCA):
         self.ssthresh = min(self.ssthresh, self.cwnd)
         self.mode = "ecn_backoff"
 
+    def _qsp_pace_gain(self, t: float, delay_ratio_early: float, rtt_s: float) -> float:
+        """Map visible soft-QIR excess to a pace discount. Does not touch BDP.
+
+        ACK RTT already includes frozen QIR: path + min(25ms, 0.20×sojourn).
+        Invert the visible excess (not α — α stays 0.20) and drain standing
+        queue by pacing, never by raising cruise BDP.
+        """
+        base = 1.35 if t < self.reprobe_until else (
+            1.0 if self.fair_mode else (1.04 if delay_ratio_early > 1.45 else 1.08)
+        )
+        if not self.use_qsp or self.fair_mode or t < self.reprobe_until:
+            return base
+        floor = self.min_rtt if self.min_rtt < 1e17 else 0.0
+        excess = max(0.0, rtt_s - floor) if floor > 0 else 0.0
+        self._qsp_excess = excess
+        # Full-pipe QIR on this harness is ~6ms (terr). Only discount extra.
+        extra = max(0.0, excess - 0.006)
+        if extra <= 0:
+            return base
+        discount = min(0.12, extra / 0.010 * 0.06)
+        if discount > 0.01:
+            self.qsp_discounts += 1
+        return max(0.96, base - discount)
+
     def can_send(self, t: float) -> int:
         room = max(0.0, self.cwnd - self.bytes_in_flight)
         # Soft pacing: only bind when clearly over-rate (avoid recovery starvation)
@@ -955,8 +989,11 @@ class LeoAwareCCA(BaseCCA):
             self._pace_credit += self.pacing_rate_bps * dt / 8.0
             cap = max(self.cwnd * 2.5, 24 * MSS)
             self._pace_credit = min(self._pace_credit, cap)
-            # Allow up to 1.5x pacing burst vs pure rate
-            room = min(room, max(self._pace_credit * 1.5, 4 * MSS))
+            # QSP: tighten burst when standing-queue excess is visible
+            burst = 1.5
+            if self.use_qsp and not self.fair_mode and self._qsp_excess > 0.008:
+                burst = 1.15
+            room = min(room, max(self._pace_credit * burst, 4 * MSS))
         return int(room // MSS) * MSS
 
     def on_sent(self, n: int) -> None:
@@ -1129,10 +1166,9 @@ class LeoAwareCCA(BaseCCA):
                 self.bw_est = 0.72 * self.bw_est + 0.28 * self.hint_capacity_bps
 
         if self.bw_est > 0:
-            # Reclaim: pacing can stay a bit optimistic; cwnd is delay-capped below
-            pace_gain = 1.35 if t < self.reprobe_until else (
-                1.0 if self.fair_mode else (1.04 if delay_ratio_early > 1.45 else 1.08)
-            )
+            # Reclaim: pacing can stay a bit optimistic; cwnd is delay-capped below.
+            # QSP may discount pace from sojourn excess; never changes BDP/cwnd target.
+            pace_gain = self._qsp_pace_gain(t, delay_ratio_early, rtt_s)
             self.pacing_rate_bps = self.bw_est * pace_gain
         elif self.prior_bw > 0:
             self.pacing_rate_bps = self.prior_bw * 0.65
