@@ -688,6 +688,38 @@ PASS under Halo WIP, but research goal (clear BBR) **FAIL**.
 Design: `docs/leoaware_v310_halo_reject.md`  
 Archive: `results/archive/20260813-v310-halo/`
 
+## v3.10 SkyPulse PATHHINT (growth-freeze) - REJECT
+
+**Date:** 2026-08-13  
+**Branch:** `cursor/v310-halo-84b8`  
+**Hypothesis:** Existing ASCENT-D PATHHINT ingest + growth-freeze only (no
+hint REPROBE, no `ep:loss_burst` gate) is a Pareto vs Crest endpoint
+82.09/76.26 without regressing the endpoint table.
+
+### Endpoint (public default, unchanged)
+
+| | gp mean | p95 mean | terr |
+|--|--------:|---------:|-----:|
+| Crest / this tip | **82.089** | **76.264** | **78.623** |
+
+No regression.
+
+### Hybrid (`use_path_hints=True`, `hint_freeze_only=True`, `ascent_d`)
+
+| | gp mean | p95 mean | terr |
+|--|--------:|---------:|-----:|
+| Hybrid | 81.936 | 75.464 | 78.623 |
+| BBR | 82.439 | 76.664 | — |
+
+Ingest applied 14–16 frames/seed. Absolute bars PASS. Pareto vs Crest **FAIL**
+(p95 down on seed 42, gp down on every seed).
+
+**Decision: REJECT.** Public suite stays endpoint-only. Crest remains product.  
+Design: `docs/leoaware_v310_skypulse.md`  
+Archive: `results/archive/20260813-v310-skypulse/`
+
+---
+
 ## v3.10-QSP - queue-sojourn pacing - REJECT
 
 **Date:** 2026-08-13  
