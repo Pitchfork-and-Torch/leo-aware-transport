@@ -1,0 +1,40 @@
+{
+  "era": "starlink_v1",
+  "cook": "v3.10-QSP queue-sojourn pacing",
+  "product_cca": "v3.9 Crest",
+  "soft_qir_alpha": 0.2,
+  "bars": {
+    "gp_mean": 75.0,
+    "p95_mean": 138.8,
+    "terr_gp": 77.0
+  },
+  "crest_baseline": {
+    "LeoAware_gp_mean": 82.089,
+    "LeoAware_p95_mean": 76.264,
+    "terr_gp_mean": 78.623
+  },
+  "qsp_on": {
+    "LeoAware_gp_mean": 82.047,
+    "LeoAware_p95_mean": 76.264,
+    "LeoAware_p95_path_mean": 70.786,
+    "BBR_gp_mean": 82.439,
+    "BBR_p95_mean": 76.664,
+    "terr_gp_mean": 78.623,
+    "terr_p95_mean": 46.0,
+    "per_seed": [
+      {"seed": 13, "gp": 96.65, "p95": 72.21},
+      {"seed": 7, "gp": 74.89, "p95": 67.81},
+      {"seed": 42, "gp": 80.67, "p95": 97.56},
+      {"seed": 99, "gp": 72.72, "p95": 64.09},
+      {"seed": 123, "gp": 85.30, "p95": 79.65}
+    ]
+  },
+  "gates": {
+    "gp_ge_75": true,
+    "p95_le_138_8": true,
+    "terr_ge_77": true,
+    "pareto_vs_crest": false
+  },
+  "decision": "REJECT",
+  "note": "p95 identical to Crest (path-dominated). gp -0.042. use_qsp remains False. Halo/Pulse/EpochMemory not revived. Not Current. No paid. Do not merge."
+}

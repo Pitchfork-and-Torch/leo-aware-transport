@@ -1,9 +1,12 @@
-# LeoAware v3.8 capacity / HO realism (opt-in; not suite default)
+# LeoAware v3.8 capacity / HO realism
 
 **Date:** 2026-08-12  
-**Status:** proposal for Jon. Default `path_profile="ope_v36"` is frozen.
+**Status (v3.8 Step 0):** proposal.  
+**Status (v3.9):** Jon/Steward accepted option 1 — keep absolute 75/138.8 and make
+**`starlink_v1` the product-lock path**. `ope_v36` stays the research relative-BBR
+era. See `docs/harness_eras.md` and `docs/leoaware_v39_starlink_v1.md`.
 
-Step 0 (`docs/leoaware_v38_step0_feasibility.md`) showed that absolute gp≥75 AND p95≤138.8 is **geometrically impossible** on the locked OPE generative path. This note specifies the opt-in models used to test whether a richer path would even *allow* those bars.
+Step 0 (`docs/leoaware_v38_step0_feasibility.md`) showed that absolute gp≥75 AND p95≤138.8 is **geometrically impossible** on the locked OPE generative path. This note specifies the models used to test whether a richer path would even *allow* those bars.
 
 OPE (path identity across CCAs) is kept in every profile. Soft-QIR α stays 0.20.
 
@@ -17,7 +20,9 @@ The v3.6/v3.7 generative path is a useful stress toy, not a Starlink capacity/HO
 
 ## Profiles
 
-Set `LeoPathConfig.path_profile`. Suite / `multi_seed` / `run_suite` do **not** pass this field (default `ope_v36`).
+Set `LeoPathConfig.path_profile`. Generative default remains `ope_v36` (frozen
+research identity). **Product harnesses** (`multi_seed`, `run_suite`,
+`run_ablation`) default to **`starlink_v1`**.
 
 ### `starlink_rtt` — HO transient, same cap band
 
@@ -33,11 +38,14 @@ Feasibility (same 5 seeds, 90s): oracle gp mean **60.07** (still < 75); path p95
 
 Same RTT model as `starlink_rtt`, plus capacity `U(40, 150) Mbps` (constants `STARLINK_V1_CAP_MIN_BPS` / `MAX` in `leo_cc/network.py`).
 
-Feasibility: oracle gp mean **84.03**; path p95 mean **70.79**. Absolute 75/138.8 is **geometrically possible**. This is **not** a CCA lock and **not** a product PASS.
+Feasibility: oracle gp mean **84.03**; path p95 mean **70.79**. Absolute 75/138.8 is **geometrically possible**.
 
 Per-seed oracle gp: 13→98.97, 7→76.45, 42→82.77, 99→74.63, 123→87.34.
 
-BBR’s ceiling also rises. If this profile becomes the default, Jon should decide whether 75/138.8 remains the product bar or should be re-derived vs BBR on the new path.
+v3.9: this profile **is** the product-lock path. Bars stay absolute 75/138.8
+(not re-derived vs BBR). CCA chase is CA → DLC → LSG on this era only. Do not
+mix `ope_v36` 58/152 or coupled-era Tide numbers into a `starlink_v1` Current
+table. Real CSVs are next (`docs/starlink_csv_ingest.md`).
 
 ## CSV traces
 
@@ -47,23 +55,18 @@ python -m experiments.ope_feasibility --write-traces --profiles ope_v36,starlink
 
 | File | Profile |
 |------|---------|
-| `traces/ope_v36_seed13.csv` | frozen lock (demo) |
+| `traces/ope_v36_seed13.csv` | frozen research path (demo) |
 | `traces/starlink_rtt_seed13.csv` | RTT realism |
-| `traces/starlink_v1_seed13.csv` | RTT + capacity |
+| `traces/starlink_v1_seed13.csv` | product-lock generative demo |
 | `traces/starlink_synthetic_seed13.csv` | pre-existing ope-style demo |
 
-Replay: `LeoPathConfig(trace_csv=..., duration_s=90, dt_s=0.05)`. Real Starlink CSVs (same columns) are the preferred next lock if available.
+Replay: `LeoPathConfig(trace_csv=..., duration_s=90, dt_s=0.05)`. Real Starlink CSVs (same columns) are the successor product lock — `docs/starlink_csv_ingest.md`.
 
-## What this PR does not do
+## v3.9 era switch (done)
 
-- Does not change `run_suite` / `multi_seed` defaults.
-- Does not retune LeoAware CCA (no CA/DLC/LSG).
-- Does not claim paid Optimizer breakthrough.
-- Does not merge.
-
-## Next if Jon picks `starlink_v1` (or real CSVs)
-
-1. Flip default profile only after an explicit gate decision.
-2. Re-baseline BBR + LeoAware 5-seed@90s on the new path (new era; do not mix with ope_v36 58/152 or coupled-era 75/138.8).
-3. Then, and only then, chase CA → DLC → LSG against whatever bars Jon confirms.
-4. Keep OPE and frozen soft-QIR α unless the new traces justify a documented α change.
+1. Product default is `starlink_v1` (`leo_cc/harness.py`).
+2. Re-baseline BBR + LeoAware 5-seed@90s on that path (new era).
+3. CA → DLC → LSG against absolute 75/138.8.
+4. OPE + frozen soft-QIR α=0.20 kept.
+5. No paid OrbitStack landing bump on this synthetic lock. Copy must say
+   synthetic `starlink_v1` until CSV lock (`docs/starlink_csv_ingest.md`).

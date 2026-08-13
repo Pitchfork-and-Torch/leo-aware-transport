@@ -1,0 +1,48 @@
+{
+  "era": "starlink_v1",
+  "cook": "v3.10 SkyPulse PATHHINT growth-freeze",
+  "soft_qir_alpha": 0.2,
+  "ingest": "ascent_d (existing leo_cc.ascent_path_hint)",
+  "hint_policy": "growth-freeze only; never gate ep:loss_burst",
+  "public_suite": "endpoint-only (unchanged)",
+  "crest_baseline": {
+    "gp": 82.089,
+    "p95": 76.264,
+    "terr_gp": 78.623
+  },
+  "endpoint": {
+    "gp_mean": 82.08861866666668,
+    "p95_mean": 76.2640823931256,
+    "terr_gp_mean": 78.6232,
+    "terr_p95_mean": 46.000000000000945,
+    "no_regression_vs_crest": true,
+    "note": "82.089/76.264 — same as Crest within rounding"
+  },
+  "hybrid": {
+    "gp_mean": 81.93604266666667,
+    "p95_mean": 75.46408239312618,
+    "terr_gp_mean": 78.6232,
+    "terr_p95_mean": 46.000000000000945,
+    "pareto_vs_crest": false,
+    "per_seed": [
+      {"seed": 13, "gp": 96.28, "p95": 72.21, "applied": 14},
+      {"seed": 7, "gp": 74.94, "p95": 67.81, "applied": 16},
+      {"seed": 42, "gp": 80.58, "p95": 93.56, "applied": 14},
+      {"seed": 99, "gp": 72.69, "p95": 64.09, "applied": 14},
+      {"seed": 123, "gp": 85.19, "p95": 79.65, "applied": 16}
+    ]
+  },
+  "bbr": {
+    "gp_mean": 82.43904,
+    "p95_mean": 76.66408239312553
+  },
+  "gates": {
+    "endpoint_no_regression": true,
+    "hybrid_gp_ge_75": true,
+    "hybrid_p95_le_138_8": true,
+    "hybrid_terr_ge_77": true,
+    "hybrid_pareto_vs_crest": false
+  },
+  "decision": "REJECT",
+  "note": "Hybrid p95↓ (seed 42) but gp↓ on every seed — not a Pareto. Endpoint matches Crest. Not Current. No paid. Do not merge."
+}
