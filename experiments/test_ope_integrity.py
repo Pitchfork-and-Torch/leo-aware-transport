@@ -21,23 +21,39 @@ def test_soft_qir_frozen():
     print("ok: soft-QIR α frozen at 0.20 / 25ms cap")
 
 
-def test_ope_path_identity():
+def _assert_ope_path_identity(cfg: LeoPathConfig, label: str) -> None:
     """Same seed ⇒ identical HO / path-RTT timeline across CCAs (OPE)."""
-    cfg = LeoPathConfig(
-        duration_s=12.0,
-        handover_interval_s=4.0,
-        handover_jitter_s=1.0,
-        seed=13,
-    )
     logs = {}
     hos = {}
     for name, cls in (("CUBIC", CubicCCA), ("BBR", BbrCCA), ("LeoAware", LeoAwareCCA)):
         res = run_sim(cls, cfg=cfg, n_flows=1)
         logs[name] = list(res.flows[0].rtt)
         hos[name] = list(res.handovers)
-    assert hos["CUBIC"] == hos["BBR"] == hos["LeoAware"], hos
-    assert logs["CUBIC"] == logs["BBR"] == logs["LeoAware"]
-    print(f"ok: OPE path identity  n_ho={len(hos['BBR'])}  rtt_samples={len(logs['BBR'])}")
+    assert hos["CUBIC"] == hos["BBR"] == hos["LeoAware"], (label, hos)
+    assert logs["CUBIC"] == logs["BBR"] == logs["LeoAware"], label
+    print(f"ok: OPE path identity ({label})  n_ho={len(hos['BBR'])}  rtt_samples={len(logs['BBR'])}")
+
+
+def test_ope_path_identity():
+    cfg = LeoPathConfig(
+        duration_s=12.0,
+        handover_interval_s=4.0,
+        handover_jitter_s=1.0,
+        seed=13,
+    )
+    _assert_ope_path_identity(cfg, "ope_v36 default")
+
+
+def test_starlink_v1_ope_path_identity():
+    """Kill condition: starlink_v1 must not be a Leo-asymmetric cherry-pick vs BBR."""
+    cfg = LeoPathConfig(
+        duration_s=12.0,
+        handover_interval_s=4.0,
+        handover_jitter_s=1.0,
+        seed=13,
+        path_profile="starlink_v1",
+    )
+    _assert_ope_path_identity(cfg, "starlink_v1")
 
 
 def test_ope_v36_geometry_stable():
@@ -202,6 +218,7 @@ def test_ca_does_not_fire_during_reprobe():
 def run_all() -> None:
     test_soft_qir_frozen()
     test_ope_path_identity()
+    test_starlink_v1_ope_path_identity()
     test_ope_v36_geometry_stable()
     test_ope_v36_absolute_bars_infeasible()
     test_excess_rtt_diagnostic()

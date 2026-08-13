@@ -592,6 +592,19 @@ Design: `docs/leoaware_v38_step0_feasibility.md`
 
 `multi_seed` / `run_suite` default `--path-profile starlink_v1`. Research: `--path-profile ope_v36`. Soft-QIR α frozen 0.20. Secondary metric: `p95(rtt − path_base)`.
 
+### Geometry gate (no CCA) — PASS
+
+90s `leo_fast_ho`, seeds 13,7,42,99,123, `starlink_v1`:
+
+| | oracle gp | path p95 |
+|--|----------:|---------:|
+| mean | **84.03** | **70.79** |
+| dual-gate possible | **True** | **True** |
+
+Per-seed oracle / path p95: 13→98.97/68.21 · 7→76.45/63.81 · 42→82.77/87.56 · 99→74.63/58.70 · 123→87.34/75.65
+
+Seed 99 oracle is 74.63 (below 75); the bar is the **mean**. Soft-QIR α=0.20. OPE identity on `starlink_v1` PASS (CUBIC=BBR=LeoAware HO/RTT). Archive: `results/archive/20260812-v39-geometry-gate/`
+
 ### Code
 
 - `leo_cc/harness.py` — product vs research constants
