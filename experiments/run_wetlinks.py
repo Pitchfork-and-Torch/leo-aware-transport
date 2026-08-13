@@ -4,9 +4,14 @@
 Era: wetlinks_v1. Never mix with starlink_v1 82.09/76.26 or ope_v36 58/152.
 Crest stays (LeoAwareCCA defaults). No Halo/QSP/PATHHINT.
 
+Uncap cook: WetLinks replay uses a 1 MB bottleneck buffer so w1/w2
+(~400 Mbps UDP means) are not clipped by 8*buffer/dt. Product
+LeoPathConfig.buffer_bytes stays 250 KB. Same uncap buffer for
+CUBIC, BBR, and Crest.
+
 Usage:
-  python -m experiments.run_wetlinks --geometry-only
-  python -m experiments.run_wetlinks --tag 20260813-v311-wetlinks
+  python3 -m experiments.run_wetlinks --geometry-only
+  python3 -m experiments.run_wetlinks --tag 20260813-v311-wetlinks-uncap
 """
 from __future__ import annotations
 
@@ -39,6 +44,15 @@ ERA = "wetlinks_v1"
 # dt=0.05 + 250 KB buffer caps send at 8*buffer/dt ≈ 40 Mbps and adds a
 # fake 10 ms soft-QIR (α*dt). That is a harness artifact, not a CCA result.
 SIM_DT_S = 0.01
+# Product / capped-footnote buffer (do not change LeoPathConfig default).
+CAPPED_BUFFER_BYTES = 250_000
+# Uncap: 1 MB → 8*buffer/dt = 800 Mbps at dt=0.01 (≥450 Mbps required so
+# w1/w2 ~400 Mbps UDP means can actually test CCA vs BBR).
+WETLINKS_BUFFER_BYTES = 1_000_000
+
+
+def send_ceiling_mbps(buffer_bytes: int, dt_s: float = SIM_DT_S) -> float:
+    return 8.0 * float(buffer_bytes) / max(dt_s, 1e-12) / 1e6
 
 
 def window_paths(trace_dir: Path) -> list[Path]:
@@ -53,13 +67,18 @@ def window_paths(trace_dir: Path) -> list[Path]:
     return paths
 
 
-def window_cfg(path: Path, dt_s: float = SIM_DT_S) -> LeoPathConfig:
+def window_cfg(
+    path: Path,
+    dt_s: float = SIM_DT_S,
+    buffer_bytes: int = WETLINKS_BUFFER_BYTES,
+) -> LeoPathConfig:
     return LeoPathConfig(
         duration_s=DURATION_S,
         dt_s=dt_s,
         seed=0,
         path_profile=ERA,
         trace_csv=str(path),
+        buffer_bytes=int(buffer_bytes),
     )
 
 
@@ -96,13 +115,18 @@ def verdict_from_geometry(df: pd.DataFrame) -> dict:
     }
 
 
-def run_window_cca(trace_dir: Path) -> pd.DataFrame:
+def run_window_cca(trace_dir: Path, buffer_bytes: int) -> pd.DataFrame:
     rows = []
     algos = [("CUBIC", CubicCCA), ("BBRv3approx", BbrCCA), ("LeoAware", LeoAwareCCA)]
+    ceiling = send_ceiling_mbps(buffer_bytes)
     for path in window_paths(trace_dir):
-        cfg = window_cfg(path)
+        cfg = window_cfg(path, buffer_bytes=buffer_bytes)
         for name, cls in algos:
-            print(f"cca {path.stem} {name} ...", flush=True)
+            print(
+                f"cca {path.stem} {name}  buffer={buffer_bytes}  "
+                f"ceiling={ceiling:.0f}Mbps ...",
+                flush=True,
+            )
             res = run_sim(cls, cfg=cfg, n_flows=1)
             m = summarize_result(res)[0]
             rows.append(
@@ -110,6 +134,8 @@ def run_window_cca(trace_dir: Path) -> pd.DataFrame:
                     "era": ERA,
                     "window_id": path.stem,
                     "cca": name,
+                    "buffer_bytes": buffer_bytes,
+                    "send_ceiling_mbps": ceiling,
                     "goodput_mbps": m.goodput_bps / 1e6,
                     "p95_rtt_ms": m.p95_rtt_s * 1000,
                     "p95_path_rtt_ms": m.p95_path_rtt_s * 1000,
@@ -146,7 +172,12 @@ def run_terr_control() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def scorecard(geo_v: dict, cca_df: pd.DataFrame, terr_df: pd.DataFrame) -> dict:
+def scorecard(
+    geo_v: dict,
+    cca_df: pd.DataFrame,
+    terr_df: pd.DataFrame,
+    buffer_bytes: int,
+) -> dict:
     def means(df: pd.DataFrame, cca: str) -> tuple[float, float]:
         g = df[df["cca"] == cca]
         return float(g["goodput_mbps"].mean()), float(g["p95_rtt_ms"].mean())
@@ -159,14 +190,32 @@ def scorecard(geo_v: dict, cca_df: pd.DataFrame, terr_df: pd.DataFrame) -> dict:
     gp_ok = leo_gp >= PRODUCT_GP_BAR
     p95_ok = leo_p95 <= PRODUCT_P95_BAR
     terr_ok = terr_gp >= PRODUCT_TERR_GP_BAR
+    crest_clears_bbr = leo_gp > bbr_gp
+    # Uncap cook gate: Crest must clear BBR on the uncapped ceiling.
+    # Do not mix this table with the capped 156.70/63.98 footnote.
     accept = bool(
-        geo_v["absolute_dual_gate_possible"] and gp_ok and p95_ok and terr_ok
+        geo_v["absolute_dual_gate_possible"]
+        and crest_clears_bbr
+        and p95_ok
+        and terr_ok
     )
+    ceiling = send_ceiling_mbps(buffer_bytes)
     return {
         "era": ERA,
         "product_lock_era": PRODUCT_PATH_PROFILE,
+        "cook": "wetlinks_uncap",
         "decision": "ACCEPT" if accept else "REJECT",
         "soft_qir_alpha": SOFT_QIR_ALPHA,
+        "buffer_bytes": buffer_bytes,
+        "send_ceiling_mbps": ceiling,
+        "capped_footnote": {
+            "buffer_bytes": CAPPED_BUFFER_BYTES,
+            "send_ceiling_mbps": send_ceiling_mbps(CAPPED_BUFFER_BYTES),
+            "LeoAware_gp_mean": 156.70,
+            "LeoAware_p95_mean": 63.98,
+            "BBR_gp_mean": 161.91,
+            "note": "250 KB ceiling cook — footnote only. Not this gate.",
+        },
         "geometry": geo_v,
         "windows": {
             "LeoAware_gp_mean": leo_gp,
@@ -179,34 +228,49 @@ def scorecard(geo_v: dict, cca_df: pd.DataFrame, terr_df: pd.DataFrame) -> dict:
         "terrestrial": {
             "LeoAware_gp_mean": terr_gp,
             "LeoAware_p95_mean": terr_p95,
-            "note": "synthetic terrestrial control; not a WetLinks window",
+            "note": "synthetic terrestrial control at product 250 KB; not a WetLinks window",
         },
         "gates": {
             "geometry_dual_gate": geo_v["absolute_dual_gate_possible"],
+            "crest_gp_clears_bbr": crest_clears_bbr,
             "gp_ge_75": gp_ok,
             "p95_le_138_8": p95_ok,
             "terr_ge_77": terr_ok,
         },
         "note": (
-            "wetlinks_v1 is a new era. Do not mix with starlink_v1 82.09/76.26 "
-            "or ope_v36 58/152. Crest defaults unchanged. No Current bump. "
-            "Replay uses product dt=0.01; 250 KB buffer send ceiling is "
-            f"{8 * 250_000 / SIM_DT_S / 1e6:.0f} Mbps (windows above that "
-            "cannot fill even if the iperf mean is higher)."
+            "wetlinks_v1 research era, uncapped-buffer cook. Gate is this "
+            "table (Crest vs BBR at the same 1 MB buffer). Do not mix with "
+            "capped 156.70/63.98, starlink_v1 82.09/76.26, or ope_v36 58/152. "
+            f"dt={SIM_DT_S}; buffer={buffer_bytes} B; send ceiling "
+            f"{ceiling:.0f} Mbps. Capacity is UDP iperf mean, not dish PHY. "
+            "Crest defaults unchanged. No Current bump. No merge."
         ),
     }
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--tag", default="20260813-v311-wetlinks")
+    ap.add_argument("--tag", default="20260813-v311-wetlinks-uncap")
     ap.add_argument("--trace-dir", type=Path, default=OUT_DIR)
+    ap.add_argument(
+        "--buffer-bytes",
+        type=int,
+        default=WETLINKS_BUFFER_BYTES,
+        help="WetLinks bottleneck buffer for CUBIC+BBR+Crest (default 1 MB uncap)",
+    )
     ap.add_argument(
         "--geometry-only",
         action="store_true",
         help="walk geometry and stop (no CCA). Use if bars fail.",
     )
     args = ap.parse_args()
+    buffer_bytes = int(args.buffer_bytes)
+    if send_ceiling_mbps(buffer_bytes) < 450.0 - 1e-9:
+        raise SystemExit(
+            f"uncap buffer {buffer_bytes} B has send ceiling "
+            f"{send_ceiling_mbps(buffer_bytes):.1f} Mbps < 450. "
+            "Raise buffer (1 MB → 800 Mbps at dt=0.01)."
+        )
     out_dir = ROOT / "results" / "archive" / args.tag
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -252,11 +316,17 @@ def main() -> None:
         print(f"Wrote {out_dir}")
         return
 
-    cca_df = run_window_cca(args.trace_dir)
+    print(
+        f"uncap buffer={buffer_bytes} B  send_ceiling="
+        f"{send_ceiling_mbps(buffer_bytes):.0f} Mbps  "
+        f"(product default stays {CAPPED_BUFFER_BYTES} B)",
+        flush=True,
+    )
+    cca_df = run_window_cca(args.trace_dir, buffer_bytes=buffer_bytes)
     terr_df = run_terr_control()
     cca_df.to_csv(out_dir / "window_cca.csv", index=False)
     terr_df.to_csv(out_dir / "terr_control.csv", index=False)
-    card = scorecard(verdict, cca_df, terr_df)
+    card = scorecard(verdict, cca_df, terr_df, buffer_bytes=buffer_bytes)
     (out_dir / "scorecard.json").write_text(
         json.dumps(card, indent=2), encoding="utf-8"
     )

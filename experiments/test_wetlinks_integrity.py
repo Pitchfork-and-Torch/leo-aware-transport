@@ -9,6 +9,12 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from experiments.run_wetlinks import (
+    CAPPED_BUFFER_BYTES,
+    SIM_DT_S,
+    WETLINKS_BUFFER_BYTES,
+    send_ceiling_mbps,
+)
 from experiments.slice_wetlinks import DURATION_S, DT_S, OUT_DIR, WINDOW_SPECS
 from leo_cc.ccas import LeoAwareCCA
 from leo_cc.harness import PRODUCT_PATH_PROFILE
@@ -69,11 +75,24 @@ def test_crest_defaults_stay_off():
     print("ok: Crest defaults off; product profile still starlink_v1")
 
 
+def test_uncap_buffer_does_not_move_product_default():
+    assert LeoPathConfig().buffer_bytes == CAPPED_BUFFER_BYTES
+    assert WETLINKS_BUFFER_BYTES == 1_000_000
+    ceil = send_ceiling_mbps(WETLINKS_BUFFER_BYTES, SIM_DT_S)
+    assert ceil >= 450.0, ceil
+    assert send_ceiling_mbps(CAPPED_BUFFER_BYTES, SIM_DT_S) == 200.0
+    print(
+        f"ok: product buffer {CAPPED_BUFFER_BYTES} B; "
+        f"WetLinks uncap {WETLINKS_BUFFER_BYTES} B ceiling {ceil:.0f} Mbps"
+    )
+
+
 def run_all() -> None:
     test_no_empty_real_scaffold()
     test_wetlinks_windows_present()
     test_wetlinks_geometry_walks()
     test_crest_defaults_stay_off()
+    test_uncap_buffer_does_not_move_product_default()
     print("ALL WetLinks integrity tests passed")
 
 

@@ -811,6 +811,24 @@ Archive: `results/archive/20260813-v311-wetlinks/`
 
 ---
 
+## v3.11-uncap - WetLinks 1 MB buffer (Crest vs BBR)
+
+**Date:** 2026-08-13  
+**Branch:** `cursor/v310-halo-84b8`  
+**Hypothesis:** Capped Crest 156.70/63.98 is a 250 KB / 200 Mbps send
+ceiling, not a CCA result. Same 5 windows, Crest defaults, α=0.20,
+dt=0.01, buffer **1 MB** (ceiling 800 Mbps) for CUBIC+BBR+Crest. Kill if
+Crest gp mean < BBR.
+
+Product `LeoPathConfig.buffer_bytes` stays 250 KB. No CCA invention.
+Capacity is still UDP iperf mean, not dish PHY. Era `wetlinks_v1`
+research only. Not Current. Do not mix with 156.70, 82.09/76.26, or 58/152.
+
+Archive: `results/archive/20260813-v311-wetlinks-uncap/`  
+Design: `docs/leoaware_v311_wetlinks_uncap.md`
+
+---
+
 ## Open ideas (next loops)
 
 1. Denser real Starlink CSVs (continuous 90s RTT+capacity, not hold-expanded 15s iperf).
