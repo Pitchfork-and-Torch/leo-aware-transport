@@ -72,13 +72,17 @@ leo_cc/
 experiments/
   run_suite.py              # Full reproducible evaluation (endpoint default)
   run_ablation.py           # endpoint / ASCENT-D / Orb / hybrid matrix
+  run_wetlinks.py           # wetlinks_v1 geometry + 5-window CCA
+  slice_wetlinks.py         # re-fetch / cut WetLinks 90s windows
   test_ascent_d_integrity.py
+  test_wetlinks_integrity.py
   demo.py
 docs/
   architecture.md
   harness_eras.md
   leoaware_v39_starlink_v1.md
   starlink_csv_ingest.md
+  leoaware_v311_wetlinks.md
   ascent_d_orbcc_hybrid.md
   related_work.md
   cloudflare_starlink_bridge.md
@@ -211,7 +215,7 @@ OPE-fair, same path for CUBIC + BBRv3approx + LeoAware. Soft-QIR α=0.20. Means,
 
 Gates (this PR, pending Jon): gp **82.07 ≥ 75**, p95 **76.26 ≤ 138.8**, terr **78.62 ≥ 77** (p95 46 ms = path 40 + QIR). Geometry oracle 84.03 / path p95 70.79. Do not mix with `ope_v36` ~58/152.
 
-Design: `docs/leoaware_v39_starlink_v1.md`. Archive: `results/archive/20260812-v39-starlink-v1/`. CSV next: `docs/starlink_csv_ingest.md`.
+Design: `docs/leoaware_v39_starlink_v1.md`. Archive: `results/archive/20260812-v39-starlink-v1/`. Measured CSV era: `docs/starlink_csv_ingest.md`.
 
 ### Hybrid fuse ablation (fast, seeds 13+7; not the v3.9 product lock)
 
@@ -238,7 +242,7 @@ v3.3-A rails retained: hybrid fuse, ASCENT-D erase-on-fail.
 Log: `docs/experiment_log.md`. Design: `docs/leoaware_v37_oce.md`.  
 Archive: `results/archive/20260812-v37-oce/`.  
 v3.8 Step 0: `docs/leoaware_v38_step0_feasibility.md`.  
-Eras: `docs/harness_eras.md`. CSV next: `docs/starlink_csv_ingest.md`.
+Eras: `docs/harness_eras.md`. Measured CSV: `docs/starlink_csv_ingest.md`.
 
 Reproduce:
 
@@ -270,7 +274,7 @@ See `docs/cloudflare_starlink_bridge.md` for a fuller write-up. Short version:
 
 - Packet-level fidelity is simplified (slot sim, not ns-3 / full QUIC state machine).
 - BBRv3approx is educational, not a production BBR port.
-- No real Starlink trace replay yet (CSV hooks + ingest stub: `docs/starlink_csv_ingest.md`).
+- First measured-CSV era is `wetlinks_v1` (`traces/wetlinks/`, WetLinks slices). Synthetic `starlink_v1` remains the product lock. See `docs/starlink_csv_ingest.md`.
 - Multipath is optional/simplified (ISL delay only).
 - Not production-hardened (no pacing timer fidelity, ECN, or ACK aggregation).
 

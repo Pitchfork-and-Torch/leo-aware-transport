@@ -32,7 +32,8 @@ python -m experiments.run_trace_suite
 | `starlink_v1` | **Product lock** (`multi_seed` / `run_suite` default): `starlink_rtt` + 40–150 Mbps. |
 
 Era table: `docs/harness_eras.md`. Capacity: `docs/leoaware_v38_capacity_model.md`.
-Real CSV ingest (next): `docs/starlink_csv_ingest.md`.
+Measured CSV era: `wetlinks_v1` under `traces/wetlinks/` (WetLinks slices,
+Laniewski et al., TMA 2024). Ingest + inferences: `docs/starlink_csv_ingest.md`.
 
 ## ASCENT freeze hints
 

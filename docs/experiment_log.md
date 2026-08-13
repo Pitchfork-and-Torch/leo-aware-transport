@@ -755,9 +755,53 @@ Leo 91.97 (still behind). **Not a product lock.** Spec:
 
 ---
 
+## v3.11 - WetLinks CSV lock (geometry first)
+
+**Date:** 2026-08-13  
+**Branch:** `cursor/v310-halo-84b8`  
+**Hypothesis:** Five cited WetLinks 90s slices in the existing CSV contract
+can decide whether gp≥75 AND p95≤138.8 are geometrically possible on a
+measured path — no CCA invention, no PATHHINT, no empty `traces/real/`.
+
+### Source
+
+[sys-uos/WetLinks](https://github.com/sys-uos/WetLinks) (Laniewski et al.,
+TMA 2024, CC BY-SA 4.0). `net_iperf` 15s UDP download mean →
+`capacity_mbps` (held 90s). `net_ping` avg → `rtt_ms`; one inferred 0.4s
+spike to `ping_worst` at t=12.0 when worst−avg ≥ 20 ms. Download of the
+merged analysis CSVs **succeeded** (not blocked).
+
+### Geometry (no CCA)
+
+| window | oracle gp | path p95 | path max |
+|--------|----------:|---------:|---------:|
+| w1 Enschede 2023-11-10 | 396.17 | 58.73 | 84.29 |
+| w2 Enschede 2024-02-15 | 405.07 | 52.10 | 105.08 |
+| w3 Osnabrück 2023-09-30 | 66.02 | 68.24 | 94.14 |
+| w4 Osnabrück 2023-12-20 | 193.42 | 64.86 | 109.87 |
+| w5 Osnabrück 2024-02-23 | 163.58 | 59.95 | 83.79 |
+| **mean** | **244.85** | **60.78** | — |
+
+**Geometry PASS** (mean gp≥75 and p95≤138.8). w3 oracle 66.02 is a real
+low-cap cycle; the gate is the five-window mean. Path p95 = `ping_avg`
+(0.4s spike does not move p95). 75s of each window is hold — oracle is
+inflated vs a true 90s continuous iperf.
+
+### CCA
+
+Crest vs BBRv3approx vs CUBIC on the same five windows + synthetic terr
+control. See archive `results/archive/20260813-v311-wetlinks/`. New era
+`wetlinks_v1` — do not mix with `starlink_v1` 82.09/76.26 or `ope_v36`
+58/152. Crest defaults unchanged.
+
+Design: `docs/leoaware_v311_wetlinks.md`  
+Windows: `traces/wetlinks/MANIFEST.md`
+
+---
+
 ## Open ideas (next loops)
 
-1. **Ingest real Starlink CSVs** as successor product lock (`docs/starlink_csv_ingest.md`).
+1. Denser real Starlink CSVs (continuous 90s RTT+capacity, not hold-expanded 15s iperf).
 2. Instrument per-seed delivery traces on `starlink_v2` before more fade/rise knobs.
 3. Path-normalized latency `p95(rtt − path_base)` as a *secondary* queue metric (implemented; still not the product gate).
 4. Per-RTT fairness clock for multi-flow (fair_mode still coarse).

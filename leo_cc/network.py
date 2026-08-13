@@ -146,6 +146,7 @@ def walk_path_geometry(cfg: LeoPathConfig) -> dict:
         "cap_weighted_p95_ms": _pct(weighted, 95) * 1000,
         "frac_cap_ge_75": sum(1 for c in caps if c >= 75e6) / n,
         "mean_loss_p": sum(losses) / n,
+        "trace_csv": cfg.trace_csv,
     }
 
 
