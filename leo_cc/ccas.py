@@ -348,6 +348,10 @@ class LeoAwareCCA(BaseCCA):
       excess (α stays frozen 0.20) and discount pace_gain only. Never raises
       cruise BDP. Default OFF until 5-seed Pareto vs Crest.
 
+    v3.10 SkyPulse: PATHHINT ingest via existing ASCENT-D path
+      (`hint_freeze_only`). Growth-freeze only — never hint-REPROBE, never
+      gate ep:loss_burst. Public suite stays `use_path_hints=False`.
+
     Related: LeoCC response-interval outliers; SaTCP freeze; OrbCC pathID/U;
     BBR delivery-rate without stale min-RTT across epochs.
     """
@@ -368,6 +372,7 @@ class LeoAwareCCA(BaseCCA):
         use_orbit_pulse: bool = False,
         use_cfr: bool = False,
         use_qsp: bool = False,
+        hint_freeze_only: bool = False,
         **kw,
     ):
         super().__init__(**kw)
@@ -387,6 +392,9 @@ class LeoAwareCCA(BaseCCA):
         # v3.10-QSP: queue-sojourn pacing (pace-only; never raises cruise BDP).
         # Default OFF until a 5-seed Pareto vs Crest ACCEPT.
         self.use_qsp = bool(use_qsp)
+        # SkyPulse: PATHHINT growth-freeze only. Never hint-REPROBE, never
+        # gate ep:loss_burst. Public suite keeps use_path_hints=False.
+        self.hint_freeze_only = bool(hint_freeze_only)
         self.rtt_hist: Deque[float] = deque(maxlen=48)
         self.ack_times: Deque[float] = deque(maxlen=40)
         self.bw_samples: Deque[tuple[float, float]] = deque(maxlen=48)
@@ -462,6 +470,7 @@ class LeoAwareCCA(BaseCCA):
         self.cre_lifts = 0
         self._qsp_excess = 0.0
         self.qsp_discounts = 0
+        self.skypulse_freezes = 0
 
     @staticmethod
     def _median(xs: list[float]) -> float:
@@ -850,10 +859,17 @@ class LeoAwareCCA(BaseCCA):
         if capacity_bps and capacity_bps > 0:
             self.hint_capacity_bps = float(capacity_bps)
 
-        # ASCENT freeze: hold growth, pre-position to next_capacity, then REPROBE
+        # ASCENT / SkyPulse freeze
         if freeze_active or (freeze_remaining_s is not None and freeze_remaining_s > 0):
             rem = float(freeze_remaining_s or 0.0)
             self.freeze_until = max(self.freeze_until, t + rem)
+            if self.hint_freeze_only:
+                # Growth-freeze only: hold send growth. Endpoint detect owns the
+                # hop — never schedule hint REPROBE, never gate ep:loss_burst.
+                self.pending_reprobe_after_freeze = False
+                self.skypulse_freezes += 1
+                self.mode = "skypulse_freeze"
+                return
             self.pending_reprobe_after_freeze = True
             self.mode = "ascent_freeze"
             nxt = float(next_capacity_bps or self.hint_capacity_bps or 0.0)
@@ -863,6 +879,12 @@ class LeoAwareCCA(BaseCCA):
                     self.bw_est = 0.85 * self.bw_est + 0.15 * nxt
                 self.pacing_rate_bps = max(self.pacing_rate_bps * 0.92, nxt * 0.55)
             self.cwnd = min(self.cwnd, max(self.cwnd * 0.97, 8 * MSS))
+            return
+
+        if self.hint_freeze_only:
+            # Ingested reconfig/capacity is fail-closed skip for cut/REPROBE.
+            if reconfigured:
+                self.ascent_d_applied += 1
             return
 
         if epoch is not None and epoch == self.hint_epoch and not reconfigured:
@@ -1003,8 +1025,13 @@ class LeoAwareCCA(BaseCCA):
     def on_ack(self, t: float, rtt_s: float, bytes_acked: int, lost: int = 0) -> None:
         self.on_delivered(bytes_acked)
 
-        # Exit ASCENT freeze -> scheduled REPROBE
-        if self.freeze_until > 0 and t >= self.freeze_until and self.pending_reprobe_after_freeze:
+        # Exit ASCENT freeze -> scheduled REPROBE (legacy assist, not SkyPulse)
+        if (
+            self.freeze_until > 0
+            and t >= self.freeze_until
+            and self.pending_reprobe_after_freeze
+            and not self.hint_freeze_only
+        ):
             self.pending_reprobe_after_freeze = False
             self.freeze_until = -1.0
             self._enter_reprobe(
@@ -1015,8 +1042,9 @@ class LeoAwareCCA(BaseCCA):
                 confidence=0.88,
             )
 
-        # During freeze: measure but do not grow aggressively
-        if t < self.freeze_until:
+        # Legacy assist freeze: hold + skip detect. SkyPulse freeze-only must
+        # NOT take this path — ep:loss_burst / endpoint detect stay live.
+        if t < self.freeze_until and not self.hint_freeze_only:
             self.mode = "ascent_freeze"
             if rtt_s < self.min_rtt:
                 self.min_rtt = rtt_s
@@ -1400,7 +1428,13 @@ class LeoAwareCCA(BaseCCA):
                 and t < self._anticipator_until
                 and t >= self.reprobe_until
             )
-            if anticipator_hold:
+            skypulse_hold = (
+                self.hint_freeze_only
+                and not self.fair_mode
+                and t < self.freeze_until
+                and t >= self.reprobe_until
+            )
+            if anticipator_hold or skypulse_hold:
                 target = min(target, self.cwnd)
             if self.fair_mode and (delay_ratio > 1.45 or self.high_delay_streak >= 3):
                 self.cwnd = max(4 * MSS, self.cwnd * 0.92)
@@ -1415,6 +1449,8 @@ class LeoAwareCCA(BaseCCA):
                 if self.cwnd > target:
                     self.cwnd = max(4 * MSS, min(self.cwnd, target * 1.05))
                 self.mode = "delay_yield"
+            elif skypulse_hold:
+                self.mode = "skypulse_freeze"
             elif anticipator_hold:
                 self.mode = "anticipator_freeze"
             elif self.cwnd < target:
