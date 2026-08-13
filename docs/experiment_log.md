@@ -656,6 +656,20 @@ LeoAware is **97.7% of oracle** (headroom ~2.0 Mbps). Product PASS is **absolute
 
 **Decision: ACCEPT v3.9 Crest** on synthetic `starlink_v1` (absolute dual-gate). **No Current bump. No paid landing. Do not merge without Jon.** Do not mix with `ope_v36` research Current (v3.7 58.78/152.1). Path is synthetic until CSV lock (`docs/starlink_csv_ingest.md`).
 
+### Crest invention ablation (leo_fast_ho, same `starlink_v1` path)
+
+`python -m experiments.crest_ablation --tag 20260812-v39-crest-ablation`
+
+| Variant | gp mean | p95 mean | dual-gate |
+|---------|--------:|---------:|-----------|
+| BBRv3approx | 82.44 | 76.66 | yes |
+| v37_oce (Crest flags off) | 82.28 | 76.66 | yes |
+| CA-only | 82.28 | 76.66 | yes |
+| CA+DLC+LSG | 81.98 | 76.26 | yes |
+| **v39_full (lock)** | **82.07** | **76.26** | yes |
+
+All five dual-gate. CA is a no-op vs v37 on this path. DLC+LSG trims ~0.4 ms p95 (seed 123 81.65→79.65) at ~0.3 Mbps gp. Anticipator is optional and does not unlock the bars. **The era switch (`starlink_v1` geometry) is load-bearing; Crest flags are not.** Do not retune CCA for 0.2 Mbps. Archive: `results/archive/20260812-v39-crest-ablation/`
+
 Design: `docs/leoaware_v39_starlink_v1.md`  
 Eras: `docs/harness_eras.md`  
 CSV next: `docs/starlink_csv_ingest.md`  
@@ -667,7 +681,7 @@ Archive: `results/archive/20260812-v39-starlink-v1/`
 
 1. **Ingest real Starlink CSVs** as successor product lock (`docs/starlink_csv_ingest.md`).
 2. Path-normalized latency `p95(rtt − path_base)` as a *secondary* queue metric (implemented; still not the product gate).
-3. Close remaining ~2 Mbps gp gap to oracle on `starlink_v1` (optional; dual-gate already ACCEPT).
+3. Crest flags are optional on synthetic `starlink_v1` (ablation: v37-style already dual-gates). Next lock is CSV, not 0.2 Mbps CCA theater.
 4. EpochMemory / HO-PLL once hop detection is less loss-burst-dependent.
 5. Per-RTT fairness clock for multi-flow (fair_mode still coarse).
 6. QUEUE-mode store-and-forward coupling with ASCENT-D.
