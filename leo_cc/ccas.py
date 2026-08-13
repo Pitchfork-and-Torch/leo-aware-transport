@@ -256,7 +256,7 @@ class BbrCCA(BaseCCA):
 
 class LeoAwareCCA(BaseCCA):
     """
-    LeoAware v3.9 Crest - CA-hard + Dual-Ledger Cruise + LSG (OrbitStack).
+    LeoAware v3.10 Halo - EpochMemory + HO-PLL + Soft Surplus Echo (OrbitStack).
 
     Product lock era is starlink_v1 (absolute gp≥75 AND p95≤138.8).
     ope_v36 remains the research relative-BBR path. Do not mix eras.
@@ -333,6 +333,16 @@ class LeoAwareCCA(BaseCCA):
       - Optional freeze-only anticipator: ACK-IA growth freeze only; never
         suppresses detection.
 
+    v3.10 Halo (close oracle / clear BBR on starlink_v1):
+      - EpochMemory: ring of last K settled post-hop bw samples; soft-seed
+        uses max(prior_bw, p50(memory)) so a single low epoch does not
+        under-seed the next hop. No seed-id branching.
+      - HO-PLL: after REPROBE→cruise, short phase-lock window accelerates
+        reclaim toward the Halo target while CA/keel abort still own risk.
+      - Soft Surplus Echo: when delivery ≥ ~0.90× memory/prior and delay is
+        very clean, allow brief tide stretch to ≤1.45× BDP (CA aborts).
+      - Still never gates ep:loss_burst; no DTCE / ghost REPROBE.
+
     Related: LeoCC response-interval outliers; SaTCP freeze; OrbCC pathID/U;
     BBR delivery-rate without stale min-RTT across epochs.
     """
@@ -349,6 +359,7 @@ class LeoAwareCCA(BaseCCA):
         use_dlc: bool = True,
         use_lsg: bool = True,
         use_anticipator: bool = True,
+        use_halo: bool = True,
         **kw,
     ):
         super().__init__(**kw)
@@ -360,6 +371,7 @@ class LeoAwareCCA(BaseCCA):
         self.use_dlc = bool(use_dlc)
         self.use_lsg = bool(use_lsg)
         self.use_anticipator = bool(use_anticipator)
+        self.use_halo = bool(use_halo)
         self.rtt_hist: Deque[float] = deque(maxlen=48)
         self.ack_times: Deque[float] = deque(maxlen=40)
         self.bw_samples: Deque[tuple[float, float]] = deque(maxlen=48)
@@ -421,6 +433,13 @@ class LeoAwareCCA(BaseCCA):
         self.dlc_tide_flights = 0
         self.lsg_clamps = 0
         self.anticipator_holds = 0
+        # v3.10 Halo: EpochMemory + HO-PLL + Soft Surplus Echo
+        self._epoch_bw_mem: Deque[float] = deque(maxlen=4)
+        self._pll_until = -1.0
+        self._halo_seed_bw = 0.0
+        self.halo_seeds = 0
+        self.pll_windows = 0
+        self.sse_flights = 0
 
     @staticmethod
     def _median(xs: list[float]) -> float:
@@ -575,22 +594,62 @@ class LeoAwareCCA(BaseCCA):
             self._crest_streak = 0
         return self._crest_streak >= 2 or (crest and rising)
 
+    def _epoch_mem_p50(self) -> float:
+        if not self._epoch_bw_mem:
+            return 0.0
+        return self._median(list(self._epoch_bw_mem))
+
+    def _halo_ref_bw(self) -> float:
+        """Soft capacity reference: max(prior, epoch-memory p50)."""
+        mem = self._epoch_mem_p50()
+        prior = self.prior_bw if self.prior_bw > 0 else 0.0
+        if mem > 0 and prior > 0:
+            return max(prior, mem)
+        return mem if mem > 0 else prior
+
+    def _remember_epoch_bw(self, bw: float) -> None:
+        if not self.use_halo or self.fair_mode or bw <= 1e6:
+            return
+        self._epoch_bw_mem.append(float(bw))
+
     def _lsg_surplus_ok(self, t: float, delay_ratio: float) -> bool:
         """Stretch only if delivery recovered vs prior_bw and RTT is healthy.
 
         Does not veto an armed OCE/TBPR window (those have CA + delay abort).
-        No seed-id branching.
+        No seed-id branching. Halo softens the bar slightly when EpochMemory
+        says the orbit usually carries more than the last prior.
         """
         if not self.use_lsg or self.fair_mode:
             return True
-        if t < self._oce_until or t < self._reclaim_until:
+        if t < self._oce_until or t < self._reclaim_until or t < self._pll_until:
             return True
         if delay_ratio >= 1.18 or self.high_delay_streak > 0:
             return False
         rate = self.rate_ewma if self.rate_ewma > 0 else self._delivery_rate_sample(t)
-        if self.prior_bw > 1e6 and rate > 0:
-            return rate >= 0.85 * self.prior_bw
+        ref = self._halo_ref_bw() if self.use_halo else self.prior_bw
+        if ref > 1e6 and rate > 0:
+            # Slightly softer when memory ≫ last prior (orbit surplus likely).
+            bar = 0.85
+            if (
+                self.use_halo
+                and self.prior_bw > 1e6
+                and self._epoch_mem_p50() > 1.12 * self.prior_bw
+            ):
+                bar = 0.82
+            return rate >= bar * ref
         return delay_ratio < 1.12
+
+    def _sse_surplus_strong(self, t: float, delay_ratio: float) -> bool:
+        """Soft Surplus Echo: delivery clearly recovered and delay very clean."""
+        if not self.use_halo or self.fair_mode:
+            return False
+        if delay_ratio >= 1.12 or self.high_delay_streak > 0:
+            return False
+        rate = self.rate_ewma if self.rate_ewma > 0 else self._delivery_rate_sample(t)
+        ref = self._halo_ref_bw()
+        if ref <= 1e6 or rate <= 0:
+            return False
+        return rate >= 0.90 * ref
 
     def _apply_crest_abort(self, t: float, bdp: float) -> None:
         """Abort TBPR/OCE reclaim and drop to the safe ledger."""
@@ -603,6 +662,7 @@ class LeoAwareCCA(BaseCCA):
             self.mode = "ca_abort"
         self._reclaim_until = min(self._reclaim_until, t)
         self._oce_until = min(self._oce_until, t)
+        self._pll_until = min(self._pll_until, t)
         rtt_ref = self.min_rtt if self.min_rtt < 1e17 else 0.04
         self._ca_hold_until = t + max(0.04, 0.5 * rtt_ref)
 
@@ -636,6 +696,7 @@ class LeoAwareCCA(BaseCCA):
             if self.min_rtt < 1e17 and self.bw_est > 0:
                 self.prior_bdp = max(8 * MSS, self.bw_est * self.min_rtt / 8.0)
                 self.prior_bw = self.bw_est
+                self._remember_epoch_bw(self.bw_est)
             if self.min_rtt < 1e17:
                 if self._keel_rtt <= 0:
                     self._keel_rtt = self.min_rtt
@@ -677,6 +738,7 @@ class LeoAwareCCA(BaseCCA):
         if self.min_rtt < 1e17 and self.bw_est > 0:
             self.prior_bdp = max(8 * MSS, self.bw_est * self.min_rtt / 8.0)
             self.prior_bw = self.bw_est
+            self._remember_epoch_bw(self.bw_est)
         elif self.prior_bw <= 0 and predicted_cap > 0:
             self.prior_bw = predicted_cap
 
@@ -726,9 +788,17 @@ class LeoAwareCCA(BaseCCA):
         if self.fair_mode:
             cut *= 0.95
         self.cwnd = max(6 * MSS, self.cwnd * cut)
-        # Seed bw from prior without trusting stale min-RTT
-        if self.prior_bw > 0:
-            self.bw_est = self.prior_bw * 0.75
+        # Seed bw from prior / Halo EpochMemory without trusting stale min-RTT
+        seed_bw = self.prior_bw
+        if self.use_halo and not self.fair_mode:
+            halo_ref = self._halo_ref_bw()
+            if halo_ref > seed_bw * 1.02:
+                # Blend: do not fully trust memory on a cold hop.
+                seed_bw = 0.55 * seed_bw + 0.45 * halo_ref if seed_bw > 0 else halo_ref
+                self.halo_seeds += 1
+            self._halo_seed_bw = seed_bw
+        if seed_bw > 0:
+            self.bw_est = seed_bw * 0.78
         if predicted_cap > 0:
             self.hint_capacity_bps = predicted_cap
             self.bw_est = max(self.bw_est, predicted_cap * 0.55)
@@ -736,8 +806,9 @@ class LeoAwareCCA(BaseCCA):
                 pred_bdp = predicted_cap * predicted_rtt / 8.0
                 self.cwnd = max(self.cwnd, min(pred_bdp * 0.55, self.prior_bdp * 0.95))
         self.ssthresh = self.cwnd
+        pace_ref = seed_bw if seed_bw > 0 else self.prior_bw
         self.pacing_rate_bps = max(
-            self.prior_bw * 0.95 if self.prior_bw > 0 else 0.0,
+            pace_ref * 0.95 if pace_ref > 0 else 0.0,
             self.hint_capacity_bps * 0.75 if self.hint_capacity_bps > 0 else 0.0,
             self.cwnd * 8 / max(rtt_ref, 0.02) * 2.2,
         )
@@ -745,6 +816,7 @@ class LeoAwareCCA(BaseCCA):
         self.loss_burst.clear()
         self._minrtt_age_t = t
         self._reclaim_until = -1.0
+        self._pll_until = -1.0
         self.mode = f"reprobe:{reason}"
 
     def on_path_hint(
@@ -989,15 +1061,20 @@ class LeoAwareCCA(BaseCCA):
                 self.bw_est = max(pct_val, 0.70 * pct_val + 0.30 * max_val)
             else:
                 self.bw_est = pct_val
-            if self.prior_bw > 0 and age < 2.0 and not self.fair_mode:
+            floor_ref = (
+                self._halo_seed_bw
+                if self.use_halo and self._halo_seed_bw > 0
+                else self.prior_bw
+            )
+            if floor_ref > 0 and age < 2.0 and not self.fair_mode:
                 floor_frac = max(0.38, 0.68 - 0.15 * age)
                 if delay_ratio_early < 1.35:
-                    self.bw_est = max(self.bw_est, self.prior_bw * floor_frac)
+                    self.bw_est = max(self.bw_est, floor_ref * floor_frac)
                 elif delay_ratio_early < 1.55:
                     # Soft floor only - do not hard-hold prior under delay risk
-                    self.bw_est = max(self.bw_est, self.prior_bw * floor_frac * 0.72)
-            elif self.prior_bw > 0 and age < 1.5:
-                self.bw_est = max(self.bw_est, self.prior_bw * 0.50)
+                    self.bw_est = max(self.bw_est, floor_ref * floor_frac * 0.72)
+            elif floor_ref > 0 and age < 1.5:
+                self.bw_est = max(self.bw_est, floor_ref * 0.50)
             if self.hint_capacity_bps > 0:
                 self.bw_est = 0.72 * self.bw_est + 0.28 * self.hint_capacity_bps
 
@@ -1053,6 +1130,12 @@ class LeoAwareCCA(BaseCCA):
                 rtt_ref = self.min_rtt if self.min_rtt < 1e17 else 0.04
                 self._reclaim_until = t + max(0.15, 2.5 * rtt_ref)
                 self._commit_cwnd = self.cwnd  # 2PC commit point
+                if self.bw_est > 0:
+                    self._remember_epoch_bw(self.bw_est)
+                # v3.10 HO-PLL: short phase-lock reclaim after settle
+                if self.use_halo and not self.fair_mode:
+                    self._pll_until = t + max(0.12, 2.0 * rtt_ref)
+                    self.pll_windows += 1
             return
 
         if lost > 0 and self.min_rtt < 1e17 and rtt_s > 1.45 * self.min_rtt:
@@ -1125,11 +1208,18 @@ class LeoAwareCCA(BaseCCA):
                     self.cwnd = max(4 * MSS, self._commit_cwnd)
                     self.keel_rollbacks += 1
                 self._reclaim_until = min(self._reclaim_until, t)
+                self._pll_until = min(self._pll_until, t)
                 self._commit_cwnd = 0.0
+            pll_active = (
+                self.use_halo
+                and not self.fair_mode
+                and t < self._pll_until
+                and not crest
+            )
             # Very-clean post-hop: slightly stronger reclaim target
             clean_boost = (
                 not self.fair_mode
-                and t < self._reclaim_until
+                and (t < self._reclaim_until or pll_active)
                 and delay_ratio < 1.12
                 and keel_ratio < 1.15
                 and self.high_delay_streak == 0
@@ -1137,7 +1227,7 @@ class LeoAwareCCA(BaseCCA):
             )
             reclaim = (
                 not self.fair_mode
-                and t < self._reclaim_until
+                and (t < self._reclaim_until or pll_active)
                 and delay_ratio < 1.18
                 and keel_ratio < 1.25
                 and self.high_delay_streak == 0
@@ -1149,29 +1239,33 @@ class LeoAwareCCA(BaseCCA):
                 and not crest
             )
             lsg_ok = self._lsg_surplus_ok(t, delay_ratio)
+            sse_ok = self._sse_surplus_strong(t, delay_ratio) and lsg_ok
             if self.fair_mode:
                 target = 1.02 * bdp
             elif self.use_dlc:
                 # Dual-Ledger: safe vs tide. Fly tide only if delay clean, no
-                # crest, and LSG surplus. Stretch cap ≤ 1.42× BDP. Not DTCE.
+                # crest, and LSG surplus. Halo SSE may stretch to 1.45× BDP.
+                # Not DTCE.
                 cwnd_safe = 1.08 * bdp
                 if delay_ratio > 1.55 or self.high_delay_streak >= 3:
                     cwnd_safe = 1.05 * bdp
                 elif delay_ratio > 1.35:
                     cwnd_safe = 1.08 * bdp
-                if t < self._oce_until and delay_ratio < 1.14:
+                if sse_ok and delay_ratio < 1.10:
+                    cwnd_tide = 1.45 * bdp
+                elif t < self._oce_until and delay_ratio < 1.14:
                     cwnd_tide = 1.42 * bdp
                 elif clean_boost or (
                     reclaim and delay_ratio < 1.15 and keel_ratio < 1.18
                 ):
-                    cwnd_tide = 1.38 * bdp
+                    cwnd_tide = 1.40 * bdp if pll_active else 1.38 * bdp
                 elif reclaim:
-                    cwnd_tide = 1.28 * bdp
+                    cwnd_tide = 1.30 * bdp if pll_active else 1.28 * bdp
                 elif delay_ratio < 1.18:
                     cwnd_tide = 1.32 * bdp
                 else:
                     cwnd_tide = 1.20 * bdp
-                cwnd_tide = min(cwnd_tide, 1.42 * bdp)
+                cwnd_tide = min(cwnd_tide, 1.45 * bdp if sse_ok else 1.42 * bdp)
                 would_tide = delay_clean
                 if would_tide and not lsg_ok:
                     self.lsg_clamps += 1
@@ -1179,6 +1273,9 @@ class LeoAwareCCA(BaseCCA):
                 if fly_tide:
                     target = cwnd_tide
                     self.dlc_tide_flights += 1
+                    if sse_ok and cwnd_tide >= 1.44 * bdp:
+                        self.sse_flights += 1
+                        self.mode = "halo_sse"
                 else:
                     target = cwnd_safe
             elif delay_ratio > 1.55 or self.high_delay_streak >= 3:
@@ -1223,6 +1320,8 @@ class LeoAwareCCA(BaseCCA):
             elif self.cwnd < target:
                 if self.fair_mode:
                     step = MSS * 0.45
+                elif pll_active and target >= 1.28 * bdp:
+                    step = MSS * 1.35
                 elif target >= 1.30 * bdp:
                     step = MSS * 1.20
                 elif reclaim:
@@ -1230,7 +1329,8 @@ class LeoAwareCCA(BaseCCA):
                 else:
                     step = MSS * 0.90
                 self.cwnd += step
-                self.mode = "cruise"
+                if self.mode != "halo_sse":
+                    self.mode = "pll_reclaim" if pll_active else "cruise"
             elif self.cwnd > target * 1.12:
                 self.cwnd -= MSS * (0.2 if self.fair_mode else 0.18)
                 self.mode = "cruise"
