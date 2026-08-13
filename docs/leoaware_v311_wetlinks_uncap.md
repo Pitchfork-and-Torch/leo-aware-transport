@@ -34,4 +34,18 @@ python3 -m experiments.test_wetlinks_integrity
 python3 -m experiments.run_wetlinks --tag 20260813-v311-wetlinks-uncap
 ```
 
+## Uncapped scorecard (gate)
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| CUBIC | 94.22 | 68.38 |
+| **BBRv3approx** | **240.48** | 71.38 |
+| LeoAware Crest | 239.72 | 70.38 |
+
+Terr 78.62. Crest gp **239.72 < 240.48 BBR** → **REJECT**.
+
+Uncap worked (w1/w2 ~387–397 Mbps vs ~190 at 250 KB). Both CCAs ~98% of
+oracle 244.85. Crest p95 is 1 ms better; Optimizer kill is gp vs BBR.
+Do not mix with capped footnote 156.70/63.98.
+
 Archive: `results/archive/20260813-v311-wetlinks-uncap/`

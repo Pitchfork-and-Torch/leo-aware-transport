@@ -1,0 +1,16 @@
+{
+  "era": "wetlinks_v1",
+  "n_windows": 5,
+  "oracle_gp_mean": 244.8531339200105,
+  "path_p95_mean": 60.7768,
+  "cap_weighted_p95_mean": 60.7768,
+  "gp_ge_75_possible": true,
+  "p95_le_138_8_possible": true,
+  "absolute_dual_gate_possible": true,
+  "soft_qir_alpha": 0.2,
+  "bars": {
+    "gp_mean": 75.0,
+    "p95_mean": 138.8
+  },
+  "note": "Geometry uses hold-expanded WetLinks slices (15s iperf mean + ping aggregate). Do not mix with starlink_v1 or ope_v36."
+}

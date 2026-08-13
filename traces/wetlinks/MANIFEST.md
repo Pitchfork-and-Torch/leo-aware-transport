@@ -79,9 +79,13 @@ not move p95 of 1800 slots. Source `ping_worst` is `path_max`.
 | BBRv3approx | 161.91 | 64.38 |
 | **LeoAware Crest** | **156.70** | **63.98** |
 
-Terr 78.62. **ACCEPT `wetlinks_v1` era only.** Not Current. 250 KB buffer
-send ceiling ≈ 200 Mbps (w1/w2). Full table:
+Terr 78.62. **ACCEPT `wetlinks_v1` era only** (250 KB / 200 Mbps ceiling).
+Not Current. w1/w2 sit ~190. Full table:
 `results/archive/20260813-v311-wetlinks/means_tables.md`.
+
+Uncap (1 MB / 800 Mbps, same windows): Crest 239.72/70.38 vs BBR
+240.48/71.38 — **REJECT** (Crest gp < BBR). Do not mix with 156.70.
+`results/archive/20260813-v311-wetlinks-uncap/`.
 
 ## Era
 

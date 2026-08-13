@@ -84,6 +84,10 @@ CCA (Crest, `dt=0.01`): gp **156.70** / p95 **63.98** / terr **78.62**.
 **ACCEPT `wetlinks_v1` only** — not Current, not a `starlink_v1` replacement.
 250 KB buffer caps send at ~200 Mbps (w1/w2 sit there).
 
+Uncap cook (1 MB, same windows): Crest **239.72/70.38** vs BBR **240.48/71.38**.
+**REJECT** (Crest gp < BBR). Footnote the 156.70 table; do not mix.
+See `docs/leoaware_v311_wetlinks_uncap.md`.
+
 ## Era rules
 
 - Label: `wetlinks_v1`.

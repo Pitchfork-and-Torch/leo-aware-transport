@@ -824,6 +824,20 @@ Product `LeoPathConfig.buffer_bytes` stays 250 KB. No CCA invention.
 Capacity is still UDP iperf mean, not dish PHY. Era `wetlinks_v1`
 research only. Not Current. Do not mix with 156.70, 82.09/76.26, or 58/152.
 
+### Uncapped table (gate)
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| CUBIC | 94.22 | 68.38 |
+| **BBRv3approx** | **240.48** | 71.38 |
+| LeoAware Crest | 239.72 | 70.38 |
+
+Terr 78.623. Crest 239.72 < BBR 240.48.
+
+**Decision: REJECT.** Uncap worked (w1/w2 ~387–397 vs ~190 at 250 KB).
+Crest still behind BBR at the uncapped ceiling. No CCA invention. No
+Current. No merge.
+
 Archive: `results/archive/20260813-v311-wetlinks-uncap/`  
 Design: `docs/leoaware_v311_wetlinks_uncap.md`
 
