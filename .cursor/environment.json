@@ -1,0 +1,4 @@
+{
+  "name": "LeoAware Transport",
+  "install": "pip3 install --user -r requirements.txt"
+}
