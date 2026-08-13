@@ -78,6 +78,7 @@ docs/
   ascent_d_orbcc_hybrid.md
   related_work.md
   cloudflare_starlink_bridge.md
+  leoaware_v312_zhao_zenodo23.md  # research-era ingest; not product lock
 ```
 
 ### Network model
@@ -226,7 +227,7 @@ See `docs/cloudflare_starlink_bridge.md` for a fuller write-up. Short version:
 
 - Packet-level fidelity is simplified (slot sim, not ns-3 / full QUIC state machine).
 - BBRv3approx is educational, not a production BBR port.
-- No real Starlink trace replay yet (hooks are ready for CSV RTT/capacity traces).
+- Real Starlink replay exists only as research-era `zhao_zenodo23` slices (`traces/zhao_zenodo23/`; geometry in `docs/leoaware_v312_zhao_zenodo23.md`). **Not** the product lock. Do not mix with synthetic `starlink_v1` / v3.9 Crest.
 - Multipath is optional/simplified (ISL delay only).
 - Not production-hardened (no pacing timer fidelity, ECN, or ACK aggregation).
 

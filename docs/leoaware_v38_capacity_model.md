@@ -54,6 +54,8 @@ python -m experiments.ope_feasibility --write-traces --profiles ope_v36,starlink
 
 Replay: `LeoPathConfig(trace_csv=..., duration_s=90, dt_s=0.05)`. Real Starlink CSVs (same columns) are the preferred next lock if available.
 
+Research-era ingest `zhao_zenodo23` (v3.12) vendors five calendar-quantile CSVs from the Zhao/Pan 2023 dump. That era is **not** a product lock and must not be mixed with `starlink_v1` Crest numbers. See `docs/leoaware_v312_zhao_zenodo23.md`.
+
 ## What this PR does not do
 
 - Does not change `run_suite` / `multi_seed` defaults.

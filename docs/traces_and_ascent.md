@@ -10,10 +10,14 @@ t_s,rtt_ms,capacity_mbps,loss_p,reconfig
 
 - `t_s`: time (seconds)
 - `rtt_ms` or `rtt_s`
-- `capacity_mbps` or `capacity_bps`
+- `capacity_mbps` or `capacity_bps` (alias: `cubic_goodput_mbps`)
 - optional `loss_p`, `reconfig` (0/1)
 
 Load via `LeoPathConfig(trace_csv="traces/....csv", dt_s=0.05)`.
+
+### Research era `zhao_zenodo23` (not a product lock)
+
+Five calendar-quantile slices under `traces/zhao_zenodo23/` from Zhao/Pan Zenodo DOI [10.5281/zenodo.10020034](https://doi.org/10.5281/zenodo.10020034) (CC-BY-4.0); paper [arXiv:2307.06863](https://arxiv.org/abs/2307.06863). `capacity_mbps` **is** TCP Cubic downlink goodput (`cubic_goodput_mbps` duplicated so the meaning is not silently renamed). Oracle = ∫ that series = **lower bound** on path capacity. SQM unknown. No invented HO flags (`reconfig=0`). Geometry: `docs/leoaware_v312_zhao_zenodo23.md`. Do not mix with `wetlinks_v1` or synthetic `starlink_v1` scorecards. Do not merge.
 
 Generate synthetic Starlink-class traces:
 

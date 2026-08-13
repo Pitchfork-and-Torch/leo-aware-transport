@@ -151,8 +151,11 @@ def load_trace_csv(path: str | Path) -> list[TraceSample]:
     Required columns (case-insensitive):
       t_s OR time_s OR t
       rtt_ms OR rtt_s
-      capacity_mbps OR capacity_bps OR bw_mbps
+      capacity_mbps OR capacity_bps OR bw_mbps OR cubic_goodput_mbps
     Optional: loss_p, reconfig (0/1)
+
+    `cubic_goodput_mbps` is a capacity alias used by the zhao_zenodo23 research
+    era: TCP Cubic downlink goodput (lower bound), not dish PHY / UDP sat.
     """
     path = Path(path)
     rows: list[TraceSample] = []
@@ -170,7 +173,13 @@ def load_trace_csv(path: str | Path) -> list[TraceSample]:
 
         t_key = col("t_s", "time_s", "t", "time")
         rtt_key = col("rtt_ms", "rtt_s", "rtt")
-        cap_key = col("capacity_mbps", "bw_mbps", "capacity_bps", "bw_bps")
+        cap_key = col(
+            "capacity_mbps",
+            "bw_mbps",
+            "capacity_bps",
+            "bw_bps",
+            "cubic_goodput_mbps",
+        )
         loss_key = col("loss_p", "loss", "loss_rate")
         rec_key = col("reconfig", "handover", "reconfigured")
         if not t_key or not rtt_key or not cap_key:

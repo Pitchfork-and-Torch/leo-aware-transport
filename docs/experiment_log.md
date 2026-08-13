@@ -576,6 +576,47 @@ Design: `docs/leoaware_v38_step0_feasibility.md`
 
 ---
 
+## v3.12 - zhao_zenodo23 ingest + geometry (research era only)
+
+**Date:** 2026-08-13  
+**Branch:** `cursor/v312-zhao-zenodo23-db91`  
+**Hypothesis:** A real Starlink access dump (Victoria Ethernet → Seattle PoP → GCP us-west1-a, concurrent IRTT 10 ms + iPerf3 TCP Cubic 100 ms) can be sliced into five calendar-quantile sessions and walked for absolute 75/138.8 geometry without CCA.
+
+### Method
+
+- Zenodo DOI 10.5281/zenodo.10020034 (CC-BY-4.0); paper arXiv:2307.06863 / PIMRC 2023.
+- Validity: complete IRTT+iperf JSON pair, duration ≥90 s. **716/716** pairs passed.
+- Quantile rule: **calendar start time**, nearest-rank q ∈ {0, 0.25, 0.50, 0.75, 1} (indices 0, 179, 358, 536, 715). Not goodput quantiles. Not cherry-picks.
+- Capacity = TCP Cubic downlink goodput (`cubic_goodput_mbps`). Oracle = ∫ series = **lower bound**. Not dish PHY. SQM **unknown**.
+- Resample dt=0.05: IRTT last-obs (10 ms), iperf hold-within-bin (100 ms). No invented HO flags.
+- **No CCA.** Dump not vendored (~9.7 GB deleted after slice).
+
+### Geometry (native IRTT p95; cubic-goodput oracle)
+
+| q | session | oracle cubic-gp | IRTT p95 |
+|---|---------|----------------:|---------:|
+| q00 | 2023-09-13 00:40Z | 36.00 | 54.23 |
+| q25 | 2023-09-14 06:30Z | 38.16 | 64.20 |
+| q50 | 2023-09-15 12:20Z | 36.43 | 395.35 |
+| q75 | 2023-09-16 18:00Z | 28.16 | 81.55 |
+| q100 | 2023-09-17 23:50Z | 13.11 | 138.37 |
+| **mean** | | **30.37** | **146.74** |
+
+### Gate
+
+| Check | Bar | Result |
+|-------|-----|--------|
+| gp mean | ≥ 75 | **INCONCLUSIVE** (lower bound 30.37, not FAIL) |
+| p95 mean | ≤ 138.8 | **FAIL** (146.74; q50 395 ms dominates; dropping it would be a cherry-pick) |
+
+**Decision: geometry landed. Do not merge. Do not mix with wetlinks_v1 or starlink_v1 Crest. Ping Optimizer. Do not start Crest/BBR on this era.**
+
+Archive: `results/archive/20260813-v312-zhao-zenodo23-geom/`  
+Design: `docs/leoaware_v312_zhao_zenodo23.md`  
+Slices: `traces/zhao_zenodo23/`
+
+---
+
 ## Open ideas (next loops)
 
 1. **Jon gate:** keep 75/138.8 and change default path (`starlink_v1` or real CSVs), or keep `ope_v36` and re-derive product bars.
