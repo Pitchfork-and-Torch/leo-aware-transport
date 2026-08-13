@@ -1,0 +1,29 @@
+{
+  "bars": {
+    "gp_mean": 75.0,
+    "p95_mean": 138.8
+  },
+  "soft_qir": {
+    "alpha": 0.2,
+    "cap_s": 0.025
+  },
+  "seeds": [
+    13,
+    7,
+    42,
+    99,
+    123
+  ],
+  "profiles": {
+    "starlink_v1": {
+      "oracle_gp_mean": 84.03254088295067,
+      "path_p95_mean": 70.7858934840344,
+      "cap_weighted_p95_mean": 70.7858934840344,
+      "gp_ge_75_possible": true,
+      "p95_le_138_8_possible": true,
+      "absolute_dual_gate_possible": true,
+      "soft_qir_alpha": 0.2,
+      "soft_qir_cap_s": 0.025
+    }
+  }
+}

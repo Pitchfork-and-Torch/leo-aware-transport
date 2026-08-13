@@ -1,0 +1,14 @@
+{
+  "decision": "REJECT",
+  "reason": "Failed to clear BBR on starlink_v1; Halo SSE WIP 81.99 gp regressed Crest 82.07. Absolute dual-gate still PASS but research goal FAIL.",
+  "product_cca": "v3.9 Crest",
+  "defaults": {
+    "use_halo": false,
+    "use_orbit_pulse": false,
+    "use_cfr": false
+  },
+  "docs": [
+    "docs/leoaware_v310_halo_reject.md",
+    "docs/leoaware_v310_starlink_v2.md"
+  ]
+}

@@ -7,6 +7,7 @@ ACK p95 is path-dominated. Does not retune CCA. Soft-QIR α is frozen.
 Usage:
   python -m experiments.ope_feasibility
   python -m experiments.ope_feasibility --profiles ope_v36,starlink_rtt,starlink_v1
+  python -m experiments.ope_feasibility --profiles starlink_v1 --seeds 13,7,42,99,123
   python -m experiments.ope_feasibility --with-cca --tag 20260812-v38-step0
 """
 from __future__ import annotations
@@ -42,9 +43,9 @@ def fast_ho_cfg(seed: int, profile: str) -> LeoPathConfig:
     )
 
 
-def geometry_table(profile: str) -> pd.DataFrame:
+def geometry_table(profile: str, seeds: tuple[int, ...] = SEEDS) -> pd.DataFrame:
     rows = []
-    for seed in SEEDS:
+    for seed in seeds:
         g = walk_path_geometry(fast_ho_cfg(seed, profile))
         rows.append(g)
     return pd.DataFrame(rows)
@@ -70,10 +71,10 @@ def verdict_from_geometry(df: pd.DataFrame) -> dict:
     }
 
 
-def run_cca_probe(profile: str) -> pd.DataFrame:
+def run_cca_probe(profile: str, seeds: tuple[int, ...] = SEEDS) -> pd.DataFrame:
     rows = []
     algos = [("BBRv3approx", BbrCCA), ("LeoAware", LeoAwareCCA)]
-    for seed in SEEDS:
+    for seed in seeds:
         cfg = fast_ho_cfg(seed, profile)
         for name, cls in algos:
             print(f"cca {profile} seed={seed} {name} ...", flush=True)
@@ -109,9 +110,15 @@ def main() -> None:
         help="also run BBR + LeoAware (confirms path-dominated p95)",
     )
     ap.add_argument("--tag", default="20260812-v38-step0")
+    ap.add_argument(
+        "--seeds",
+        default="13,7,42,99,123",
+        help="comma-separated seeds for the geometry walk",
+    )
     ap.add_argument("--write-traces", action="store_true")
     args = ap.parse_args()
     profiles = [p.strip() for p in args.profiles.split(",") if p.strip()]
+    seeds = tuple(int(x) for x in args.seeds.split(",") if x.strip())
     out_dir = ROOT / "results" / "archive" / args.tag
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -127,11 +134,11 @@ def main() -> None:
     geo_frames = []
     verdicts = {}
     for profile in profiles:
-        df = geometry_table(profile)
+        df = geometry_table(profile, seeds=seeds)
         geo_frames.append(df)
         v = verdict_from_geometry(df)
         verdicts[profile] = v
-        print(f"\n=== path geometry  profile={profile}  seeds={list(SEEDS)} ===")
+        print(f"\n=== path geometry  profile={profile}  seeds={list(seeds)} ===")
         cols = [
             "seed",
             "n_ho",
@@ -162,7 +169,7 @@ def main() -> None:
             {
                 "bars": {"gp_mean": GP_BAR, "p95_mean": P95_BAR},
                 "soft_qir": {"alpha": SOFT_QIR_ALPHA, "cap_s": SOFT_QIR_CAP_S},
-                "seeds": list(SEEDS),
+                "seeds": list(seeds),
                 "profiles": verdicts,
             },
             indent=2,
@@ -175,7 +182,7 @@ def main() -> None:
         # Default: CCA on the locked OPE profile. Opt-in profiles only if asked.
         cca_profiles = [p for p in profiles if p == "ope_v36"] or profiles[:1]
         for profile in cca_profiles:
-            cca_df = run_cca_probe(profile)
+            cca_df = run_cca_probe(profile, seeds=seeds)
             cca_frames.append(cca_df)
             print(f"\n=== CCA probe  profile={profile} ===")
             print(cca_df.to_string(index=False, float_format=lambda x: f"{x:.2f}"))
@@ -201,19 +208,29 @@ def main() -> None:
             )
         print(f"wrote traces under {tdir}")
 
-    locked = verdicts.get("ope_v36", next(iter(verdicts.values())))
-    print("\n=== Step 0 decision (ope_v36 lock) ===")
-    if not locked["absolute_dual_gate_possible"]:
+    ope = verdicts.get("ope_v36")
+    if ope:
+        print("\n=== Step 0 decision (ope_v36 research path) ===")
+        if not ope["absolute_dual_gate_possible"]:
+            print(
+                "ope_v36: absolute gp≥75 AND p95≤138.8 is not feasible. "
+                "This is the research relative-BBR era, not the product lock. "
+                "Product lock is starlink_v1 (see leo_cc/harness.py)."
+            )
+        else:
+            print("Geometry does not forbid the absolute bars on ope_v36.")
+    sv1 = verdicts.get("starlink_v1")
+    if sv1:
+        print("\n=== Product-era geometry (starlink_v1) ===")
         print(
-            "STOP CCA theater: absolute gp≥75 AND p95≤138.8 is not feasible "
-            "on the frozen OPE generative path. Escalate capacity/HO realism "
-            "to Jon. Relative≈BBR remains research-only."
+            f"oracle_gp={sv1['oracle_gp_mean']:.2f}  "
+            f"path_p95={sv1['path_p95_mean']:.2f}  "
+            f"absolute dual-gate possible={sv1['absolute_dual_gate_possible']}"
         )
-    else:
-        print(
-            "Geometry does not forbid the absolute bars. CCA chase (CA→DLC→LSG) "
-            "is still in play."
-        )
+        if sv1["absolute_dual_gate_possible"]:
+            print("verdict: geometry bars hold — proceed to CCA lock")
+        else:
+            print("verdict: geometry bars FAIL — STOP. Do not claim CCA lock.")
     print(f"Wrote {out_dir}")
 
 

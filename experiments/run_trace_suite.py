@@ -66,6 +66,9 @@ def main() -> None:
     base = LeoPathConfig(
         duration_s=90, handover_interval_s=12, handover_jitter_s=4, seed=13
     )
+    from leo_cc.harness import PRODUCT_PATH_PROFILE, apply_profile
+
+    base = apply_profile(base, PRODUCT_PATH_PROFILE)
     for name, cls in [("CUBIC", CubicCCA), ("BBRv3approx", BbrCCA)]:
         run(f"gen_fast/{name}", lambda c=cls: c(), base)
 
@@ -90,6 +93,7 @@ def main() -> None:
     )
 
     mcfg = LeoPathConfig(duration_s=90, handover_interval_s=25, seed=17)
+    mcfg = apply_profile(mcfg, PRODUCT_PATH_PROFILE)
     run("multi/LeoAware", lambda: LeoAwareCCA(), mcfg, n_flows=3)
     run(
         "multi/LeoAware_fair",

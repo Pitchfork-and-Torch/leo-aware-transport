@@ -547,7 +547,7 @@ Archive: `results/archive/20260812-v37-oce/`
 - Add ACK diagnostic `p95(rtt − path_base)` (does not replace absolute p95).
 - Oracle gp = ∫ capacity×(1−loss_p) dt. Path-base p95 from `walk_path_geometry`.
 
-### ope_v36 lock (suite default) - 90s leo_fast_ho seeds 13,7,42,99,123
+### ope_v36 research path - 90s leo_fast_ho seeds 13,7,42,99,123
 
 | | oracle gp | path p95 | LeoAware gp | LeoAware p95 | LeoAware p95 path | LeoAware p95 excess |
 |--|----------:|---------:|------------:|-------------:|------------------:|--------------------:|
@@ -557,13 +557,13 @@ Per-seed oracle / path p95: 13→70.11/141.4 · 7→57.77/136.0 · 42→53.29/18
 
 LeoAware is **97.2% of oracle** (headroom ~1.7 Mbps). Target 75 is +14.5 Mbps above the ceiling. Path-base p95 142.32 already exceeds 138.8 with zero queue.
 
-### Opt-in profiles (not default)
+### Opt-in profiles (Step 0; v3.9 promotes starlink_v1 to product lock)
 
 | profile | oracle gp | path p95 | 75/138.8 possible? |
 |---------|----------:|---------:|--------------------|
 | ope_v36 | 60.48 | 142.32 | **No** |
 | starlink_rtt | 60.07 | 70.79 | **No** (p95 yes, gp no) |
-| starlink_v1 | 84.03 | 70.79 | geometry only (not a CCA lock) |
+| starlink_v1 | 84.03 | 70.79 | geometry only (not a CCA lock in Step 0) |
 
 ### Decision
 
@@ -576,15 +576,281 @@ Design: `docs/leoaware_v38_step0_feasibility.md`
 
 ---
 
+## v3.9 Crest - starlink_v1 product-lock era (CCA chase)
+
+**Date:** 2026-08-12  
+**Branch:** `cursor/v39-starlink-v1-ae43`  
+**Hypothesis:** Keep absolute bars gp≥75 AND p95≤138.8. Switch the **product-lock path** to documented `starlink_v1` (new harness era). Chase CA-hard → DLC + LSG → freeze-only anticipator on that path. Never gate `ep:loss_burst`. No DTCE / ghost REPROBE / EpochMemory.
+
+### Era split
+
+| Era | Path | Gate |
+|-----|------|------|
+| Research | `ope_v36` | relative vs BBR (v3.7 research Current) |
+| **Product** | **`starlink_v1`** | **absolute 75 / 138.8 (v3.9 ACCEPT)** |
+| Next | real Starlink CSV | same bars unless re-derived |
+
+`multi_seed` / `run_suite` default `--path-profile starlink_v1`. Research: `--path-profile ope_v36`. Soft-QIR α frozen 0.20. Secondary metric: `p95(rtt − path_base)`.
+
+### Geometry gate (no CCA) — PASS
+
+90s `leo_fast_ho`, seeds 13,7,42,99,123, `starlink_v1`:
+
+| | oracle gp | path p95 |
+|--|----------:|---------:|
+| mean | **84.03** | **70.79** |
+| dual-gate possible | **True** | **True** |
+
+Per-seed oracle / path p95: 13→98.97/68.21 · 7→76.45/63.81 · 42→82.77/87.56 · 99→74.63/58.70 · 123→87.34/75.65
+
+Seed 99 oracle is 74.63 (below 75); the bar is the **mean**. Soft-QIR α=0.20. OPE identity on `starlink_v1` PASS (CUBIC=BBR=LeoAware HO/RTT). Archive: `results/archive/20260812-v39-geometry-gate/`
+
+### Code
+
+- `leo_cc/harness.py` — product vs research constants
+- `LeoAwareCCA` v3.9: CA-hard, Dual-Ledger Cruise, Local Surplus Guard, freeze-only anticipator
+- Step 0 tooling from PR #8 reused (path profiles, feasibility walk, excess-RTT)
+
+### Multi-seed lock (90s, seeds 13,7,42,99,123, endpoint) — ACCEPT
+
+`python -m experiments.multi_seed --tag 20260812-v39-starlink-v1` (CUBIC + BBRv3approx + LeoAware, same `starlink_v1` path).
+
+#### leo_fast_ho means
+
+| CCA | gp mean | gp std | p95 mean | p95 std | p95 path | p95 excess |
+|-----|--------:|-------:|---------:|--------:|---------:|-----------:|
+| CUBIC | 8.57 | 0.63 | 71.63 | 12.64 | 69.63 | 2.0 |
+| BBRv3approx | 82.44 | 9.70 | 76.66 | 13.39 | 70.79 | 9.6 |
+| **LeoAware v3.9** | **82.07** | 9.48 | **76.26** | 13.24 | 70.79 | 9.6 |
+
+Per-seed LeoAware gp / p95: 13→96.65/72.21 · 7→75.01/67.81 · 42→80.67/97.56 · 99→72.83/64.09 · 123→85.17/79.65
+
+Seed 99 gp 72.83 is below 75 (oracle 74.63 — near ceiling). The bar is the **mean**.
+
+#### Other scenarios
+
+| Scenario | CCA | gp mean | p95 mean |
+|----------|-----|--------:|---------:|
+| leo_single | CUBIC | 10.12 | 70.78 |
+| leo_single | BBRv3approx | 83.32 | 74.95 |
+| leo_single | LeoAware | 83.17 | 74.95 |
+| terrestrial | CUBIC | 13.30 | 42.0 |
+| terrestrial | BBRv3approx | 78.91 | 46.0 |
+| terrestrial | **LeoAware** | **78.62** | **46.0** |
+
+Terrestrial p95 46 ms is path 40 + soft-QIR sojourn (α=0.20), not the old path-only 40 ms floor.
+
+### Gates
+
+| Check | Bar | Result |
+|-------|-----|--------|
+| Geometry oracle gp | ≥ 75 | **84.03 PASS** |
+| Geometry path p95 | ≤ 138.8 | **70.79 PASS** |
+| LeoAware gp mean | ≥ 75 | **82.07 PASS** |
+| LeoAware p95 mean | ≤ 138.8 | **76.26 PASS** |
+| terrestrial gp | ≥ 77 | **78.62 PASS** |
+| OPE identity | CUBIC=BBR=LeoAware | **PASS** |
+| integrity | green | **PASS** (`test_ope_integrity`, `test_ascent_d_integrity`) |
+
+LeoAware is **97.7% of oracle** (headroom ~2.0 Mbps). Product PASS is **absolute**, not relative-to-BBR (LeoAware 82.07 vs BBR 82.44 — tied, honest).
+
+**Decision: ACCEPT v3.9 Crest** on synthetic `starlink_v1` (absolute dual-gate). **No Current bump. No paid landing. Do not merge without Jon.** Do not mix with `ope_v36` research Current (v3.7 58.78/152.1). Path is synthetic until CSV lock (`docs/starlink_csv_ingest.md`).
+
+Design: `docs/leoaware_v39_starlink_v1.md`  
+Eras: `docs/harness_eras.md`  
+CSV next: `docs/starlink_csv_ingest.md`  
+Archive: `results/archive/20260812-v39-starlink-v1/`
+
+---
+
+## v3.10 Halo / Pulse / CFR — REJECT (Crest stays)
+
+**Date:** 2026-08-13  
+**Branch:** `cursor/v310-halo-84b8`  
+**Hypothesis:** Close BBR gap / oracle headroom on `starlink_v1` with EpochMemory,
+HO-PLL, Soft Surplus Echo, Orbit Pulse, or Capacity Fade/Rise Echo.
+
+### Ablation (leo_fast_ho 90s, seeds 13,7,42,99,123)
+
+| Variant | gp mean | p95 mean | Δ vs BBR |
+|---------|--------:|---------:|---------:|
+| BBR | 82.439 | 76.664 | — |
+| Crest (flags off) | **82.089** | 76.264 | −0.35 |
+| Halo SSE WIP archive | 81.993 | 76.264 | −0.45 |
+| Pulse only | 82.037 | 76.264 | −0.40 |
+| Memory only | 81.876 | 76.264 | −0.56 |
+
+Softer REPROBE cuts and p90 cruise lift: no clear Pareto. Absolute bars still
+PASS under Halo WIP, but research goal (clear BBR) **FAIL**.
+
+**Decision: REJECT v3.10 CCA theater.** Defaults remain Crest
+(`use_halo=False`, `use_orbit_pulse=False`, `use_cfr=False`).  
+Design: `docs/leoaware_v310_halo_reject.md`  
+Archive: `results/archive/20260813-v310-halo/`
+
+## v3.10 SkyPulse PATHHINT (growth-freeze) - REJECT
+
+**Date:** 2026-08-13  
+**Branch:** `cursor/v310-halo-84b8`  
+**Hypothesis:** Existing ASCENT-D PATHHINT ingest + growth-freeze only (no
+hint REPROBE, no `ep:loss_burst` gate) is a Pareto vs Crest endpoint
+82.09/76.26 without regressing the endpoint table.
+
+### Endpoint (public default, unchanged)
+
+| | gp mean | p95 mean | terr |
+|--|--------:|---------:|-----:|
+| Crest / this tip | **82.089** | **76.264** | **78.623** |
+
+No regression.
+
+### Hybrid (`use_path_hints=True`, `hint_freeze_only=True`, `ascent_d`)
+
+| | gp mean | p95 mean | terr |
+|--|--------:|---------:|-----:|
+| Hybrid | 81.936 | 75.464 | 78.623 |
+| BBR | 82.439 | 76.664 | — |
+
+Ingest applied 14–16 frames/seed. Absolute bars PASS. Pareto vs Crest **FAIL**
+(p95 down on seed 42, gp down on every seed).
+
+**Decision: REJECT.** Public suite stays endpoint-only. Crest remains product.  
+Design: `docs/leoaware_v310_skypulse.md`  
+Archive: `results/archive/20260813-v310-skypulse/`
+
+---
+
+## v3.10-QSP - queue-sojourn pacing - REJECT
+
+**Date:** 2026-08-13  
+**Branch:** `cursor/v310-halo-84b8`  
+**Hypothesis:** Invert visible soft-QIR excess and discount pace only (α frozen
+0.20; no cruise-BDP raise) for a Pareto vs Crest 82.09/76.26.
+
+### Scorecard (starlink_v1, 90s, seeds 13,7,42,99,123)
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| Crest | 82.089 | 76.264 |
+| QSP on | 82.047 | 76.264 |
+| BBR | 82.439 | 76.664 |
+
+Terr 78.623 @ 46 ms (both). Absolute bars PASS. Pareto vs Crest **FAIL**
+(gp down, p95 flat — path-dominated).
+
+**Decision: REJECT.** `use_qsp=False`. Crest stays default.  
+Design: `docs/leoaware_v310_qsp_reject.md`  
+Archive: `results/archive/20260813-v310-qsp/`
+
+Skipped this loop: SkyPulse (assist), seed-99 hole (oracle 74.63 — geometry),
+real CSV (none in-repo), Halo/Pulse/EpochMemory (already REJECT).
+
+---
+
+### Side delivery: `starlink_v2` opt-in flicker
+
+Mid-epoch capacity steps (~2.8s) under OPE. First Crest probe: BBR 92.56 /
+Leo 91.97 (still behind). **Not a product lock.** Spec:
+`docs/leoaware_v310_starlink_v2.md`.
+
+---
+
+## v3.11 - WetLinks CSV lock (geometry first)
+
+**Date:** 2026-08-13  
+**Branch:** `cursor/v310-halo-84b8`  
+**Hypothesis:** Five cited WetLinks 90s slices in the existing CSV contract
+can decide whether gp≥75 AND p95≤138.8 are geometrically possible on a
+measured path — no CCA invention, no PATHHINT, no empty `traces/real/`.
+
+### Source
+
+[sys-uos/WetLinks](https://github.com/sys-uos/WetLinks) (Laniewski et al.,
+TMA 2024, CC BY-SA 4.0). `net_iperf` 15s UDP download mean →
+`capacity_mbps` (held 90s). `net_ping` avg → `rtt_ms`; one inferred 0.4s
+spike to `ping_worst` at t=12.0 when worst−avg ≥ 20 ms. Download of the
+merged analysis CSVs **succeeded** (not blocked).
+
+### Geometry (no CCA)
+
+| window | oracle gp | path p95 | path max |
+|--------|----------:|---------:|---------:|
+| w1 Enschede 2023-11-10 | 396.17 | 58.73 | 84.29 |
+| w2 Enschede 2024-02-15 | 405.07 | 52.10 | 105.08 |
+| w3 Osnabrück 2023-09-30 | 66.02 | 68.24 | 94.14 |
+| w4 Osnabrück 2023-12-20 | 193.42 | 64.86 | 109.87 |
+| w5 Osnabrück 2024-02-23 | 163.58 | 59.95 | 83.79 |
+| **mean** | **244.85** | **60.78** | — |
+
+**Geometry PASS** (mean gp≥75 and p95≤138.8). w3 oracle 66.02 is a real
+low-cap cycle; the gate is the five-window mean. Path p95 = `ping_avg`
+(0.4s spike does not move p95). 75s of each window is hold — oracle is
+inflated vs a true 90s continuous iperf.
+
+### CCA (product dt=0.01; 250 KB buffer ceiling ≈ 200 Mbps)
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| CUBIC | 38.46 | 63.58 |
+| BBRv3approx | 161.91 | 64.38 |
+| **LeoAware Crest** | **156.70** | **63.98** |
+
+Terr 78.623 @ 46 ms. Gates: gp≥75 **PASS**, p95≤138.8 **PASS**,
+terr≥77 **PASS**.
+
+**Decision: ACCEPT `wetlinks_v1` era only.** Not Current. No paid bump.
+Do not mix with `starlink_v1` 82.09/76.26 or `ope_v36` 58/152. Crest
+defaults unchanged. Product lock stays synthetic `starlink_v1`.
+
+A first `dt=0.05` probe printed ~29/71 — that is `8*buffer/dt` ≈ 40 Mbps
+starvation, not a CCA result. Archive reports the `dt=0.01` means.
+
+Design: `docs/leoaware_v311_wetlinks.md`  
+Windows: `traces/wetlinks/MANIFEST.md`  
+Archive: `results/archive/20260813-v311-wetlinks/`
+
+---
+
+## v3.11-uncap - WetLinks 1 MB buffer (Crest vs BBR)
+
+**Date:** 2026-08-13  
+**Branch:** `cursor/v310-halo-84b8`  
+**Hypothesis:** Capped Crest 156.70/63.98 is a 250 KB / 200 Mbps send
+ceiling, not a CCA result. Same 5 windows, Crest defaults, α=0.20,
+dt=0.01, buffer **1 MB** (ceiling 800 Mbps) for CUBIC+BBR+Crest. Kill if
+Crest gp mean < BBR.
+
+Product `LeoPathConfig.buffer_bytes` stays 250 KB. No CCA invention.
+Capacity is still UDP iperf mean, not dish PHY. Era `wetlinks_v1`
+research only. Not Current. Do not mix with 156.70, 82.09/76.26, or 58/152.
+
+### Uncapped table (gate)
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| CUBIC | 94.22 | 68.38 |
+| **BBRv3approx** | **240.48** | 71.38 |
+| LeoAware Crest | 239.72 | 70.38 |
+
+Terr 78.623. Crest 239.72 < BBR 240.48.
+
+**Decision: REJECT.** Uncap worked (w1/w2 ~387–397 vs ~190 at 250 KB).
+Crest still behind BBR at the uncapped ceiling. No CCA invention. No
+Current. No merge.
+
+Archive: `results/archive/20260813-v311-wetlinks-uncap/`  
+Design: `docs/leoaware_v311_wetlinks_uncap.md`
+
+---
+
 ## Open ideas (next loops)
 
-1. **Jon gate:** keep 75/138.8 and change default path (`starlink_v1` or real CSVs), or keep `ope_v36` and re-derive product bars.
-2. After a new path lock: CA → DLC → LSG (not before).
-3. Path-normalized latency `p95(rtt − path_base)` as a *secondary* queue metric (now implemented; still not the product gate).
-4. EpochMemory / HO-PLL once hop detection is less loss-burst-dependent.
-5. Per-RTT fairness clock for multi-flow (fair_mode still coarse).
-6. QUEUE-mode store-and-forward coupling with ASCENT-D.
-7. Full 5-seed ablation with ascent_d vs hybrid under suite durations (90s).
+1. Denser real Starlink CSVs (continuous 90s RTT+capacity, not hold-expanded 15s iperf).
+2. Instrument per-seed delivery traces on `starlink_v2` before more fade/rise knobs.
+3. Path-normalized latency `p95(rtt − path_base)` as a *secondary* queue metric (implemented; still not the product gate).
+4. Per-RTT fairness clock for multi-flow (fair_mode still coarse).
+5. QUEUE-mode store-and-forward coupling with ASCENT-D.
+6. Full 5-seed ablation with ascent_d vs hybrid under suite durations (90s).
 
 ---
 

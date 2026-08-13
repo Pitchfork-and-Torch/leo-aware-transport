@@ -2,12 +2,16 @@
 """
 Reproducible experiment suite for LEO-aware congestion control.
 
+Product-lock default path is starlink_v1. Research: --path-profile ope_v36.
+
 Usage:
   pip install -r requirements.txt
   python -m experiments.run_suite
+  python -m experiments.run_suite --path-profile ope_v36
 """
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -23,6 +27,7 @@ from leo_cc.ccas import CubicCCA, BbrCCA, LeoAwareCCA
 from leo_cc.sim import run_sim
 from leo_cc.metrics import summarize_result, jain_fairness
 from leo_cc.plotting import plot_timeseries, plot_throughput_latency
+from leo_cc.harness import PRODUCT_PATH_PROFILE, apply_profile, resolve_path_profile
 
 
 RESULTS = ROOT / "results"
@@ -36,23 +41,47 @@ def run_scenario(name: str, cca_cls, cfg: LeoPathConfig, n_flows: int = 1):
 
 
 def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument(
+        "--path-profile",
+        default=PRODUCT_PATH_PROFILE,
+        help="starlink_v1 (product lock, default) or ope_v36 (research)",
+    )
+    args = ap.parse_args()
+    path_profile = resolve_path_profile(args.path_profile)
     RESULTS.mkdir(parents=True, exist_ok=True)
-    rows = []
+    print(f"run_suite path_profile={path_profile}", flush=True)
 
     scenarios = [
         (
             "leo_single",
-            LeoPathConfig(duration_s=90, handover_interval_s=22, seed=11, terrestrial=False),
+            apply_profile(
+                LeoPathConfig(
+                    duration_s=90, handover_interval_s=22, seed=11, terrestrial=False
+                ),
+                path_profile,
+            ),
             1,
         ),
         (
             "leo_fast_ho",
-            LeoPathConfig(duration_s=90, handover_interval_s=12, handover_jitter_s=4, seed=13),
+            apply_profile(
+                LeoPathConfig(
+                    duration_s=90,
+                    handover_interval_s=12,
+                    handover_jitter_s=4,
+                    seed=13,
+                ),
+                path_profile,
+            ),
             1,
         ),
         (
             "leo_multi",
-            LeoPathConfig(duration_s=90, handover_interval_s=25, seed=17),
+            apply_profile(
+                LeoPathConfig(duration_s=90, handover_interval_s=25, seed=17),
+                path_profile,
+            ),
             3,
         ),
         (
@@ -62,11 +91,14 @@ def main() -> None:
         ),
         (
             "leo_isl",
-            LeoPathConfig(
-                duration_s=90,
-                handover_interval_s=20,
-                seed=23,
-                isl_enabled=True,
+            apply_profile(
+                LeoPathConfig(
+                    duration_s=90,
+                    handover_interval_s=20,
+                    seed=23,
+                    isl_enabled=True,
+                ),
+                path_profile,
             ),
             1,
         ),
@@ -79,6 +111,7 @@ def main() -> None:
     ]
 
     summary = []
+    rows = []
     for scen_name, cfg, n_flows in scenarios:
         for algo_name, cls in algos:
             tag = f"{scen_name}_{algo_name}"
@@ -90,11 +123,14 @@ def main() -> None:
                 row = {
                     "scenario": scen_name,
                     "cca": algo_name,
+                    "path_profile": cfg.path_profile,
                     "flow": m.name,
                     "goodput_mbps": m.goodput_bps / 1e6,
                     "avg_rtt_ms": m.avg_rtt_s * 1000,
                     "p95_rtt_ms": m.p95_rtt_s * 1000,
                     "p99_rtt_ms": m.p99_rtt_s * 1000,
+                    "p95_path_rtt_ms": m.p95_path_rtt_s * 1000,
+                    "p95_excess_rtt_ms": m.p95_excess_rtt_s * 1000,
                     "loss_rate": m.loss_rate,
                     "utilization": m.utilization,
                     "jain_fairness": fair,

@@ -1,0 +1,54 @@
+{
+  "era": "wetlinks_v1",
+  "product_lock_era": "starlink_v1",
+  "cook": "wetlinks_uncap",
+  "decision": "REJECT",
+  "soft_qir_alpha": 0.2,
+  "buffer_bytes": 1000000,
+  "send_ceiling_mbps": 800.0,
+  "capped_footnote": {
+    "buffer_bytes": 250000,
+    "send_ceiling_mbps": 200.0,
+    "LeoAware_gp_mean": 156.7,
+    "LeoAware_p95_mean": 63.98,
+    "BBR_gp_mean": 161.91,
+    "note": "250 KB ceiling cook \u2014 footnote only. Not this gate."
+  },
+  "geometry": {
+    "era": "wetlinks_v1",
+    "n_windows": 5,
+    "oracle_gp_mean": 244.8531339200105,
+    "path_p95_mean": 60.7768,
+    "cap_weighted_p95_mean": 60.7768,
+    "gp_ge_75_possible": true,
+    "p95_le_138_8_possible": true,
+    "absolute_dual_gate_possible": true,
+    "soft_qir_alpha": 0.2,
+    "bars": {
+      "gp_mean": 75.0,
+      "p95_mean": 138.8
+    },
+    "note": "Geometry uses hold-expanded WetLinks slices (15s iperf mean + ping aggregate). Do not mix with starlink_v1 or ope_v36."
+  },
+  "windows": {
+    "LeoAware_gp_mean": 239.72185599999997,
+    "LeoAware_p95_mean": 70.37680000000236,
+    "BBR_gp_mean": 240.48347733333335,
+    "BBR_p95_mean": 71.37680000000215,
+    "CUBIC_gp_mean": 94.22124800000002,
+    "CUBIC_p95_mean": 68.37680000000049
+  },
+  "terrestrial": {
+    "LeoAware_gp_mean": 78.6232,
+    "LeoAware_p95_mean": 46.000000000000945,
+    "note": "synthetic terrestrial control at product 250 KB; not a WetLinks window"
+  },
+  "gates": {
+    "geometry_dual_gate": true,
+    "crest_gp_clears_bbr": false,
+    "gp_ge_75": true,
+    "p95_le_138_8": true,
+    "terr_ge_77": true
+  },
+  "note": "wetlinks_v1 research era, uncapped-buffer cook. Gate is this table (Crest vs BBR at the same 1 MB buffer). Do not mix with capped 156.70/63.98, starlink_v1 82.09/76.26, or ope_v36 58/152. dt=0.01; buffer=1000000 B; send ceiling 800 Mbps. Capacity is UDP iperf mean, not dish PHY. Crest defaults unchanged. No Current bump. No merge."
+}

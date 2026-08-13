@@ -1,0 +1,6 @@
+scenario,cca,goodput_mean,p95_mean,note
+leo_fast_ho,BBRv3approx,82.439,76.664,research
+leo_fast_ho,LeoAware_Crest,82.089,76.264,baseline defaults
+leo_fast_ho,LeoAware_QSP,82.047,76.264,use_qsp=True cook
+terrestrial,LeoAware_Crest,78.623,46.000,soft-QIR
+terrestrial,LeoAware_QSP,78.623,46.000,soft-QIR

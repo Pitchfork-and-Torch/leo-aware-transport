@@ -111,12 +111,45 @@ def test_role_reject():
     print("ok: role reject")
 
 
+def test_skypulse_freeze_only_no_hint_reprobe():
+    """Growth-freeze ingest must not cut via hint REPROBE."""
+    cca = LeoAwareCCA(use_path_hints=True, hint_freeze_only=True)
+    rec0 = cca.reconfigs_detected
+    frame = encode_path_hint_ascent_d(
+        reconfigured=True, capacity_bps=80e6, epoch=4, role="pilot"
+    )
+    stats = IngestStats()
+    ingest_path_hint_stream(cca, frame, now=1.0, stats=stats)
+    assert stats.applied == 1
+    assert cca.reconfigs_detected == rec0
+    assert cca.ascent_d_applied == 1
+    print("ok: SkyPulse freeze-only skips hint REPROBE")
+
+
+def test_skypulse_does_not_gate_loss_burst():
+    """Freeze window must not suppress ep:loss_burst."""
+    cca = LeoAwareCCA(use_path_hints=True, hint_freeze_only=True)
+    cca.min_rtt = 0.05
+    cca.rtt_hist.extend([0.05, 0.051, 0.049, 0.05])
+    cca.last_reconfig_t = -10.0
+    cca.freeze_until = 10.0
+    rec0 = cca.reconfigs_detected
+    t = 5.0
+    cca.on_loss(t, 1200, congestive=False)
+    cca.on_loss(t + 0.05, 1200, congestive=False)
+    assert cca.reconfigs_detected == rec0 + 1, (cca.reconfigs_detected, cca.mode)
+    assert cca.mode == "ser:loss_burst" or str(cca.mode).startswith("ser"), cca.mode
+    print("ok: SkyPulse freeze does not gate ep:loss_burst")
+
+
 if __name__ == "__main__":
     test_roundtrip_ok()
     test_erase_on_corruption()
     test_fail_closed_no_rate_change()
     test_plain_unit()
     test_role_reject()
+    test_skypulse_freeze_only_no_hint_reprobe()
+    test_skypulse_does_not_gate_loss_burst()
     from experiments.test_ope_integrity import run_all as run_ope
     run_ope()
     print("ALL ASCENT-D integrity tests passed")

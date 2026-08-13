@@ -14,13 +14,17 @@ from leo_cc.ccas import CubicCCA, LeoAwareCCA, BbrCCA
 from leo_cc.sim import run_sim
 from leo_cc.metrics import summarize_result
 from leo_cc.plotting import plot_timeseries
+from leo_cc.harness import PRODUCT_PATH_PROFILE, apply_profile
 
 RESULTS = ROOT / "results"
 
 
 def main() -> None:
     RESULTS.mkdir(parents=True, exist_ok=True)
-    cfg = LeoPathConfig(duration_s=60, handover_interval_s=18, seed=42)
+    cfg = apply_profile(
+        LeoPathConfig(duration_s=60, handover_interval_s=18, seed=42),
+        PRODUCT_PATH_PROFILE,
+    )
     for name, cls in [("CUBIC", CubicCCA), ("BBRv3approx", BbrCCA), ("LeoAware", LeoAwareCCA)]:
         print(f"demo {name} ...")
         res = run_sim(lambda c=cls: c(), cfg=cfg, n_flows=1)
