@@ -183,23 +183,7 @@ Means only - do not market peaks.
 
 `python -m experiments.multi_seed` defaults to **`starlink_v1`**. Research: `--path-profile ope_v36`.
 
-#### Current (product): LeoAware v3.9 Crest on `starlink_v1`
-
-OPE-fair timeline (CUBIC = BBR = LeoAware HO/RTT). Soft-QIR α=0.20. Means, not peaks.
-
-| CCA | Goodput mean | p95 mean | Notes |
-|-----|-------------:|---------:|-------|
-| CUBIC | 8.57 | 71.63 | Collapses under mobility |
-| BBRv3approx | 82.44 | 76.66 | same orbit as LeoAware |
-| **LeoAware v3.9 Crest** | **82.07** | **76.26** | **absolute dual-gate PASS** |
-
-Gates: gp **82.07 ≥ 75**, p95 **76.26 ≤ 138.8**, terr **78.62 ≥ 77** (p95 46 ms = path 40 + QIR). Geometry oracle 84.03 / path p95 70.79. LeoAware is ~97.7% of oracle.
-
-Product PASS is **absolute**, not relative-to-BBR. LeoAware and BBR are tied on this path (honest; not a cherry-pick). Do not mix these numbers with `ope_v36` ~58/152. Synthetic path — real Starlink CSVs next: `docs/starlink_csv_ingest.md`. No paid OrbitStack landing bump (copy must say synthetic until CSV lock).
-
-Design: `docs/leoaware_v39_starlink_v1.md`. Archive: `results/archive/20260812-v39-starlink-v1/`.
-
-#### Current (research): LeoAware v3.7 OCE on `ope_v36`
+#### Current: LeoAware v3.7 OCE on `ope_v36`
 
 OPE-fair timeline (path identity identical across CCAs).
 
@@ -214,6 +198,20 @@ OPE-fair timeline (path identity identical across CCAs).
 v3.7 dual gate is **relative to BBR on the OPE-fair path** (research-only). Coupled-era absolute bars (gp≥75 / p95≤138.8) mixed different orbits per CCA and are not comparable.
 
 **v3.8 Step 0:** on `ope_v36` those absolute bars are **geometrically impossible** (oracle gp mean 60.48; path-base p95 mean 142.32). LeoAware is already ~97% of oracle. See `docs/leoaware_v38_step0_feasibility.md`. Do not market +0.5 vs BBR as a paid Optimizer breakthrough.
+
+#### v3.9 WIP scorecard on `starlink_v1` (not Current)
+
+OPE-fair, same path for CUBIC + BBRv3approx + LeoAware. Soft-QIR α=0.20. Means, not peaks. **Not a Current bump. No paid landing copy.**
+
+| CCA | Goodput mean | p95 mean | Notes |
+|-----|-------------:|---------:|-------|
+| CUBIC | 8.57 | 71.63 | Collapses under mobility |
+| BBRv3approx | 82.44 | 76.66 | same orbit as LeoAware |
+| **LeoAware v3.9 Crest** | **82.07** | **76.26** | absolute dual-gate on synthetic path |
+
+Gates (this PR, pending Jon): gp **82.07 ≥ 75**, p95 **76.26 ≤ 138.8**, terr **78.62 ≥ 77** (p95 46 ms = path 40 + QIR). Geometry oracle 84.03 / path p95 70.79. Do not mix with `ope_v36` ~58/152.
+
+Design: `docs/leoaware_v39_starlink_v1.md`. Archive: `results/archive/20260812-v39-starlink-v1/`. CSV next: `docs/starlink_csv_ingest.md`.
 
 ### Hybrid fuse ablation (fast, seeds 13+7; not the v3.9 product lock)
 
@@ -234,11 +232,11 @@ Integrity: `python -m experiments.test_ascent_d_integrity` (green).
 | leo_single | LeoAware | 71.88 | 111.9 |
 | terrestrial | LeoAware | 77.86 | 40.0 |
 
-v3.9 Crest **product** Current: CA-hard + DLC + LSG + freeze-only anticipator on `starlink_v1` (absolute 82.07 / 76.26).  
-v3.7 OCE **research** Current: Orbit Capacity Echo + SER-lite on `ope_v36`.  
+v3.7 OCE Current: Orbit Capacity Echo + SER-lite on `ope_v36`.  
+v3.9 Crest is **WIP / not Current** until Jon merges: `docs/leoaware_v39_starlink_v1.md`.  
 v3.3-A rails retained: hybrid fuse, ASCENT-D erase-on-fail.  
-Log: `docs/experiment_log.md`. Design: `docs/leoaware_v39_starlink_v1.md` / `docs/leoaware_v37_oce.md`.  
-Archives: `results/archive/20260812-v39-starlink-v1/`, `results/archive/20260812-v37-oce/`.  
+Log: `docs/experiment_log.md`. Design: `docs/leoaware_v37_oce.md`.  
+Archive: `results/archive/20260812-v37-oce/`.  
 v3.8 Step 0: `docs/leoaware_v38_step0_feasibility.md`.  
 Eras: `docs/harness_eras.md`. CSV next: `docs/starlink_csv_ingest.md`.
 
@@ -246,9 +244,9 @@ Reproduce:
 
 ```bash
 python -m experiments.test_ascent_d_integrity
-python -m experiments.ope_feasibility
+python -m experiments.ope_feasibility --profiles starlink_v1 --seeds 13,7,42,99,123
 python -m experiments.run_suite
-python -m experiments.multi_seed
+python -m experiments.multi_seed --path-profile starlink_v1 --seeds 13,7,42,99,123 --tag 20260812-v39-starlink-v1
 python -m experiments.multi_seed --path-profile ope_v36
 python -m experiments.run_ablation --fast --seeds 13,7
 # inspect results/summary.csv and plots

@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-12  
 **Branch:** `cursor/v39-starlink-v1-ae43`  
-**Decision:** **ACCEPT** absolute dual-gate on `starlink_v1` (means: gp 82.07 / p95 76.26 / terr 78.62).  
+**Decision:** **ACCEPT** absolute dual-gate on `starlink_v1` (means: gp 82.07 / p95 76.26 / terr 78.62). **Not Current. No paid bump. Do not merge without Jon.**  
 **Scope:** New harness era. Product lock is synthetic `starlink_v1` until CSV ingest.
 
 ## Decision that created this era

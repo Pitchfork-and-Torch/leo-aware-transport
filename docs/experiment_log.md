@@ -654,7 +654,7 @@ Terrestrial p95 46 ms is path 40 + soft-QIR sojourn (α=0.20), not the old path-
 
 LeoAware is **97.7% of oracle** (headroom ~2.0 Mbps). Product PASS is **absolute**, not relative-to-BBR (LeoAware 82.07 vs BBR 82.44 — tied, honest).
 
-**Decision: ACCEPT v3.9 Crest** as the `starlink_v1` product lock. Do not mix with `ope_v36` research Current (v3.7 58.78/152.1). No paid OrbitStack landing bump — path is synthetic until CSV lock (`docs/starlink_csv_ingest.md`). Do not merge without Jon.
+**Decision: ACCEPT v3.9 Crest** on synthetic `starlink_v1` (absolute dual-gate). **No Current bump. No paid landing. Do not merge without Jon.** Do not mix with `ope_v36` research Current (v3.7 58.78/152.1). Path is synthetic until CSV lock (`docs/starlink_csv_ingest.md`).
 
 Design: `docs/leoaware_v39_starlink_v1.md`  
 Eras: `docs/harness_eras.md`  
