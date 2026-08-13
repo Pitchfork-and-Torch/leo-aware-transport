@@ -40,8 +40,15 @@ def main() -> None:
     p.add_argument("--terrestrial", action="store_true")
     p.add_argument("--isl", action="store_true")
     p.add_argument("--hints", action="store_true", help="LeoAware only: use path hints")
+    p.add_argument(
+        "--path-profile",
+        default="starlink_v1",
+        help="starlink_v1 (product) or ope_v36 (research)",
+    )
     p.add_argument("--out", type=Path, default=ROOT / "results" / "cli_explore.png")
     args = p.parse_args()
+
+    from leo_cc.harness import apply_profile, resolve_path_profile
 
     cfg = LeoPathConfig(
         duration_s=args.duration,
@@ -50,6 +57,8 @@ def main() -> None:
         terrestrial=args.terrestrial,
         isl_enabled=args.isl,
     )
+    if not args.terrestrial:
+        cfg = apply_profile(cfg, resolve_path_profile(args.path_profile))
 
     def factory():
         if args.cca == "LeoAware":

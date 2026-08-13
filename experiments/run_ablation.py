@@ -32,6 +32,7 @@ from leo_cc.network import LeoPathConfig
 from leo_cc.ccas import CubicCCA, BbrCCA, LeoAwareCCA
 from leo_cc.sim import run_sim
 from leo_cc.metrics import summarize_result, jain_fairness
+from leo_cc.harness import PRODUCT_PATH_PROFILE, apply_profile, resolve_path_profile
 
 
 RESULTS = ROOT / "results" / "ablation"
@@ -109,7 +110,13 @@ def main() -> None:
         "--variants",
         default="endpoint,ascent_plain,ascent_d,ascent_d_noisy,orb,hybrid,bbr,cubic",
     )
+    ap.add_argument(
+        "--path-profile",
+        default=PRODUCT_PATH_PROFILE,
+        help="starlink_v1 (product lock, default) or ope_v36 (research)",
+    )
     args = ap.parse_args()
+    path_profile = resolve_path_profile(args.path_profile)
     seeds = [int(x) for x in args.seeds.split(",") if x.strip()]
     variants = [v.strip() for v in args.variants.split(",") if v.strip()]
     duration = 45.0 if args.fast else 90.0
@@ -117,19 +124,25 @@ def main() -> None:
     scenarios = [
         (
             "leo_fast_ho",
-            lambda seed: LeoPathConfig(
-                duration_s=duration,
-                handover_interval_s=12,
-                handover_jitter_s=4,
-                seed=seed,
+            lambda seed: apply_profile(
+                LeoPathConfig(
+                    duration_s=duration,
+                    handover_interval_s=12,
+                    handover_jitter_s=4,
+                    seed=seed,
+                ),
+                path_profile,
             ),
         ),
         (
             "leo_single",
-            lambda seed: LeoPathConfig(
-                duration_s=duration,
-                handover_interval_s=22,
-                seed=seed,
+            lambda seed: apply_profile(
+                LeoPathConfig(
+                    duration_s=duration,
+                    handover_interval_s=22,
+                    seed=seed,
+                ),
+                path_profile,
             ),
         ),
         (

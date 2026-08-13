@@ -69,9 +69,10 @@ class LeoPathConfig:
     freeze_trail_s: float = 0.18
     # Optional CSV trace path (relative or absolute)
     trace_csv: Optional[str] = None
-    # Path generative profile. Default ope_v36 is frozen (suite / product lock).
-    # starlink_rtt / starlink_v1 are opt-in realism probes — they must not
-    # silently replace the OPE-era lock.
+    # Generative profile. Default ope_v36 is the *frozen research* identity
+    # (v3.6/v3.7 relative-BBR era). Product-lock harnesses (multi_seed /
+    # run_suite) pass starlink_v1 explicitly — see leo_cc/harness.py.
+    # Do not silently retune ope_v36 draws.
     path_profile: str = "ope_v36"
 
 
@@ -84,9 +85,12 @@ class TraceSample:
     reconfig: bool
 
 
-# Opt-in Starlink-inspired capacity band (starlink_v1 only). Not the suite default.
+# starlink_v1 product-lock capacity band (cruise RTT model is in _draw_epoch_rtt_cap).
 STARLINK_V1_CAP_MIN_BPS = 40e6
 STARLINK_V1_CAP_MAX_BPS = 150e6
+# starlink_v2: same band/RTT as v1, plus mid-epoch capacity steps (opt-in research).
+STARLINK_V2_FLICKER_INTERVAL_S = 2.8
+STARLINK_V2_FLICKER_JITTER_S = 1.2
 
 
 def _pct(xs: list[float], p: float) -> float:
@@ -142,6 +146,7 @@ def walk_path_geometry(cfg: LeoPathConfig) -> dict:
         "cap_weighted_p95_ms": _pct(weighted, 95) * 1000,
         "frac_cap_ge_75": sum(1 for c in caps if c >= 75e6) / n,
         "mean_loss_p": sum(losses) / n,
+        "trace_csv": cfg.trace_csv,
     }
 
 
@@ -271,7 +276,9 @@ class LeoPath:
         self._next_cap = 0.0
         self._ho_spike_until = -1.0
         self._ho_spike_s = 0.0
+        self._next_flicker = float("inf")
         self.handover_times: list[float] = []
+        self.flicker_times: list[float] = []
         self._trace: Optional[list[TraceSample]] = None
         self._trace_i = 0
         if cfg.trace_csv:
@@ -285,13 +292,24 @@ class LeoPath:
             self._rtt = 0.04
             self._cap = 80e6
             self._next_ho = float("inf")
-        elif (cfg.path_profile or "ope_v36").lower() == "starlink_v1" and not cfg.trace_csv:
+        elif (cfg.path_profile or "ope_v36").lower() in (
+            "starlink_v1",
+            "starlink_v2",
+        ) and not cfg.trace_csv:
             self._cap = (STARLINK_V1_CAP_MIN_BPS + STARLINK_V1_CAP_MAX_BPS) / 2
+            if (cfg.path_profile or "").lower() == "starlink_v2":
+                self._next_flicker = self._sample_flicker_time(0.0)
 
     def _sample_ho_time(self, after: float) -> float:
         c = self.cfg
         return after + c.handover_interval_s + self.rng.uniform(
             -c.handover_jitter_s, c.handover_jitter_s
+        )
+
+    def _sample_flicker_time(self, after: float) -> float:
+        """Next mid-epoch capacity step (starlink_v2). Consumes path.rng."""
+        return after + STARLINK_V2_FLICKER_INTERVAL_S + self.rng.uniform(
+            -STARLINK_V2_FLICKER_JITTER_S, STARLINK_V2_FLICKER_JITTER_S
         )
 
     def _draw_epoch_rtt_cap(self) -> tuple[float, float]:
@@ -302,7 +320,7 @@ class LeoPath:
         """
         c = self.cfg
         profile = (c.path_profile or "ope_v36").lower()
-        if profile in ("starlink_rtt", "starlink_v1"):
+        if profile in ("starlink_rtt", "starlink_v1", "starlink_v2"):
             # Cruise RTT in a Starlink-like 40-75 ms band; rare sat ~50-100 ms.
             # HO transients are applied separately (not epoch-sticky).
             rtt = 0.030 + self.rng.uniform(0.010, 0.045)
@@ -311,10 +329,14 @@ class LeoPath:
             if c.isl_enabled:
                 rtt += c.isl_extra_rtt_s * self.rng.uniform(0.5, 2.0)
             cap_lo = (
-                STARLINK_V1_CAP_MIN_BPS if profile == "starlink_v1" else c.capacity_min_bps
+                STARLINK_V1_CAP_MIN_BPS
+                if profile in ("starlink_v1", "starlink_v2")
+                else c.capacity_min_bps
             )
             cap_hi = (
-                STARLINK_V1_CAP_MAX_BPS if profile == "starlink_v1" else c.capacity_max_bps
+                STARLINK_V1_CAP_MAX_BPS
+                if profile in ("starlink_v1", "starlink_v2")
+                else c.capacity_max_bps
             )
             cap = self.rng.uniform(cap_lo, cap_hi)
             return rtt, cap
@@ -325,6 +347,10 @@ class LeoPath:
             rtt += c.isl_extra_rtt_s * self.rng.uniform(0.5, 2.0)
         cap = self.rng.uniform(c.capacity_min_bps, c.capacity_max_bps)
         return rtt, cap
+
+    def _draw_flicker_cap(self) -> float:
+        """Mid-epoch capacity redraw (no HO / no loss burst). starlink_v2 only."""
+        return self.rng.uniform(STARLINK_V1_CAP_MIN_BPS, STARLINK_V1_CAP_MAX_BPS)
 
     def _peek_next_path(self) -> tuple[float, float]:
         """Non-consuming peek of next hop RTT/cap (honest ASCENT freeze-lead).
@@ -343,7 +369,7 @@ class LeoPath:
         self.handover_times.append(self.t)
         self._rtt, self._cap = self._draw_epoch_rtt_cap()
         profile = (c.path_profile or "ope_v36").lower()
-        if profile in ("starlink_rtt", "starlink_v1"):
+        if profile in ("starlink_rtt", "starlink_v1", "starlink_v2"):
             # Brief HO RTT spike (loss window), not a 12s high-RTT epoch.
             self._ho_spike_s = self.rng.uniform(0.020, 0.055)
             self._ho_spike_until = self.t + c.reconfig_loss_window_s
@@ -354,6 +380,9 @@ class LeoPath:
         self._reconfig_until = self.t + c.reconfig_loss_window_s
         self._freeze_until = self.t + c.freeze_trail_s
         self._next_ho = self._sample_ho_time(self.t)
+        if profile == "starlink_v2":
+            # Reschedule mid-epoch flickers after the hop (path.rng order fixed).
+            self._next_flicker = self._sample_flicker_time(self.t)
 
     def _step_trace(self) -> PathState:
         assert self._trace is not None
@@ -423,12 +452,23 @@ class LeoPath:
             self._do_reconfigure()
             reconfigured = True
 
+        profile = (c.path_profile or "ope_v36").lower()
+        # starlink_v2: abrupt mid-epoch capacity steps (not HO; no loss burst).
+        # Stresses BBR stale max-filter; LeoAware delivery-collapse can react.
+        if (
+            not c.terrestrial
+            and profile == "starlink_v2"
+            and self.t >= self._next_flicker
+        ):
+            self._cap = self._draw_flicker_cap()
+            self.flicker_times.append(self.t)
+            self._next_flicker = self._sample_flicker_time(self.t)
+
         if not c.terrestrial:
             flicker = 1.0 + 0.03 * math.sin(self.t * 1.7 + self.epoch)
-            profile = (c.path_profile or "ope_v36").lower()
             cap_floor = (
                 STARLINK_V1_CAP_MIN_BPS * 0.5
-                if profile == "starlink_v1"
+                if profile in ("starlink_v1", "starlink_v2")
                 else c.capacity_min_bps * 0.5
             )
             cap = max(cap_floor, self._cap * flicker)
