@@ -586,8 +586,8 @@ Design: `docs/leoaware_v38_step0_feasibility.md`
 
 | Era | Path | Gate |
 |-----|------|------|
-| Research | `ope_v36` | relative vs BBR (v3.7 Current until this PR ACCEPTs) |
-| **Product** | **`starlink_v1`** | **absolute 75 / 138.8** |
+| Research | `ope_v36` | relative vs BBR (v3.7 research Current) |
+| **Product** | **`starlink_v1`** | **absolute 75 / 138.8 (v3.9 ACCEPT)** |
 | Next | real Starlink CSV | same bars unless re-derived |
 
 `multi_seed` / `run_suite` default `--path-profile starlink_v1`. Research: `--path-profile ope_v36`. Soft-QIR α frozen 0.20. Secondary metric: `p95(rtt − path_base)`.
@@ -611,15 +611,55 @@ Seed 99 oracle is 74.63 (below 75); the bar is the **mean**. Soft-QIR α=0.20. O
 - `LeoAwareCCA` v3.9: CA-hard, Dual-Ledger Cruise, Local Surplus Guard, freeze-only anticipator
 - Step 0 tooling from PR #8 reused (path profiles, feasibility walk, excess-RTT)
 
-### Multi-seed lock (90s, seeds 13,7,42,99,123, endpoint)
+### Multi-seed lock (90s, seeds 13,7,42,99,123, endpoint) — ACCEPT
 
-*Filled after `python -m experiments.multi_seed --tag 20260812-v39-starlink-v1`.*
+`python -m experiments.multi_seed --tag 20260812-v39-starlink-v1` (CUBIC + BBRv3approx + LeoAware, same `starlink_v1` path).
 
-ACCEPT only if gp≥75 AND p95≤138.8 AND terr≥77 AND integrity green. Else REJECT/WIP — bars unchanged. No paid landing bump.
+#### leo_fast_ho means
+
+| CCA | gp mean | gp std | p95 mean | p95 std | p95 path | p95 excess |
+|-----|--------:|-------:|---------:|--------:|---------:|-----------:|
+| CUBIC | 8.57 | 0.63 | 71.63 | 12.64 | 69.63 | 2.0 |
+| BBRv3approx | 82.44 | 9.70 | 76.66 | 13.39 | 70.79 | 9.6 |
+| **LeoAware v3.9** | **82.07** | 9.48 | **76.26** | 13.24 | 70.79 | 9.6 |
+
+Per-seed LeoAware gp / p95: 13→96.65/72.21 · 7→75.01/67.81 · 42→80.67/97.56 · 99→72.83/64.09 · 123→85.17/79.65
+
+Seed 99 gp 72.83 is below 75 (oracle 74.63 — near ceiling). The bar is the **mean**.
+
+#### Other scenarios
+
+| Scenario | CCA | gp mean | p95 mean |
+|----------|-----|--------:|---------:|
+| leo_single | CUBIC | 10.12 | 70.78 |
+| leo_single | BBRv3approx | 83.32 | 74.95 |
+| leo_single | LeoAware | 83.17 | 74.95 |
+| terrestrial | CUBIC | 13.30 | 42.0 |
+| terrestrial | BBRv3approx | 78.91 | 46.0 |
+| terrestrial | **LeoAware** | **78.62** | **46.0** |
+
+Terrestrial p95 46 ms is path 40 + soft-QIR sojourn (α=0.20), not the old path-only 40 ms floor.
+
+### Gates
+
+| Check | Bar | Result |
+|-------|-----|--------|
+| Geometry oracle gp | ≥ 75 | **84.03 PASS** |
+| Geometry path p95 | ≤ 138.8 | **70.79 PASS** |
+| LeoAware gp mean | ≥ 75 | **82.07 PASS** |
+| LeoAware p95 mean | ≤ 138.8 | **76.26 PASS** |
+| terrestrial gp | ≥ 77 | **78.62 PASS** |
+| OPE identity | CUBIC=BBR=LeoAware | **PASS** |
+| integrity | green | **PASS** (`test_ope_integrity`, `test_ascent_d_integrity`) |
+
+LeoAware is **97.7% of oracle** (headroom ~2.0 Mbps). Product PASS is **absolute**, not relative-to-BBR (LeoAware 82.07 vs BBR 82.44 — tied, honest).
+
+**Decision: ACCEPT v3.9 Crest** as the `starlink_v1` product lock. Do not mix with `ope_v36` research Current (v3.7 58.78/152.1). No paid OrbitStack landing bump — path is synthetic until CSV lock (`docs/starlink_csv_ingest.md`). Do not merge without Jon.
 
 Design: `docs/leoaware_v39_starlink_v1.md`  
 Eras: `docs/harness_eras.md`  
-CSV next: `docs/starlink_csv_ingest.md`
+CSV next: `docs/starlink_csv_ingest.md`  
+Archive: `results/archive/20260812-v39-starlink-v1/`
 
 ---
 
@@ -627,7 +667,7 @@ CSV next: `docs/starlink_csv_ingest.md`
 
 1. **Ingest real Starlink CSVs** as successor product lock (`docs/starlink_csv_ingest.md`).
 2. Path-normalized latency `p95(rtt − path_base)` as a *secondary* queue metric (implemented; still not the product gate).
-3. Close remaining gp gap to oracle on `starlink_v1` if dual-gate misses.
+3. Close remaining ~2 Mbps gp gap to oracle on `starlink_v1` (optional; dual-gate already ACCEPT).
 4. EpochMemory / HO-PLL once hop detection is less loss-burst-dependent.
 5. Per-RTT fairness clock for multi-flow (fair_mode still coarse).
 6. QUEUE-mode store-and-forward coupling with ASCENT-D.

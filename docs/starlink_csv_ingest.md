@@ -1,8 +1,8 @@
 # Next: ingest real Starlink CSV traces (successor product lock)
 
 **Status:** stub. Not this PR's lock. `starlink_v1` is the **interim** product
-path so absolute 75/138.8 is geometrically possible. Measured Starlink
-RTT/capacity traces are the north star.
+path (v3.9 Crest ACCEPT on the synthetic generator). Measured Starlink
+RTT/capacity traces are the north-star successor.
 
 ## Why
 

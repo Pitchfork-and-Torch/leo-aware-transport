@@ -38,6 +38,11 @@ Multi-seed endpoint `leo_fast_ho` seeds **13,7,42,99,123** @ 90s:
 
 ACCEPT only if all gates pass. Else REJECT/WIP honest Pareto — **do not redefine bars**.
 
+v3.9 Crest **ACCEPT** (2026-08-12): LeoAware means gp **82.07** / p95 **76.26** /
+terr **78.62** on `starlink_v1`. Geometry 84.03 / 70.79. Archive
+`results/archive/20260812-v39-starlink-v1/`. Research Current on `ope_v36`
+remains v3.7 OCE (58.78 / 152.1).
+
 ## Why two generative defaults
 
 `LeoPathConfig` keeps `ope_v36` so research geometry cannot silently drift

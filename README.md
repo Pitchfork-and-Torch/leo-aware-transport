@@ -146,6 +146,15 @@ On detected change:
 
 This is the core distinction classic CUBIC lacks on LEO.
 
+### v3.9 Crest (product lock on `starlink_v1`)
+
+On cruise/reclaim only (never during REPROBE; never gates `ep:loss_burst`):
+
+1. **Crest Abort** — abort TBPR/OCE when RTT > ~1.35× recent median
+2. **Dual-Ledger Cruise** — `cwnd_safe` vs `cwnd_tide` (tide ≤1.42× BDP, delay-clean)
+3. **Local Surplus Guard** — stretch only if delivery EWMA ≥ ~0.85× prior_bw
+4. **Freeze-only anticipator** — ACK-IA growth hold ~120 ms; never detect-suppress
+
 ---
 
 ## Evaluation suite
@@ -174,6 +183,22 @@ Means only - do not market peaks.
 
 `python -m experiments.multi_seed` defaults to **`starlink_v1`**. Research: `--path-profile ope_v36`.
 
+#### Current (product): LeoAware v3.9 Crest on `starlink_v1`
+
+OPE-fair timeline (CUBIC = BBR = LeoAware HO/RTT). Soft-QIR α=0.20. Means, not peaks.
+
+| CCA | Goodput mean | p95 mean | Notes |
+|-----|-------------:|---------:|-------|
+| CUBIC | 8.57 | 71.63 | Collapses under mobility |
+| BBRv3approx | 82.44 | 76.66 | same orbit as LeoAware |
+| **LeoAware v3.9 Crest** | **82.07** | **76.26** | **absolute dual-gate PASS** |
+
+Gates: gp **82.07 ≥ 75**, p95 **76.26 ≤ 138.8**, terr **78.62 ≥ 77** (p95 46 ms = path 40 + QIR). Geometry oracle 84.03 / path p95 70.79. LeoAware is ~97.7% of oracle.
+
+Product PASS is **absolute**, not relative-to-BBR. LeoAware and BBR are tied on this path (honest; not a cherry-pick). Do not mix these numbers with `ope_v36` ~58/152. Synthetic path — real Starlink CSVs next: `docs/starlink_csv_ingest.md`. No paid OrbitStack landing bump (copy must say synthetic until CSV lock).
+
+Design: `docs/leoaware_v39_starlink_v1.md`. Archive: `results/archive/20260812-v39-starlink-v1/`.
+
 #### Current (research): LeoAware v3.7 OCE on `ope_v36`
 
 OPE-fair timeline (path identity identical across CCAs).
@@ -190,13 +215,7 @@ v3.7 dual gate is **relative to BBR on the OPE-fair path** (research-only). Coup
 
 **v3.8 Step 0:** on `ope_v36` those absolute bars are **geometrically impossible** (oracle gp mean 60.48; path-base p95 mean 142.32). LeoAware is already ~97% of oracle. See `docs/leoaware_v38_step0_feasibility.md`. Do not market +0.5 vs BBR as a paid Optimizer breakthrough.
 
-#### v3.9 WIP: product lock on `starlink_v1`
-
-Jon/Steward: keep absolute 75/138.8, switch product path to `starlink_v1`, re-lock CCA (CA → DLC → LSG). **Not a Current bump until dual-gate ACCEPT.** No paid OrbitStack landing copy. Real Starlink CSVs next: `docs/starlink_csv_ingest.md`.
-
-Design: `docs/leoaware_v39_starlink_v1.md`. Archive tag: `20260812-v39-starlink-v1`.
-
-### Hybrid fuse ablation (fast, seeds 13+7)
+### Hybrid fuse ablation (fast, seeds 13+7; not the v3.9 product lock)
 
 | Variant | leo_fast_ho gp | p95 | Note |
 |---------|---------------:|----:|------|
@@ -207,7 +226,7 @@ Design: `docs/leoaware_v39_starlink_v1.md`. Archive tag: `20260812-v39-starlink-
 
 Integrity: `python -m experiments.test_ascent_d_integrity` (green).
 
-### Suite seed 13 snapshot (not the multi-seed optimize target)
+### Suite seed 13 snapshot (ope_v36 research; not the product lock)
 
 | Scenario | CCA | Goodput Mbps | p95 RTT ms |
 |----------|-----|-------------:|-----------:|
@@ -215,12 +234,13 @@ Integrity: `python -m experiments.test_ascent_d_integrity` (green).
 | leo_single | LeoAware | 71.88 | 111.9 |
 | terrestrial | LeoAware | 77.86 | 40.0 |
 
-v3.7 OCE Current: Orbit Capacity Echo + SER-lite on top of v3.6 Keel/OPE.  
+v3.9 Crest **product** Current: CA-hard + DLC + LSG + freeze-only anticipator on `starlink_v1` (absolute 82.07 / 76.26).  
+v3.7 OCE **research** Current: Orbit Capacity Echo + SER-lite on `ope_v36`.  
 v3.3-A rails retained: hybrid fuse, ASCENT-D erase-on-fail.  
-Log: `docs/experiment_log.md`. Design: `docs/leoaware_v37_oce.md`.  
-Archive: `results/archive/20260812-v37-oce/`.  
+Log: `docs/experiment_log.md`. Design: `docs/leoaware_v39_starlink_v1.md` / `docs/leoaware_v37_oce.md`.  
+Archives: `results/archive/20260812-v39-starlink-v1/`, `results/archive/20260812-v37-oce/`.  
 v3.8 Step 0: `docs/leoaware_v38_step0_feasibility.md`.  
-v3.9 WIP product era: `docs/leoaware_v39_starlink_v1.md` / `docs/harness_eras.md`.
+Eras: `docs/harness_eras.md`. CSV next: `docs/starlink_csv_ingest.md`.
 
 Reproduce:
 

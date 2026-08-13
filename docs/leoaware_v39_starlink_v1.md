@@ -2,8 +2,8 @@
 
 **Date:** 2026-08-12  
 **Branch:** `cursor/v39-starlink-v1-ae43`  
-**Tip:** `5652fa0` (v3.7 OCE) + Step 0 tooling from PR #8 (not merged as Current)  
-**Scope:** New harness era. Absolute dual-gate chase on `starlink_v1`.
+**Decision:** **ACCEPT** absolute dual-gate on `starlink_v1` (means: gp 82.07 / p95 76.26 / terr 78.62).  
+**Scope:** New harness era. Product lock is synthetic `starlink_v1` until CSV ingest.
 
 ## Decision that created this era
 
@@ -28,6 +28,27 @@ hero tables. See `docs/harness_eras.md`.
 
 Step 0 geometry (90s, seeds 13,7,42,99,123): oracle gp **84.03**, path p95
 **70.79** — absolute bars are geometrically possible.
+
+## Lock result (means, not peaks)
+
+Fair CUBIC + BBRv3approx + LeoAware, same `starlink_v1` path, seeds
+13,7,42,99,123, 90s endpoint, soft-QIR α=0.20.
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| CUBIC | 8.57 | 71.63 |
+| BBRv3approx | 82.44 | 76.66 |
+| **LeoAware v3.9 Crest** | **82.07** | **76.26** |
+
+Terrestrial LeoAware **78.62** @ 46 ms p95 (path 40 + QIR). Integrity green.
+OPE identity PASS. Seed 99 LeoAware gp 72.83 is below 75 (oracle 74.63); the
+bar is the mean.
+
+Product PASS is **absolute 75/138.8**, not relative-to-BBR. LeoAware and BBR
+are tied on this orbit. Do not mix with `ope_v36` ~58/152. No paid landing
+bump — synthetic path until `docs/starlink_csv_ingest.md`.
+
+Archive: `results/archive/20260812-v39-starlink-v1/`
 
 ## Invention stack (endpoint-only product gate)
 

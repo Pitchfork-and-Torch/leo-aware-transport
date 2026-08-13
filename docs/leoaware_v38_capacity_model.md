@@ -68,4 +68,5 @@ Replay: `LeoPathConfig(trace_csv=..., duration_s=90, dt_s=0.05)`. Real Starlink 
 2. Re-baseline BBR + LeoAware 5-seed@90s on that path (new era).
 3. CA → DLC → LSG against absolute 75/138.8.
 4. OPE + frozen soft-QIR α=0.20 kept.
-5. No paid OrbitStack landing bump without an absolute lock.
+5. No paid OrbitStack landing bump on this synthetic lock. Copy must say
+   synthetic `starlink_v1` until CSV lock (`docs/starlink_csv_ingest.md`).
