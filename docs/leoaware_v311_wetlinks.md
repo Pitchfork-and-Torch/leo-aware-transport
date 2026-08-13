@@ -38,17 +38,29 @@ not move p95 of 1800 slots). `path_max` is source `ping_worst`.
 **Inferences that inflate oracle gp:** the 15 s UDP iperf mean is held for
 90 s. WetLinks has no continuous 90 s capacity series (median gap ~3 min).
 
-## CCA
+## CCA (endpoint Crest, α=0.20)
 
-Run only after geometry PASS:
+Replay at product `dt=0.01` (a first `dt=0.05` probe was a 40 Mbps
+buffer/slot artifact; not a CCA result). 250 KB buffer send ceiling ≈
+200 Mbps.
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| CUBIC | 38.46 | 63.58 |
+| BBRv3approx | 161.91 | 64.38 |
+| **LeoAware Crest** | **156.70** | **63.98** |
+
+Terr 78.62 ≥ 77. w3 Leo 64.24 (oracle 66.02) is below 75; the gate is
+the five-window mean. w1/w2 ~190 Mbps hit the buffer ceiling, not dish
+PHY. CUBIC dies on 0.4% ping-loss windows.
+
+**Decision: ACCEPT `wetlinks_v1` era only.** Not Current. No paid bump.
+Do not mix with `starlink_v1` 82.09/76.26. Crest defaults unchanged.
+Product lock stays synthetic `starlink_v1`.
 
 ```bash
 python3 -m experiments.run_wetlinks --tag 20260813-v311-wetlinks
 ```
-
-ACCEPT on this era only if Crest clears gp≥75 AND p95≤138.8 on the five
-windows **and** terr ≥77 on the synthetic terrestrial control. Else honest
-REJECT. Do not mix the table with `starlink_v1` 82.09/76.26.
 
 ## What this is not
 

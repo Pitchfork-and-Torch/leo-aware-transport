@@ -80,6 +80,10 @@ v3.11 geometry (hold-expanded slices): oracle gp mean **244.85**, path p95
 mean **60.78**. Window w3 oracle **66.02** is below 75 (real low-cap cycle);
 the gate is the five-window mean. **Geometry PASS.**
 
+CCA (Crest, `dt=0.01`): gp **156.70** / p95 **63.98** / terr **78.62**.
+**ACCEPT `wetlinks_v1` only** — not Current, not a `starlink_v1` replacement.
+250 KB buffer caps send at ~200 Mbps (w1/w2 sit there).
+
 ## Era rules
 
 - Label: `wetlinks_v1`.

@@ -1,7 +1,7 @@
 {
   "era": "wetlinks_v1",
   "n_windows": 5,
-  "oracle_gp_mean": 244.85313391999853,
+  "oracle_gp_mean": 244.8531339200105,
   "path_p95_mean": 60.7768,
   "cap_weighted_p95_mean": 60.7768,
   "gp_ge_75_possible": true,

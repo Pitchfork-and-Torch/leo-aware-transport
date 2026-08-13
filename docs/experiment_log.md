@@ -787,15 +787,27 @@ low-cap cycle; the gate is the five-window mean. Path p95 = `ping_avg`
 (0.4s spike does not move p95). 75s of each window is hold — oracle is
 inflated vs a true 90s continuous iperf.
 
-### CCA
+### CCA (product dt=0.01; 250 KB buffer ceiling ≈ 200 Mbps)
 
-Crest vs BBRv3approx vs CUBIC on the same five windows + synthetic terr
-control. See archive `results/archive/20260813-v311-wetlinks/`. New era
-`wetlinks_v1` — do not mix with `starlink_v1` 82.09/76.26 or `ope_v36`
-58/152. Crest defaults unchanged.
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| CUBIC | 38.46 | 63.58 |
+| BBRv3approx | 161.91 | 64.38 |
+| **LeoAware Crest** | **156.70** | **63.98** |
+
+Terr 78.623 @ 46 ms. Gates: gp≥75 **PASS**, p95≤138.8 **PASS**,
+terr≥77 **PASS**.
+
+**Decision: ACCEPT `wetlinks_v1` era only.** Not Current. No paid bump.
+Do not mix with `starlink_v1` 82.09/76.26 or `ope_v36` 58/152. Crest
+defaults unchanged. Product lock stays synthetic `starlink_v1`.
+
+A first `dt=0.05` probe printed ~29/71 — that is `8*buffer/dt` ≈ 40 Mbps
+starvation, not a CCA result. Archive reports the `dt=0.01` means.
 
 Design: `docs/leoaware_v311_wetlinks.md`  
-Windows: `traces/wetlinks/MANIFEST.md`
+Windows: `traces/wetlinks/MANIFEST.md`  
+Archive: `results/archive/20260813-v311-wetlinks/`
 
 ---
 

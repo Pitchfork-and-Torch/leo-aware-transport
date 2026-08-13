@@ -1,0 +1,42 @@
+{
+  "era": "wetlinks_v1",
+  "product_lock_era": "starlink_v1",
+  "decision": "ACCEPT",
+  "soft_qir_alpha": 0.2,
+  "geometry": {
+    "era": "wetlinks_v1",
+    "n_windows": 5,
+    "oracle_gp_mean": 244.8531339200105,
+    "path_p95_mean": 60.7768,
+    "cap_weighted_p95_mean": 60.7768,
+    "gp_ge_75_possible": true,
+    "p95_le_138_8_possible": true,
+    "absolute_dual_gate_possible": true,
+    "soft_qir_alpha": 0.2,
+    "bars": {
+      "gp_mean": 75.0,
+      "p95_mean": 138.8
+    },
+    "note": "Geometry uses hold-expanded WetLinks slices (15s iperf mean + ping aggregate). Do not mix with starlink_v1 or ope_v36."
+  },
+  "windows": {
+    "LeoAware_gp_mean": 156.701312,
+    "LeoAware_p95_mean": 63.97680000000164,
+    "BBR_gp_mean": 161.91259733333334,
+    "BBR_p95_mean": 64.37680000000071,
+    "CUBIC_gp_mean": 38.45826133333334,
+    "CUBIC_p95_mean": 63.576800000001
+  },
+  "terrestrial": {
+    "LeoAware_gp_mean": 78.6232,
+    "LeoAware_p95_mean": 46.000000000000945,
+    "note": "synthetic terrestrial control; not a WetLinks window"
+  },
+  "gates": {
+    "geometry_dual_gate": true,
+    "gp_ge_75": true,
+    "p95_le_138_8": true,
+    "terr_ge_77": true
+  },
+    "note": "wetlinks_v1 is a new era. Do not mix with starlink_v1 82.09/76.26 or ope_v36 58/152. Crest defaults unchanged. No Current bump. Replay uses product dt=0.01; 250 KB buffer send ceiling is 200 Mbps (w1/w2 sit there, not at the 400 Mbps iperf mean)."
+}

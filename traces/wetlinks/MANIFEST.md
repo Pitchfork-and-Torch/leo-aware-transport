@@ -71,6 +71,18 @@ bug. The gate is the **five-window mean**.
 Path p95 of the replay series equals `ping_avg` because a 0.4 s spike does
 not move p95 of 1800 slots. Source `ping_worst` is `path_max`.
 
+## CCA (product `dt=0.01`)
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| CUBIC | 38.46 | 63.58 |
+| BBRv3approx | 161.91 | 64.38 |
+| **LeoAware Crest** | **156.70** | **63.98** |
+
+Terr 78.62. **ACCEPT `wetlinks_v1` era only.** Not Current. 250 KB buffer
+send ceiling ≈ 200 Mbps (w1/w2). Full table:
+`results/archive/20260813-v311-wetlinks/means_tables.md`.
+
 ## Era
 
 `wetlinks_v1`. Do **not** mix with synthetic `starlink_v1` 82.09/76.26 or

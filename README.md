@@ -251,7 +251,9 @@ python -m experiments.test_ascent_d_integrity
 python -m experiments.ope_feasibility --profiles starlink_v1 --seeds 13,7,42,99,123
 python -m experiments.run_suite
 python -m experiments.multi_seed --path-profile starlink_v1 --seeds 13,7,42,99,123 --tag 20260812-v39-starlink-v1
-python -m experiments.multi_seed --path-profile ope_v36
+python3 -m experiments.multi_seed --path-profile ope_v36
+python3 -m experiments.run_wetlinks --tag 20260813-v311-wetlinks
+python3 -m experiments.test_wetlinks_integrity
 python -m experiments.run_ablation --fast --seeds 13,7
 # inspect results/summary.csv and plots
 ```

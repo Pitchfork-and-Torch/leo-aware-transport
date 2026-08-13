@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from experiments.slice_wetlinks import DURATION_S, DT_S, OUT_DIR, WINDOW_SPECS
+from experiments.slice_wetlinks import DURATION_S, OUT_DIR, WINDOW_SPECS
 from leo_cc.ccas import BbrCCA, CubicCCA, LeoAwareCCA
 from leo_cc.harness import (
     PRODUCT_GP_BAR,
@@ -35,6 +35,10 @@ from leo_cc.network import LeoPathConfig, walk_path_geometry
 from leo_cc.sim import SOFT_QIR_ALPHA, run_sim
 
 ERA = "wetlinks_v1"
+# Product sim slot. CSV files stay at 50 ms samples (path holds).
+# dt=0.05 + 250 KB buffer caps send at 8*buffer/dt ≈ 40 Mbps and adds a
+# fake 10 ms soft-QIR (α*dt). That is a harness artifact, not a CCA result.
+SIM_DT_S = 0.01
 
 
 def window_paths(trace_dir: Path) -> list[Path]:
@@ -49,10 +53,10 @@ def window_paths(trace_dir: Path) -> list[Path]:
     return paths
 
 
-def window_cfg(path: Path) -> LeoPathConfig:
+def window_cfg(path: Path, dt_s: float = SIM_DT_S) -> LeoPathConfig:
     return LeoPathConfig(
         duration_s=DURATION_S,
-        dt_s=DT_S,
+        dt_s=dt_s,
         seed=0,
         path_profile=ERA,
         trace_csv=str(path),
@@ -185,7 +189,10 @@ def scorecard(geo_v: dict, cca_df: pd.DataFrame, terr_df: pd.DataFrame) -> dict:
         },
         "note": (
             "wetlinks_v1 is a new era. Do not mix with starlink_v1 82.09/76.26 "
-            "or ope_v36 58/152. Crest defaults unchanged. No Current bump."
+            "or ope_v36 58/152. Crest defaults unchanged. No Current bump. "
+            "Replay uses product dt=0.01; 250 KB buffer send ceiling is "
+            f"{8 * 250_000 / SIM_DT_S / 1e6:.0f} Mbps (windows above that "
+            "cannot fill even if the iperf mean is higher)."
         ),
     }
 
