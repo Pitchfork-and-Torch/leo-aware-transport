@@ -39,10 +39,11 @@ def resolve_path_profile(name: str | None) -> str:
         return PRODUCT_PATH_PROFILE
     if raw in ("research", "ope", "ope_v36"):
         return RESEARCH_PATH_PROFILE
-    if raw in ("starlink_rtt", "ope_v36", "starlink_v1"):
+    if raw in ("starlink_rtt", "ope_v36", "starlink_v1", "starlink_v2"):
         return raw
     raise ValueError(
-        f"unknown path profile {name!r}; use starlink_v1 (product) or ope_v36 (research)"
+        f"unknown path profile {name!r}; use starlink_v1 (product), "
+        f"starlink_v2 (opt-in flicker research), or ope_v36 (research)"
     )
 
 

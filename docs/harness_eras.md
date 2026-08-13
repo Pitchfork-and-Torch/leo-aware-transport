@@ -8,6 +8,7 @@ numbers from different eras in the same Current hero table.**
 | Coupled-RNG (historical) | pre-OPE `path.rng` shared with loss | absolute 75/138.8 on a *different orbit per CCA* | v3.4-p95 / v3.5 Tide. Not comparable to OPE. |
 | `ope_v36` research | frozen v3.6/v3.7 generative path | **relative to BBR** on the same orbit | Science lock. Absolute 75/138.8 **impossible** (oracle gp 60.48, path p95 142.32). |
 | **`starlink_v1` product** | cruise RTT 40–75 ms; HO spike in the 0.4s loss window; cap 40–150 Mbps | **absolute gp≥75 AND p95≤138.8** | **v3.9 product-lock default** (`multi_seed` / `run_suite`). |
+| `starlink_v2` flicker (opt-in) | `starlink_v1` + mid-epoch capacity steps (~2.8s) | research only (not product) | Stress stale max-filter. Spec: `docs/leoaware_v310_starlink_v2.md`. |
 | Real Starlink CSV (next) | measured RTT/capacity traces | same absolute bars unless re-derived | Successor lock. Stub: `docs/starlink_csv_ingest.md`. |
 
 ## Defaults

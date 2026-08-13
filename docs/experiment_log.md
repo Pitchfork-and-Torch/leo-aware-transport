@@ -663,15 +663,47 @@ Archive: `results/archive/20260812-v39-starlink-v1/`
 
 ---
 
+## v3.10 Halo / Pulse / CFR — REJECT (Crest stays)
+
+**Date:** 2026-08-13  
+**Branch:** `cursor/v310-halo-84b8`  
+**Hypothesis:** Close BBR gap / oracle headroom on `starlink_v1` with EpochMemory,
+HO-PLL, Soft Surplus Echo, Orbit Pulse, or Capacity Fade/Rise Echo.
+
+### Ablation (leo_fast_ho 90s, seeds 13,7,42,99,123)
+
+| Variant | gp mean | p95 mean | Δ vs BBR |
+|---------|--------:|---------:|---------:|
+| BBR | 82.439 | 76.664 | — |
+| Crest (flags off) | **82.089** | 76.264 | −0.35 |
+| Halo SSE WIP archive | 81.993 | 76.264 | −0.45 |
+| Pulse only | 82.037 | 76.264 | −0.40 |
+| Memory only | 81.876 | 76.264 | −0.56 |
+
+Softer REPROBE cuts and p90 cruise lift: no clear Pareto. Absolute bars still
+PASS under Halo WIP, but research goal (clear BBR) **FAIL**.
+
+**Decision: REJECT v3.10 CCA theater.** Defaults remain Crest
+(`use_halo=False`, `use_orbit_pulse=False`, `use_cfr=False`).  
+Design: `docs/leoaware_v310_halo_reject.md`  
+Archive: `results/archive/20260813-v310-halo/`
+
+### Side delivery: `starlink_v2` opt-in flicker
+
+Mid-epoch capacity steps (~2.8s) under OPE. First Crest probe: BBR 92.56 /
+Leo 91.97 (still behind). **Not a product lock.** Spec:
+`docs/leoaware_v310_starlink_v2.md`.
+
+---
+
 ## Open ideas (next loops)
 
 1. **Ingest real Starlink CSVs** as successor product lock (`docs/starlink_csv_ingest.md`).
-2. Path-normalized latency `p95(rtt − path_base)` as a *secondary* queue metric (implemented; still not the product gate).
-3. Close remaining ~2 Mbps gp gap to oracle on `starlink_v1` (optional; dual-gate already ACCEPT).
-4. EpochMemory / HO-PLL once hop detection is less loss-burst-dependent.
-5. Per-RTT fairness clock for multi-flow (fair_mode still coarse).
-6. QUEUE-mode store-and-forward coupling with ASCENT-D.
-7. Full 5-seed ablation with ascent_d vs hybrid under suite durations (90s).
+2. Instrument per-seed delivery traces on `starlink_v2` before more fade/rise knobs.
+3. Path-normalized latency `p95(rtt − path_base)` as a *secondary* queue metric (implemented; still not the product gate).
+4. Per-RTT fairness clock for multi-flow (fair_mode still coarse).
+5. QUEUE-mode store-and-forward coupling with ASCENT-D.
+6. Full 5-seed ablation with ascent_d vs hybrid under suite durations (90s).
 
 ---
 
