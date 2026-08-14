@@ -72,16 +72,21 @@ leo_cc/
 experiments/
   run_suite.py              # Full reproducible evaluation (endpoint default)
   run_ablation.py           # endpoint / ASCENT-D / Orb / hybrid matrix
+  run_wetlinks.py           # wetlinks_v1 geometry + 5-window CCA
+  slice_wetlinks.py         # re-fetch / cut WetLinks 90s windows
   test_ascent_d_integrity.py
+  test_wetlinks_integrity.py
   demo.py
 docs/
   architecture.md
   harness_eras.md
   leoaware_v39_starlink_v1.md
   starlink_csv_ingest.md
+  leoaware_v311_wetlinks.md
   ascent_d_orbcc_hybrid.md
   related_work.md
   cloudflare_starlink_bridge.md
+  leoaware_v312_zhao_zenodo23.md  # research-era ingest; not product lock
 ```
 
 ### Network model
@@ -213,7 +218,7 @@ Gates (this PR, pending Jon): gp **82.07 ≥ 75**, p95 **76.26 ≤ 138.8**, terr
 
 Crest ablation (same path, `leo_fast_ho`): v37-style LeoAware already dual-gates (82.28 / 76.66). Crest flags are optional here; the era switch is load-bearing. See `docs/leoaware_v39_starlink_v1.md`.
 
-Design: `docs/leoaware_v39_starlink_v1.md`. Archive: `results/archive/20260812-v39-starlink-v1/`. CSV next: `docs/starlink_csv_ingest.md`.
+Design: `docs/leoaware_v39_starlink_v1.md`. Archive: `results/archive/20260812-v39-starlink-v1/`. Measured CSV era: `docs/starlink_csv_ingest.md`.
 
 ### Hybrid fuse ablation (fast, seeds 13+7; not the v3.9 product lock)
 
@@ -240,7 +245,7 @@ v3.3-A rails retained: hybrid fuse, ASCENT-D erase-on-fail.
 Log: `docs/experiment_log.md`. Design: `docs/leoaware_v37_oce.md`.  
 Archive: `results/archive/20260812-v37-oce/`.  
 v3.8 Step 0: `docs/leoaware_v38_step0_feasibility.md`.  
-Eras: `docs/harness_eras.md`. CSV next: `docs/starlink_csv_ingest.md`.
+Eras: `docs/harness_eras.md`. Measured CSV: `docs/starlink_csv_ingest.md`.
 
 Reproduce:
 
@@ -250,7 +255,9 @@ python -m experiments.ope_feasibility --profiles starlink_v1 --seeds 13,7,42,99,
 python -m experiments.run_suite
 python -m experiments.multi_seed --path-profile starlink_v1 --seeds 13,7,42,99,123 --tag 20260812-v39-starlink-v1
 python -m experiments.crest_ablation --tag 20260812-v39-crest-ablation
-python -m experiments.multi_seed --path-profile ope_v36
+python3 -m experiments.multi_seed --path-profile ope_v36
+python3 -m experiments.run_wetlinks --tag 20260813-v311-wetlinks
+python3 -m experiments.test_wetlinks_integrity
 python -m experiments.run_ablation --fast --seeds 13,7
 # inspect results/summary.csv and plots
 ```
@@ -273,7 +280,8 @@ See `docs/cloudflare_starlink_bridge.md` for a fuller write-up. Short version:
 
 - Packet-level fidelity is simplified (slot sim, not ns-3 / full QUIC state machine).
 - BBRv3approx is educational, not a production BBR port.
-- No real Starlink trace replay yet (CSV hooks + ingest stub: `docs/starlink_csv_ingest.md`).
+- First measured-CSV era is `wetlinks_v1` (`traces/wetlinks/`, WetLinks slices). Synthetic `starlink_v1` remains the product lock. See `docs/starlink_csv_ingest.md`.
+- Second research-era ingest is `zhao_zenodo23` (`traces/zhao_zenodo23/`; geometry in `docs/leoaware_v312_zhao_zenodo23.md`). TCP Cubic goodput is a lower bound; SQM unknown. **Not** the product lock. Do not mix with `wetlinks_v1` or `starlink_v1` Crest.
 - Multipath is optional/simplified (ISL delay only).
 - Not production-hardened (no pacing timer fidelity, ECN, or ACK aggregation).
 

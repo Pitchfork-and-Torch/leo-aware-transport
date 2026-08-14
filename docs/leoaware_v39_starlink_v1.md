@@ -62,7 +62,7 @@ Archive: `results/archive/20260812-v39-starlink-v1/`
 | CA+DLC+LSG | 81.98 | 76.26 | yes |
 | v39_full | 82.07 | 76.26 | yes |
 
-Plain v3.7-style LeoAware already clears 75/138.8 on this path. Crest flags are **not** load-bearing; the generative era switch is. CA is a no-op here. DLC+LSG is a ~0.4 ms p95 trim (seed 123) at ~0.3 Mbps gp. Keep v39_full as the documented lock stack; do not retune for 0.2 Mbps. CSV remains the successor lock.
+Plain v3.7-style LeoAware already clears 75/138.8 on this path. Crest flags are **not** load-bearing; the generative era switch is. CA is a no-op here. DLC+LSG is a ~0.4 ms p95 trim (seed 123) at ~0.3 Mbps gp. Keep v39_full as the documented lock stack; do not retune for 0.2 Mbps. Measured CSV eras (`wetlinks_v1`, `zhao_zenodo23`) are research-only and must not be mixed with these numbers.
 
 Archive: `results/archive/20260812-v39-crest-ablation/`
 

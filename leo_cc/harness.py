@@ -31,6 +31,8 @@ PRODUCT_DURATION_S = 90.0
 ERA_OPE_V36 = "ope_v36"
 ERA_STARLINK_V1 = "starlink_v1"
 ERA_COUPLED_RNG = "coupled_rng"
+# CSV replay era (v3.11). Not a generative profile; not the product default.
+ERA_WETLINKS_V1 = "wetlinks_v1"
 
 
 def resolve_path_profile(name: str | None) -> str:
@@ -39,10 +41,11 @@ def resolve_path_profile(name: str | None) -> str:
         return PRODUCT_PATH_PROFILE
     if raw in ("research", "ope", "ope_v36"):
         return RESEARCH_PATH_PROFILE
-    if raw in ("starlink_rtt", "ope_v36", "starlink_v1"):
+    if raw in ("starlink_rtt", "ope_v36", "starlink_v1", "starlink_v2"):
         return raw
     raise ValueError(
-        f"unknown path profile {name!r}; use starlink_v1 (product) or ope_v36 (research)"
+        f"unknown path profile {name!r}; use starlink_v1 (product), "
+        f"starlink_v2 (opt-in flicker research), or ope_v36 (research)"
     )
 
 
