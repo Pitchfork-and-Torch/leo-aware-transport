@@ -373,6 +373,7 @@ class LeoAwareCCA(BaseCCA):
         use_cfr: bool = False,
         use_qsp: bool = False,
         hint_freeze_only: bool = False,
+        use_spike_hold: bool = False,
         **kw,
     ):
         super().__init__(**kw)
@@ -395,6 +396,10 @@ class LeoAwareCCA(BaseCCA):
         # SkyPulse: PATHHINT growth-freeze only. Never hint-REPROBE, never
         # gate ep:loss_burst. Public suite keeps use_path_hints=False.
         self.hint_freeze_only = bool(hint_freeze_only)
+        # v3.11-SH: RTT jump + delivery still ≥0.90×bw → skip full REPROBE.
+        # Never gates ep:loss_burst. Default OFF (product Crest unchanged).
+        self.use_spike_hold = bool(use_spike_hold)
+        self._spike_hold_until = -1.0
         self.rtt_hist: Deque[float] = deque(maxlen=48)
         self.ack_times: Deque[float] = deque(maxlen=40)
         self.bw_samples: Deque[tuple[float, float]] = deque(maxlen=48)
@@ -467,6 +472,7 @@ class LeoAwareCCA(BaseCCA):
         self.orbit_pulses = 0
         self._cfr_cooldown_until = -1.0
         self.cfr_cuts = 0
+        self.spike_holds = 0
         self.cre_lifts = 0
         self._qsp_excess = 0.0
         self.qsp_discounts = 0
@@ -629,6 +635,14 @@ class LeoAwareCCA(BaseCCA):
         if not self._epoch_bw_mem:
             return 0.0
         return self._median(list(self._epoch_bw_mem))
+
+    def _delivery_stable(self, t: float) -> bool:
+        """True when live delivery is still ~the estimated pipe (not a cap hop)."""
+        rate = self.rate_ewma if self.rate_ewma > 1e6 else self._delivery_rate_sample(t)
+        ref = self.bw_est if self.bw_est > 1e6 else self.prior_bw
+        if rate < 1e6 or ref < 1e6:
+            return False
+        return rate >= 0.90 * ref
 
     def _halo_ref_bw(self) -> float:
         """Soft capacity reference: max(prior, epoch-memory p50)."""
@@ -1054,10 +1068,30 @@ class LeoAwareCCA(BaseCCA):
 
         hit, score, reason = self._detect_reconfig(t, rtt_s)
         if hit and t - self.last_reconfig_t > self.detect_cooldown * 0.85:
-            # Endpoint confidence from fusion score (capped below assist paths)
-            ep_conf = min(0.85, 0.45 + 0.12 * max(0.0, score))
-            self._enter_reprobe(t, f"ep:{reason}", confidence=ep_conf)
-            self._anticipator_until = -1.0  # REPROBE owns the hop; never suppress detect
+            # Spike-hold: RTT jump with delivery still on-pipe is not a cap hop.
+            # Never skip loss_burst. Do not update last_reconfig_t (detect stays live).
+            sh_active = (
+                self.use_spike_hold
+                and not self.fair_mode
+                and t < self._spike_hold_until
+                and "loss_burst" not in reason
+            )
+            sh_arm = (
+                self.use_spike_hold
+                and not self.fair_mode
+                and "loss_burst" not in reason
+                and self._delivery_stable(t)
+            )
+            if sh_active or sh_arm:
+                if sh_arm and not sh_active:
+                    self.spike_holds += 1
+                    self._spike_hold_until = t + 0.50
+                self.mode = "spike_hold"
+            else:
+                # Endpoint confidence from fusion score (capped below assist paths)
+                ep_conf = min(0.85, 0.45 + 0.12 * max(0.0, score))
+                self._enter_reprobe(t, f"ep:{reason}", confidence=ep_conf)
+                self._anticipator_until = -1.0  # REPROBE owns the hop; never suppress detect
         elif (
             self.use_anticipator
             and not self.fair_mode
