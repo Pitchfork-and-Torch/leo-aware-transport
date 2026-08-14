@@ -381,6 +381,7 @@ class LeoAwareCCA(BaseCCA):
         use_cfr: bool = False,
         use_qsp: bool = False,
         hint_freeze_only: bool = False,
+        use_spike_hold: bool = False,
         **kw,
     ):
         super().__init__(**kw)
@@ -403,6 +404,13 @@ class LeoAwareCCA(BaseCCA):
         # SkyPulse: PATHHINT growth-freeze only. Never hint-REPROBE, never
         # gate ep:loss_burst. Public suite keeps use_path_hints=False.
         self.hint_freeze_only = bool(hint_freeze_only)
+        # v3.11-SH: RTT jump + delivery still ≥0.90×bw → skip full REPROBE.
+        # Held-pipe fill: while no real REPROBE has fired, grow like BBR
+        # startup (1.92×) and soft-max-filter bw. WetLinks capacity is held
+        # flat; Crest's 1.28× / p82 is the leftover ~7 Mbps 25s tax.
+        # Never gates ep:loss_burst. Default OFF (product Crest unchanged).
+        self.use_spike_hold = bool(use_spike_hold)
+        self._spike_hold_until = -1.0
         self.rtt_hist: Deque[float] = deque(maxlen=48)
         self.ack_times: Deque[float] = deque(maxlen=40)
         self.bw_samples: Deque[tuple[float, float]] = deque(maxlen=48)
@@ -475,6 +483,7 @@ class LeoAwareCCA(BaseCCA):
         self.orbit_pulses = 0
         self._cfr_cooldown_until = -1.0
         self.cfr_cuts = 0
+        self.spike_holds = 0
         self.cre_lifts = 0
         self._qsp_excess = 0.0
         self.qsp_discounts = 0
@@ -637,6 +646,35 @@ class LeoAwareCCA(BaseCCA):
         if not self._epoch_bw_mem:
             return 0.0
         return self._median(list(self._epoch_bw_mem))
+
+    def _delivery_stable(self, t: float) -> bool:
+        """True when live delivery is still ~the estimated pipe (not a cap hop)."""
+        rate = self.rate_ewma if self.rate_ewma > 1e6 else self._delivery_rate_sample(t)
+        ref = self.bw_est if self.bw_est > 1e6 else self.prior_bw
+        if rate < 1e6 or ref < 1e6:
+            return False
+        return rate >= 0.90 * ref
+
+    def _pipe_hold_active(self) -> bool:
+        """Held-capacity assist: SH on and no real REPROBE yet.
+
+        WetLinks windows hold UDP-mean capacity flat. A skipped RTT-spike
+        does not increment reconfigs_detected, so this stays armed. A real
+        ep:loss_burst SER turns it off. Product Crest never enters (flag off).
+        """
+        return (
+            self.use_spike_hold
+            and not self.fair_mode
+            and self.reconfigs_detected == 0
+        )
+
+    def _pipe_hold_fill(self, t: float) -> bool:
+        """First 1.5s of a held pipe: BBR is not pace-bound in this sim."""
+        if not self._pipe_hold_active():
+            return False
+        if self._start_t < 0:
+            return True
+        return (t - self._start_t) < 1.50
 
     def _halo_ref_bw(self) -> float:
         """Soft capacity reference: max(prior, epoch-memory p50)."""
@@ -1011,7 +1049,11 @@ class LeoAwareCCA(BaseCCA):
     def can_send(self, t: float) -> int:
         room = max(0.0, self.cwnd - self.bytes_in_flight)
         # Soft pacing: only bind when clearly over-rate (avoid recovery starvation)
-        if self.pacing_rate_bps > 0 and t >= self.reprobe_until:
+        if (
+            self.pacing_rate_bps > 0
+            and t >= self.reprobe_until
+            and not self._pipe_hold_fill(t)
+        ):
             if self._last_pace_t <= 0:
                 self._last_pace_t = t
             dt = max(0.0, t - self._last_pace_t)
@@ -1062,10 +1104,30 @@ class LeoAwareCCA(BaseCCA):
 
         hit, score, reason = self._detect_reconfig(t, rtt_s)
         if hit and t - self.last_reconfig_t > self.detect_cooldown * 0.85:
-            # Endpoint confidence from fusion score (capped below assist paths)
-            ep_conf = min(0.85, 0.45 + 0.12 * max(0.0, score))
-            self._enter_reprobe(t, f"ep:{reason}", confidence=ep_conf)
-            self._anticipator_until = -1.0  # REPROBE owns the hop; never suppress detect
+            # Spike-hold: RTT jump with delivery still on-pipe is not a cap hop.
+            # Never skip loss_burst. Do not update last_reconfig_t (detect stays live).
+            sh_active = (
+                self.use_spike_hold
+                and not self.fair_mode
+                and t < self._spike_hold_until
+                and "loss_burst" not in reason
+            )
+            sh_arm = (
+                self.use_spike_hold
+                and not self.fair_mode
+                and "loss_burst" not in reason
+                and self._delivery_stable(t)
+            )
+            if sh_active or sh_arm:
+                if sh_arm and not sh_active:
+                    self.spike_holds += 1
+                    self._spike_hold_until = t + 0.50
+                self.mode = "spike_hold"
+            else:
+                # Endpoint confidence from fusion score (capped below assist paths)
+                ep_conf = min(0.85, 0.45 + 0.12 * max(0.0, score))
+                self._enter_reprobe(t, f"ep:{reason}", confidence=ep_conf)
+                self._anticipator_until = -1.0  # REPROBE owns the hop; never suppress detect
         elif (
             self.use_anticipator
             and not self.fair_mode
@@ -1182,6 +1244,15 @@ class LeoAwareCCA(BaseCCA):
                 and delay_ratio_early < 1.28
             ):
                 self.bw_est = max(pct_val, 0.70 * pct_val + 0.30 * max_val)
+            elif (
+                self._pipe_hold_active()
+                and len(vals) >= 3
+                and delay_ratio_early < 1.28
+            ):
+                # Held pipe: BBR-like max-filter while delay is clean.
+                # Cold-start age is huge (last_reconfig_t=-1e9), so the
+                # age<0.85 branch never fires without this.
+                self.bw_est = max(pct_val, 0.30 * pct_val + 0.70 * max_val)
             else:
                 self.bw_est = pct_val
             floor_ref = (
@@ -1205,6 +1276,9 @@ class LeoAwareCCA(BaseCCA):
             # Reclaim: pacing can stay a bit optimistic; cwnd is delay-capped below.
             # QSP may discount pace from sojourn excess; never changes BDP/cwnd target.
             pace_gain = self._qsp_pace_gain(t, delay_ratio_early, rtt_s)
+            if self._pipe_hold_fill(t):
+                # BBR startup pacing_gain is 2.77; Crest default is 1.08.
+                pace_gain = max(pace_gain, 2.20)
             self.pacing_rate_bps = self.bw_est * pace_gain
         elif self.prior_bw > 0:
             self.pacing_rate_bps = self.prior_bw * 0.65
@@ -1296,10 +1370,24 @@ class LeoAwareCCA(BaseCCA):
             "ascent_freeze",
         ):
             self.mode = "startup"
-            self.cwnd += bytes_acked * (1.15 if self.fair_mode else 1.28)
+            if self._pipe_hold_active():
+                # BBR startup is +2× ACKed; Crest 1.28× is the ~6 Mbps 25s tax
+                # on a held ~400 Mbps pipe (w1 first 25s = entire 90s gap).
+                growth = 1.92
+            else:
+                growth = 1.15 if self.fair_mode else 1.28
+            self.cwnd += bytes_acked * growth
             # Cap startup overshoot when delay is already elevated
             if delay_ratio > 1.45 and self.bw_est > 0:
                 self.cwnd = min(self.cwnd, bdp * 1.08)
+            # Never cap on an immature bw_est — that deadlocked SH at 82 KB
+            # / 7 Mbps. Only trim after the pipe is visible and delay is up.
+            if (
+                self._pipe_hold_active()
+                and self.bw_est > 50e6
+                and delay_ratio > 1.30
+            ):
+                self.cwnd = min(self.cwnd, max(bdp * 2.20, 80 * MSS))
             if self.cwnd >= bdp * 0.88 and self.bw_est > 0:
                 self.mode = "cruise"
                 self.ssthresh = self.cwnd
@@ -1513,6 +1601,12 @@ class LeoAwareCCA(BaseCCA):
             # Hard cap above ~1.08x BDP when delay risk present
             if delay_ratio > 1.35 and self.bw_est > 0:
                 self.cwnd = min(self.cwnd, bdp * 1.08)
+            if (
+                self._pipe_hold_active()
+                and self.bw_est > 50e6
+                and delay_ratio > 1.30
+            ):
+                self.cwnd = min(self.cwnd, max(bdp * 2.20, 80 * MSS))
             self.cwnd = max(4 * MSS, self.cwnd)
             # v3.6: adopt keel toward healthy cruise min (downward or mild up)
             if self.min_rtt < 1e17 and age > 1.5 and self._keel_rtt > 0:
@@ -1543,6 +1637,13 @@ class LeoAwareCCA(BaseCCA):
                     ) >= 2:
                         self._enter_reprobe(t, "ep:loss_burst", confidence=0.7)
                     return
+        # Held pipe: BBR ignores loss; Crest's 0.72 cut is the t=12 recovery
+        # hole on WetLinks (capacity held, spike is ping_worst not a cap hop).
+        if self._pipe_hold_active() and self.min_rtt < 1e17:
+            recent = self.rtt_hist[-1] if self.rtt_hist else 0.0
+            if recent <= 0.0 or recent < 1.55 * self.min_rtt:
+                self.mode = "pipe_hold_loss"
+                return
         # True congestion: slightly milder than CUBIC for multi-flow friendliness
         self.ssthresh = max(4 * MSS, self.cwnd * 0.72)
         self.cwnd = self.ssthresh

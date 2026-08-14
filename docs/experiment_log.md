@@ -857,6 +857,47 @@ Design: `docs/leoaware_v311_wetlinks_uncap.md`
 
 ---
 
+## v3.11-SH - spike-hold + held-pipe fill (uncapped WetLinks)
+
+**Date:** 2026-08-14  
+**Branch:** `cursor/v311-spike-hold-84b8`  
+**Hypothesis:** Uncap REJECT (239.72 < 240.48) is entirely w1's first
+25s. Crest full-REPROBEs the inferred t=12 RTT spike on a held-flat UDP
+pipe, then fills at +1.28× / p82 while BBR doubles and max-filters.
+Skip the false REPROBE when delivery is still on-pipe; grow like BBR
+startup while no real SER has fired.
+
+### 25s w1 probe
+
+| CCA | gp | p95 |
+|-----|---:|----:|
+| Crest | 364.78 | 62.74 |
+| Crest+SH skip-only | 365.93 | 62.74 |
+| Crest+SH + cold 2.20× cap | 7.24 | 60.74 |
+| **Crest+SH + fill + pace-unbind** | **382.02** | 62.74 |
+| BBR | 372.91 | 62.74 |
+
+### Gate (5 windows, 1 MB, dt=0.01, α=0.20)
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| CUBIC | 94.22 | 68.38 |
+| BBRv3approx | 240.48 | 71.38 |
+| **LeoAware+SH** | **242.03** | 71.38 |
+
+Terr 78.623. Leo+SH 242.03 > BBR 240.48. Per-window deltas vs BBR:
+w1 +2.53, w2 +2.35, w3 +0.23, w4 +1.82, w5 +0.79.
+
+**Decision: ACCEPT** (`wetlinks_v1` research only). Not Current. No paid
+bump. No merge. Product Crest keeps `use_spike_hold=False`. Do not
+default-on without a `starlink_v1` 5-seed check. Do not mix with
+239.72/240.48, 156.70, 82.09/76.26, or 58/152.
+
+Archive: `results/archive/20260814-v311-wetlinks-sh/`  
+Design: `docs/leoaware_v311_spike_hold.md`
+
+---
+
 ## v3.12 - zhao_zenodo23 ingest + geometry (research era only)
 
 **Date:** 2026-08-13  
