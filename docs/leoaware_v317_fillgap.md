@@ -4,7 +4,8 @@
 **Branch:** `cursor/v317-fillgap-0208`  
 **Era:** synthetic `starlink_v1` (same harness / seeds as the v3.9 Crest lock)  
 **Lever:** **FillGap** (`use_fill_gap`, default **False**)  
-**Decision:** pending official `run_starlink` (see archive).  
+**Decision:** **ACCEPT vs BBR** (82.45 > 82.44; p95 76.26 ≤ 76.66; terr 79.05;
+seed 13 96.80). Research-on-product-era only.  
 **Not Current. Not paid. Do not merge.**
 
 ## Lock we are chasing
@@ -88,6 +89,23 @@ FillGap does **not**:
 `run_suite` / default `multi_seed` stay Crest. This cook’s archive runner
 (`python3 -m experiments.run_starlink`) opts in FillGap (and keeps OpenSlot
 on, 0.80 untouched) for measurement only.
+
+## Official archive
+
+`python3 -m experiments.run_starlink`
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| CUBIC | 8.57 | 71.63 |
+| BBRv3approx | **82.44** | 76.66 |
+| LeoAware v3.9 Crest (lock) | 82.07 | 76.26 |
+| LeoAware + OpenSlot (v3.16) | 82.38 | 76.26 |
+| **LeoAware + FillGap** | **82.45** | **76.26** |
+
+Per-seed: 13→96.80/72.21 · 7→75.36/67.81 · 42→81.25/97.56 · 99→73.19/64.09 ·
+123→85.61/79.65. Terr **79.05**. leo_single 83.56 vs BBR 83.32.
+
+**Decision: ACCEPT vs BBR.** Default stays False. Not Current. Do not merge.
 
 ## Reproduce
 

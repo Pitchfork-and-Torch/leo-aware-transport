@@ -1031,6 +1031,79 @@ Archive: `results/archive/20260814-v316-starlink/`
 
 ---
 
+## v3.17 FillGap — starlink_v1 product-era (ACCEPT vs BBR, do not merge)
+
+**Date:** 2026-08-14  
+**Branch:** `cursor/v317-fillgap-0208`  
+**Hypothesis:** Seed 13 leftover after OpenSlot (96.69 vs BBR 97.31) is cwnd
+sitting below delivery BDP on a delay-clean, delivery-caught path. A small
+cwnd fill (not a pace unbind, not a burst) closes the 0.06 mean gap.
+
+### Diagnosis (same v3.9 seeds / harness; OpenSlot on, 0.80 untouched)
+
+`python3 -m experiments.diag_v317_fillgap`
+
+| Hypothesis | Verdict |
+|------------|---------|
+| H1 seed 13 cwnd below delivery BDP (eligible 0.607; cwnd/delBDP 0.80) | **CONFIRMED** |
+| H2 seeds 7/99/123 already beat BBR (do not *need* the leftover) | **CONFIRMED** |
+
+Mean OpenSlot cwnd 516 KB vs BBR 964 KB. Delivery BDP 630 KB. Unconstrained
+unbind and 2.5× burst stay dead.
+
+### Lever
+
+**FillGap** (`use_fill_gap`, default **False**). Delay-clean
+(`rtt/min_rtt < 1.12`) and delivery ≥ 0.95×`bw_est` and cwnd < 0.85×
+delivery BDP → add **1 MSS**, capped at the 0.85× ceiling. Never gates
+`ep:loss_burst`. Does not retune OpenSlot 0.80. No FarHold / FastExit /
+LeanCatch / SpikeHold / Halo / Pulse / QSP / PATHHINT.
+
+### Official archive (synthetic `starlink_v1`, 90s, seeds 13,7,42,99,123)
+
+`python3 -m experiments.run_starlink`
+
+#### leo_fast_ho means
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| CUBIC | 8.57 | 71.63 |
+| BBRv3approx | 82.44 | 76.66 |
+| LeoAware v3.9 Crest (lock) | 82.07 | 76.26 |
+| LeoAware + OpenSlot (v3.16) | 82.38 | 76.26 |
+| **LeoAware + FillGap** | **82.45** | **76.26** |
+
+Per-seed FillGap gp / p95: 13→96.80/72.21 · 7→75.36/67.81 · 42→81.25/97.56 ·
+99→73.19/64.09 · 123→85.61/79.65
+
+#### Other scenarios
+
+| Scenario | LeoAware gp | p95 | note |
+|----------|------------:|----:|------|
+| leo_single | 83.56 | 74.95 | BBR 83.32 / 74.95 |
+| terrestrial | **79.05** | 46.0 | ≥ 77 @ ~46 **PASS** |
+
+### Gates
+
+| Check | Bar | Result |
+|-------|-----|--------|
+| gp mean clears BBR | > 82.44 | **82.45 PASS** |
+| p95 mean vs BBR | ≤ 76.66 | **76.26 PASS** (no Crest p95 regress) |
+| seed 13 vs Crest / OpenSlot | ≥ 96.65 / 96.69 | **96.80 PASS** |
+| absolute gp / p95 | ≥75 / ≤138.8 | PASS |
+| terrestrial | ≥ 77 | **79.05 PASS** |
+| seeds | 13,7,42,99,123 | PASS (none dropped) |
+| integrity | flag default False | PASS |
+
+**Decision: ACCEPT vs BBR** as research-on-product-era only. Not Current.
+Not paid. Do not merge. Do not bump orbitstack. Committed default stays
+`use_fill_gap=False`. Path is synthetic until CSV lock.
+
+Design: `docs/leoaware_v317_fillgap.md`  
+Archive: `results/archive/20260814-v317-fillgap/`
+
+---
+
 ## Open ideas (next loops)
 
 1. Denser real Starlink CSVs (continuous 90s RTT+capacity, not hold-expanded 15s iperf). `leocc_v1` is the first such ingest; still not product lock.
