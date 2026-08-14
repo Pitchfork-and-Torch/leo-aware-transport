@@ -50,6 +50,22 @@ bump — synthetic path until `docs/starlink_csv_ingest.md`.
 
 Archive: `results/archive/20260812-v39-starlink-v1/`
 
+## Invention ablation (not a Current bump)
+
+`python -m experiments.crest_ablation` · seeds 13,7,42,99,123 · `leo_fast_ho` · `starlink_v1`
+
+| Variant | gp mean | p95 mean | dual-gate |
+|---------|--------:|---------:|-----------|
+| BBRv3approx | 82.44 | 76.66 | yes |
+| v37_oce (flags off) | 82.28 | 76.66 | yes |
+| CA-only | 82.28 | 76.66 | yes |
+| CA+DLC+LSG | 81.98 | 76.26 | yes |
+| v39_full | 82.07 | 76.26 | yes |
+
+Plain v3.7-style LeoAware already clears 75/138.8 on this path. Crest flags are **not** load-bearing; the generative era switch is. CA is a no-op here. DLC+LSG is a ~0.4 ms p95 trim (seed 123) at ~0.3 Mbps gp. Keep v39_full as the documented lock stack; do not retune for 0.2 Mbps. Measured CSV eras (`wetlinks_v1`, `zhao_zenodo23`) are research-only and must not be mixed with these numbers.
+
+Archive: `results/archive/20260812-v39-crest-ablation/`
+
 ## Invention stack (endpoint-only product gate)
 
 Tried in order. No DTCE, no ghost/shadow REPROBE, no EpochMemory, **never gate
@@ -86,6 +102,7 @@ the hop.
 python -m experiments.test_ascent_d_integrity
 python -m experiments.ope_feasibility --profiles ope_v36,starlink_v1
 python -m experiments.multi_seed --tag 20260812-v39-starlink-v1
+python -m experiments.crest_ablation --tag 20260812-v39-crest-ablation
 python -m experiments.multi_seed --path-profile ope_v36 --tag 20260812-v39-ope-research
 ```
 

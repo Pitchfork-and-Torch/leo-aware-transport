@@ -90,6 +90,7 @@ docs/
   ascent_d_orbcc_hybrid.md
   related_work.md
   cloudflare_starlink_bridge.md
+  leoaware_v312_zhao_zenodo23.md  # research-era ingest; not product lock
 ```
 
 ### Network model
@@ -219,6 +220,8 @@ OPE-fair, same path for CUBIC + BBRv3approx + LeoAware. Soft-QIR α=0.20. Means,
 
 Gates (this PR, pending Jon): gp **82.07 ≥ 75**, p95 **76.26 ≤ 138.8**, terr **78.62 ≥ 77** (p95 46 ms = path 40 + QIR). Geometry oracle 84.03 / path p95 70.79. Do not mix with `ope_v36` ~58/152.
 
+Crest ablation (same path, `leo_fast_ho`): v37-style LeoAware already dual-gates (82.28 / 76.66). Crest flags are optional here; the era switch is load-bearing. See `docs/leoaware_v39_starlink_v1.md`.
+
 Design: `docs/leoaware_v39_starlink_v1.md`. Archive: `results/archive/20260812-v39-starlink-v1/`. Measured CSV era: `docs/starlink_csv_ingest.md`.
 
 ### Hybrid fuse ablation (fast, seeds 13+7; not the v3.9 product lock)
@@ -255,6 +258,7 @@ python -m experiments.test_ascent_d_integrity
 python -m experiments.ope_feasibility --profiles starlink_v1 --seeds 13,7,42,99,123
 python -m experiments.run_suite
 python -m experiments.multi_seed --path-profile starlink_v1 --seeds 13,7,42,99,123 --tag 20260812-v39-starlink-v1
+python -m experiments.crest_ablation --tag 20260812-v39-crest-ablation
 python3 -m experiments.multi_seed --path-profile ope_v36
 python3 -m experiments.run_wetlinks --tag 20260813-v311-wetlinks
 python3 -m experiments.test_wetlinks_integrity
@@ -281,6 +285,7 @@ See `docs/cloudflare_starlink_bridge.md` for a fuller write-up. Short version:
 - Packet-level fidelity is simplified (slot sim, not ns-3 / full QUIC state machine).
 - BBRv3approx is educational, not a production BBR port.
 - First measured-CSV era is `wetlinks_v1` (`traces/wetlinks/`, WetLinks slices). Synthetic `starlink_v1` remains the product lock. See `docs/starlink_csv_ingest.md`.
+- Research-era ingest `zhao_zenodo23` (`traces/zhao_zenodo23/`; geometry in `docs/leoaware_v312_zhao_zenodo23.md`). TCP Cubic goodput is a lower bound; SQM unknown. **Not** the product lock. Do not use for dual-gate ACCEPT.
 - Research-era ingest `leocc_v1` (`traces/leocc/`; LeoCC downlink UDP-sat + ICMP OWD). **Not** the product lock. Do not mix with `wetlinks_v1`, `zhao_zenodo23`, or Crest 82.09/76.26.
 - Multipath is optional/simplified (ISL delay only).
 - Not production-hardened (no pacing timer fidelity, ECN, or ACK aggregation).

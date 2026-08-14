@@ -656,6 +656,20 @@ LeoAware is **97.7% of oracle** (headroom ~2.0 Mbps). Product PASS is **absolute
 
 **Decision: ACCEPT v3.9 Crest** on synthetic `starlink_v1` (absolute dual-gate). **No Current bump. No paid landing. Do not merge without Jon.** Do not mix with `ope_v36` research Current (v3.7 58.78/152.1). Path is synthetic until CSV lock (`docs/starlink_csv_ingest.md`).
 
+### Crest invention ablation (leo_fast_ho, same `starlink_v1` path)
+
+`python -m experiments.crest_ablation --tag 20260812-v39-crest-ablation`
+
+| Variant | gp mean | p95 mean | dual-gate |
+|---------|--------:|---------:|-----------|
+| BBRv3approx | 82.44 | 76.66 | yes |
+| v37_oce (Crest flags off) | 82.28 | 76.66 | yes |
+| CA-only | 82.28 | 76.66 | yes |
+| CA+DLC+LSG | 81.98 | 76.26 | yes |
+| **v39_full (lock)** | **82.07** | **76.26** | yes |
+
+All five dual-gate. CA is a no-op vs v37 on this path. DLC+LSG trims ~0.4 ms p95 (seed 123 81.65→79.65) at ~0.3 Mbps gp. Anticipator is optional and does not unlock the bars. **The era switch (`starlink_v1` geometry) is load-bearing; Crest flags are not.** Do not retune CCA for 0.2 Mbps. Archive: `results/archive/20260812-v39-crest-ablation/`
+
 Design: `docs/leoaware_v39_starlink_v1.md`  
 Eras: `docs/harness_eras.md`  
 CSV next: `docs/starlink_csv_ingest.md`  
@@ -843,6 +857,47 @@ Design: `docs/leoaware_v311_wetlinks_uncap.md`
 
 ---
 
+## v3.12 - zhao_zenodo23 ingest + geometry (research era only)
+
+**Date:** 2026-08-13  
+**Branch:** `cursor/v312-zhao-zenodo23-db91`  
+**Hypothesis:** A real Starlink access dump (Victoria Ethernet → Seattle PoP → GCP us-west1-a, concurrent IRTT 10 ms + iPerf3 TCP Cubic 100 ms) can be sliced into five calendar-quantile sessions and walked for absolute 75/138.8 geometry without CCA.
+
+### Method
+
+- Zenodo DOI 10.5281/zenodo.10020034 (CC-BY-4.0); paper arXiv:2307.06863 / PIMRC 2023.
+- Validity: complete IRTT+iperf JSON pair, duration ≥90 s. **716/716** pairs passed.
+- Quantile rule: **calendar start time**, nearest-rank q ∈ {0, 0.25, 0.50, 0.75, 1} (indices 0, 179, 358, 536, 715). Not goodput quantiles. Not cherry-picks.
+- Capacity = TCP Cubic downlink goodput (`cubic_goodput_mbps`). Oracle = ∫ series = **lower bound**. Not dish PHY. SQM **unknown**.
+- Resample dt=0.05: IRTT last-obs (10 ms), iperf hold-within-bin (100 ms). No invented HO flags.
+- **No CCA.** Dump not vendored (~9.7 GB deleted after slice).
+
+### Geometry (native IRTT p95; cubic-goodput oracle)
+
+| q | session | oracle cubic-gp | IRTT p95 |
+|---|---------|----------------:|---------:|
+| q00 | 2023-09-13 00:40Z | 36.00 | 54.23 |
+| q25 | 2023-09-14 06:30Z | 38.16 | 64.20 |
+| q50 | 2023-09-15 12:20Z | 36.43 | 395.35 |
+| q75 | 2023-09-16 18:00Z | 28.16 | 81.55 |
+| q100 | 2023-09-17 23:50Z | 13.11 | 138.37 |
+| **mean** | | **30.37** | **146.74** |
+
+### Gate
+
+| Check | Bar | Result |
+|-------|-----|--------|
+| gp mean | ≥ 75 | **INCONCLUSIVE** (lower bound 30.37, not FAIL) |
+| p95 mean | ≤ 138.8 | **FAIL** (146.74; q50 395 ms dominates; dropping it would be a cherry-pick) |
+
+**Decision: geometry landed (PR #12 merged). Not Current. Do not mix with wetlinks_v1 or starlink_v1 Crest. Do not use for dual-gate ACCEPT. Do not start Crest/BBR on this era.**
+
+Archive: `results/archive/20260813-v312-zhao-zenodo23-geom/`  
+Design: `docs/leoaware_v312_zhao_zenodo23.md`  
+Slices: `traces/zhao_zenodo23/`
+
+---
+
 ## v3.13 - leocc_v1 ingest + dual-gate cook (research era only)
 
 **Date:** 2026-08-14  
@@ -885,9 +940,10 @@ Not Current. No paid. Do not merge. Do not mix eras.
 1. Denser real Starlink CSVs (continuous 90s RTT+capacity, not hold-expanded 15s iperf). `leocc_v1` is the first such ingest; still not product lock.
 2. Instrument per-seed delivery traces on `starlink_v2` before more fade/rise knobs.
 3. Path-normalized latency `p95(rtt − path_base)` as a *secondary* queue metric (implemented; still not the product gate).
-4. Per-RTT fairness clock for multi-flow (fair_mode still coarse).
-5. QUEUE-mode store-and-forward coupling with ASCENT-D.
-6. Full 5-seed ablation with ascent_d vs hybrid under suite durations (90s).
+4. Crest flags are optional on synthetic `starlink_v1` (ablation: v37-style already dual-gates). Do not retune CCA for 0.2 Mbps.
+5. Per-RTT fairness clock for multi-flow (fair_mode still coarse).
+6. QUEUE-mode store-and-forward coupling with ASCENT-D.
+7. Full 5-seed ablation with ascent_d vs hybrid under suite durations (90s).
 
 ---
 
