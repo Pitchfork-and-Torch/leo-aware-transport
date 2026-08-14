@@ -35,7 +35,7 @@ lower sat rate). We do **not** mix them into the five-window mean.
 - Delay bins ≥ 9000 (native duration ≥ 90 s).
 - At least one positive 1 ms UDP-sat sample in [0, 90 s).
 - Valid after filter: **2398**.
-- Excluded short delay (not gp/p95): `D/16` (75.92 s), `D/212` (88.39 s).
+- Excluded short delay (not gp/p95): `D/16` (75.92 s), `D/212` (88.39 s) on this dump.
 - Not cherry-picks. Not a single pretty session.
 
 ## Quantile rule (catalog order, not goodput)
@@ -54,6 +54,7 @@ We did **not** select by mean UDP-sat or delay p95.
 - Gate window: first **90 s** of each ~120 s trace (product duration).
 - Replay grid `dt = 0.05` s.
 - OWD: last-obs of the 10 ms delay bin with start ≤ t.
+  Source 0 is replaced by the last positive OWD (do not invent a floor).
 - **`rtt_ms = 2 × owd_ms`**. traces/README + mahimahi `mm-delay` are one-way;
   a packet sees the delay on both directions. Native OWD p95 is also archived.
 - Capacity: mean of the 50 one-millisecond UDP-sat samples in the slot.

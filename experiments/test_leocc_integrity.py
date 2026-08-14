@@ -44,7 +44,8 @@ def test_leocc_windows_present():
         assert rows[0].t_s == 0.0
         assert rows[-1].t_s >= DURATION_S - DT_S - 1e-9
         assert all(r.capacity_bps >= 0.0 for r in rows)
-        assert all(r.rtt_s > 0.0 for r in rows)
+        assert all(r.rtt_s > 0.0 for r in rows), path
+        assert sum(r.rtt_s for r in rows) / len(rows) > 0.01
         # rtt = 2 × owd: check first row against the owd column if present
     print(f"ok: {len(sessions)} LeoCC downlink windows load under {OUT_DIR}")
 

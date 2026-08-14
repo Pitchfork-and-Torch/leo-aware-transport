@@ -132,10 +132,17 @@ def resample_rows(
     n = int(duration_s / dt_s)
     ms_per_slot = int(round(dt_s * 1000.0))
     rows: list[tuple[float, float, float, float]] = []
+    last_pos = next((x for x in delay_owd if x > 0.0), 1.0)
     for k in range(n):
         t_rel = k * dt_s
         di = min(int(t_rel / DELAY_BIN_S), len(delay_owd) - 1)
         owd = delay_owd[di]
+        if owd > 0.0:
+            last_pos = owd
+        else:
+            # Source sometimes writes 0 (stats min). Hold last positive OWD.
+            # Do not invent a floor. One slot in A/600 on this dump.
+            owd = last_pos
         rtt = 2.0 * owd
         ms0 = k * ms_per_slot
         acc = 0.0
@@ -261,6 +268,7 @@ def write_manifest(out_dir: Path, slices: list[WindowSlice], n_zip: int, n_valid
         f"- Gate window: first **{DURATION_S:.0f} s** of each ~120 s trace (product duration).",
         f"- Replay grid `dt = {DT_S:.2f}` s.",
         "- OWD: last-obs of the 10 ms delay bin with start ≤ t.",
+        "  Source 0 is replaced by the last positive OWD (do not invent a floor).",
         "- **`rtt_ms = 2 × owd_ms`**. traces/README + mahimahi `mm-delay` are one-way;",
         "  a packet sees the delay on both directions. Native OWD p95 is also archived.",
         "- Capacity: mean of the 50 one-millisecond UDP-sat samples in the slot.",

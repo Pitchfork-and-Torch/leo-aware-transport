@@ -10,8 +10,18 @@
   "n_downlink_indexed": 2400,
   "n_valid": 2398,
   "excluded_short_delay": [
-    {"site": "D", "trace_no": 16, "delay_bins": 7592, "duration_s": 75.92},
-    {"site": "D", "trace_no": 212, "delay_bins": 8839, "duration_s": 88.39}
+    {
+      "site": "D",
+      "trace_no": 16,
+      "delay_bins": 7592,
+      "duration_s": 75.92
+    },
+    {
+      "site": "D",
+      "trace_no": 212,
+      "delay_bins": 8839,
+      "duration_s": 88.39
+    }
   ],
   "n_uplink_not_sliced": 2400,
   "min_duration_s": 90.0,
