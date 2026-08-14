@@ -88,6 +88,7 @@ docs/
   leoaware_v311_wetlinks.md
   leoaware_v313_leocc.md      # research-era ingest; not product lock
   leoaware_v314_d600.md       # FarHold D/600 cook; not product lock
+  leoaware_v314_b600.md       # B/600 follow-up: different bug, stop
   ascent_d_orbcc_hybrid.md
   related_work.md
   cloudflare_starlink_bridge.md

@@ -174,6 +174,14 @@ mean gap and did **not** clear BBR. **Not Current. Not paid. Do not merge.**
 **ACCEPT-as-research** only if Crest gp mean **clears** BBR without p95
 regression on the same 5 windows. This cook does not.
 
+## Follow-up (B/600) — stop
+
+The leftover 2.1 Mbps mean is B/600 (391.11 vs BBR 400.60). Diagnosed the
+same way as D/600: **not** SER-lite / `ep:ack_ia+loss_burst` (`ser_lite=0`).
+Different bug (73% `congestive_recovery`; `bw_est` already matches BBR).
+FarHold 80 ms floor **not** lowered. FarHold **not** generalized (would
+move A/1 and A/600). No second knob. See `docs/leoaware_v314_b600.md`.
+
 ## Honesty
 
 - Capacity is UDP iperf3 saturation, not dish PHY.

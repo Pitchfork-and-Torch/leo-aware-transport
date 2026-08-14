@@ -1,0 +1,276 @@
+[
+  {
+    "window": "B600",
+    "variant": "BBRv3approx",
+    "goodput_mbps": 400.6034133333333,
+    "p95_rtt_ms": 63.9999999999992,
+    "mode_hist": {
+      "startup": 3,
+      "probe": 25,
+      "cruise": 27,
+      "loss_ignored": 1745
+    },
+    "mean_cwnd_mss": 4022.832382403716,
+    "mean_bw_mbps": 423.54885029535143,
+    "mean_min_rtt_ms": 48.64756586536094
+  },
+  {
+    "window": "B600",
+    "variant": "Crest_noCA",
+    "goodput_mbps": 391.1397333333333,
+    "p95_rtt_ms": 63.9999999999992,
+    "mode_hist": {
+      "startup": 3,
+      "cruise": 437,
+      "mobility_loss": 27,
+      "congestive_recovery": 1315,
+      "reprobe_explore": 13,
+      "ser:loss_burst": 5
+    },
+    "mean_cwnd_mss": 1868.3670478232966,
+    "reconfigs_detected": 71,
+    "reprobe_reasons": {
+      "ep:loss_burst": 39,
+      "ep:rtt_mad+loss_burst": 26,
+      "ep:rtt_mad+loss_rtt": 4,
+      "ep:rtt_mad+ack_ia+loss_rtt": 2
+    },
+    "n_reprobe_events": 71,
+    "ca_aborts": 0,
+    "lsg_clamps": 101055,
+    "anticipator_holds": 1,
+    "ser_lite_count": 0,
+    "far_holds": 0,
+    "mean_bw_mbps": 418.84527936680075,
+    "mean_min_rtt_ms": 49.96088019559915,
+    "frac_reprobe_mode": 0.01,
+    "frac_cong_rec": 0.7305555555555555
+  },
+  {
+    "window": "B600",
+    "variant": "Crest",
+    "goodput_mbps": 391.11466666666666,
+    "p95_rtt_ms": 63.9999999999992,
+    "mode_hist": {
+      "startup": 3,
+      "cruise": 439,
+      "mobility_loss": 26,
+      "congestive_recovery": 1312,
+      "reprobe_explore": 14,
+      "ser:loss_burst": 6
+    },
+    "mean_cwnd_mss": 1869.7436880971181,
+    "reconfigs_detected": 72,
+    "reprobe_reasons": {
+      "ep:loss_burst": 40,
+      "ep:rtt_mad+loss_burst": 26,
+      "ep:rtt_mad+loss_rtt": 4,
+      "ep:rtt_mad+ack_ia+loss_rtt": 2
+    },
+    "n_reprobe_events": 72,
+    "ca_aborts": 0,
+    "lsg_clamps": 90821,
+    "anticipator_holds": 1,
+    "ser_lite_count": 0,
+    "far_holds": 0,
+    "mean_bw_mbps": 418.4507246690005,
+    "mean_min_rtt_ms": 49.95721271393656,
+    "frac_reprobe_mode": 0.011111111111111112,
+    "frac_cong_rec": 0.7288888888888889
+  },
+  {
+    "window": "B600",
+    "variant": "Crest_noLSG",
+    "goodput_mbps": 392.8801066666667,
+    "p95_rtt_ms": 63.9999999999992,
+    "mode_hist": {
+      "startup": 3,
+      "cruise": 434,
+      "mobility_loss": 26,
+      "congestive_recovery": 1319,
+      "reprobe_explore": 14,
+      "ser:loss_burst": 4
+    },
+    "mean_cwnd_mss": 1883.696749145207,
+    "reconfigs_detected": 72,
+    "reprobe_reasons": {
+      "ep:loss_burst": 39,
+      "ep:rtt_mad+loss_burst": 24,
+      "ep:rtt_mad+loss_rtt": 6,
+      "ep:rtt_mad+ack_ia+loss_rtt": 3
+    },
+    "n_reprobe_events": 72,
+    "ca_aborts": 0,
+    "lsg_clamps": 0,
+    "anticipator_holds": 0,
+    "ser_lite_count": 0,
+    "far_holds": 0,
+    "mean_bw_mbps": 420.57877615852533,
+    "mean_min_rtt_ms": 49.97434331093478,
+    "frac_reprobe_mode": 0.01,
+    "frac_cong_rec": 0.7327777777777778
+  },
+  {
+    "window": "B600",
+    "variant": "Crest_noAnt",
+    "goodput_mbps": 391.35424,
+    "p95_rtt_ms": 63.9999999999992,
+    "mode_hist": {
+      "startup": 3,
+      "cruise": 439,
+      "mobility_loss": 25,
+      "congestive_recovery": 1314,
+      "reprobe_explore": 15,
+      "ser:loss_burst": 4
+    },
+    "mean_cwnd_mss": 1875.2169593303158,
+    "reconfigs_detected": 71,
+    "reprobe_reasons": {
+      "ep:loss_burst": 39,
+      "ep:rtt_mad+loss_burst": 26,
+      "ep:rtt_mad+loss_rtt": 4,
+      "ep:rtt_mad+ack_ia+loss_rtt": 2
+    },
+    "n_reprobe_events": 71,
+    "ca_aborts": 0,
+    "lsg_clamps": 86178,
+    "anticipator_holds": 0,
+    "ser_lite_count": 0,
+    "far_holds": 0,
+    "mean_bw_mbps": 419.28841913957945,
+    "mean_min_rtt_ms": 49.95965770171163,
+    "frac_reprobe_mode": 0.010555555555555556,
+    "frac_cong_rec": 0.73
+  },
+  {
+    "window": "B600",
+    "variant": "v37_oce",
+    "goodput_mbps": 395.81152,
+    "p95_rtt_ms": 63.9999999999992,
+    "mode_hist": {
+      "startup": 4,
+      "cruise": 382,
+      "mobility_loss": 31,
+      "congestive_recovery": 1368,
+      "reprobe_explore": 10,
+      "ser:loss_burst": 4,
+      "oce_echo": 1
+    },
+    "mean_cwnd_mss": 1890.163529838582,
+    "reconfigs_detected": 71,
+    "reprobe_reasons": {
+      "ep:loss_burst": 39,
+      "ep:rtt_mad+loss_burst": 28,
+      "ep:rtt_mad+ack_ia+loss_rtt": 2,
+      "ep:rtt_mad+loss_rtt": 2
+    },
+    "n_reprobe_events": 71,
+    "ca_aborts": 0,
+    "lsg_clamps": 0,
+    "anticipator_holds": 0,
+    "ser_lite_count": 0,
+    "far_holds": 0,
+    "mean_bw_mbps": 424.7064565089103,
+    "mean_min_rtt_ms": 49.67399267399279,
+    "frac_reprobe_mode": 0.0077777777777777776,
+    "frac_cong_rec": 0.76
+  },
+  {
+    "window": "B600",
+    "variant": "Crest_FarHoldFlag",
+    "goodput_mbps": 391.11061333333333,
+    "p95_rtt_ms": 63.9999999999992,
+    "mode_hist": {
+      "startup": 3,
+      "cruise": 437,
+      "mobility_loss": 29,
+      "congestive_recovery": 1310,
+      "reprobe_explore": 14,
+      "ser:loss_burst": 7
+    },
+    "mean_cwnd_mss": 1867.9484687170868,
+    "reconfigs_detected": 72,
+    "reprobe_reasons": {
+      "ep:loss_burst": 40,
+      "ep:rtt_mad+loss_burst": 26,
+      "ep:rtt_mad+loss_rtt": 4,
+      "ep:rtt_mad+ack_ia+loss_rtt": 2
+    },
+    "n_reprobe_events": 72,
+    "ca_aborts": 0,
+    "lsg_clamps": 110299,
+    "anticipator_holds": 1,
+    "ser_lite_count": 0,
+    "far_holds": 1,
+    "mean_bw_mbps": 418.32917501063207,
+    "mean_min_rtt_ms": 49.95721271393656,
+    "frac_reprobe_mode": 0.011666666666666667,
+    "frac_cong_rec": 0.7277777777777777
+  },
+  {
+    "window": "A600",
+    "variant": "Crest",
+    "goodput_mbps": 344.49664,
+    "p95_rtt_ms": 38.00000000000307,
+    "mode_hist": {
+      "startup": 4,
+      "cruise": 985,
+      "congestive_recovery": 745,
+      "reprobe_explore": 27,
+      "ser:loss_burst": 7,
+      "mobility_loss": 32
+    },
+    "mean_cwnd_mss": 1134.5237200628087,
+    "reconfigs_detected": 98,
+    "reprobe_reasons": {
+      "ep:loss_burst": 25,
+      "ep:rtt_mad+loss_rtt": 63,
+      "ep:rtt_mad": 6,
+      "ep:rtt_mad+ack_ia": 1,
+      "ep:rtt_mad+ack_ia+loss_rtt": 1,
+      "ep:loss_rtt+rtt_classic": 2
+    },
+    "n_reprobe_events": 98,
+    "ca_aborts": 52,
+    "lsg_clamps": 79590,
+    "anticipator_holds": 2,
+    "ser_lite_count": 0,
+    "far_holds": 0,
+    "mean_bw_mbps": 373.26587039369366,
+    "mean_min_rtt_ms": 23.796524390244453,
+    "frac_reprobe_mode": 0.01888888888888889,
+    "frac_cong_rec": 0.41388888888888886
+  },
+  {
+    "window": "A1",
+    "variant": "Crest",
+    "goodput_mbps": 409.4382933333333,
+    "p95_rtt_ms": 35.999999999999204,
+    "mode_hist": {
+      "startup": 2,
+      "cruise": 777,
+      "mobility_loss": 30,
+      "congestive_recovery": 964,
+      "reprobe_explore": 24,
+      "ser:loss_burst": 3
+    },
+    "mean_cwnd_mss": 1283.1012089282729,
+    "reconfigs_detected": 73,
+    "reprobe_reasons": {
+      "ep:loss_burst": 28,
+      "ep:rtt_mad+loss_rtt": 41,
+      "ep:rtt_mad": 2,
+      "ep:loss_rtt+rtt_classic": 2
+    },
+    "n_reprobe_events": 73,
+    "ca_aborts": 52,
+    "lsg_clamps": 169337,
+    "anticipator_holds": 0,
+    "ser_lite_count": 0,
+    "far_holds": 0,
+    "mean_bw_mbps": 442.22968045351547,
+    "mean_min_rtt_ms": 22.650822669104436,
+    "frac_reprobe_mode": 0.015,
+    "frac_cong_rec": 0.5355555555555556
+  }
+]

@@ -999,6 +999,27 @@ Design: `docs/leoaware_v314_d600.md`
 
 ---
 
+## v3.14 follow-up — B/600 diagnosis (stop)
+
+**Date:** 2026-08-14  
+**Hypothesis:** leftover 2.1 Mbps is the same SER-lite / `ack_ia+loss_burst`
+wipe on B/600, so FarHold can generalize to fade-on-reconfig=0 without
+lowering the 80 ms floor.
+
+**Falsified.** B/600 `ser_lite=0`, zero `ep:ack_ia+loss_burst`. Crest
+`bw_est` 418 vs BBR 423. Gap is 73% `congestive_recovery` + 26 full
+`rtt_mad+loss_burst` invalidates. A/1 already has fade+`ep:loss_burst` and
+beats BBR — a reconfig=0 hold would move A. 80 ms floor not lowered. No
+second knob.
+
+**Decision: stop. Official gate still REJECT vs BBR (377.70 ≤ 379.80).**
+Not Current. Do not merge.
+
+Archive: `results/archive/20260814-v314-b600/`  
+Design: `docs/leoaware_v314_b600.md`
+
+---
+
 ## Open ideas (next loops)
 
 1. Denser real Starlink CSVs (continuous 90s RTT+capacity, not hold-expanded 15s iperf). `leocc_v1` is the first such ingest; still not product lock.
