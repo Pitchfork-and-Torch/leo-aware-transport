@@ -74,8 +74,11 @@ experiments/
   run_ablation.py           # endpoint / ASCENT-D / Orb / hybrid matrix
   run_wetlinks.py           # wetlinks_v1 geometry + 5-window CCA
   slice_wetlinks.py         # re-fetch / cut WetLinks 90s windows
+  slice_leocc.py            # LeoCC 4.8K.zip → 5 downlink 90s windows
+  run_leocc.py              # leocc_v1 geometry + 5-window CCA
   test_ascent_d_integrity.py
   test_wetlinks_integrity.py
+  test_leocc_integrity.py
   demo.py
 docs/
   architecture.md
@@ -83,6 +86,7 @@ docs/
   leoaware_v39_starlink_v1.md
   starlink_csv_ingest.md
   leoaware_v311_wetlinks.md
+  leoaware_v313_leocc.md      # research-era ingest; not product lock
   ascent_d_orbcc_hybrid.md
   related_work.md
   cloudflare_starlink_bridge.md
@@ -277,6 +281,7 @@ See `docs/cloudflare_starlink_bridge.md` for a fuller write-up. Short version:
 - Packet-level fidelity is simplified (slot sim, not ns-3 / full QUIC state machine).
 - BBRv3approx is educational, not a production BBR port.
 - First measured-CSV era is `wetlinks_v1` (`traces/wetlinks/`, WetLinks slices). Synthetic `starlink_v1` remains the product lock. See `docs/starlink_csv_ingest.md`.
+- Research-era ingest `leocc_v1` (`traces/leocc/`; LeoCC downlink UDP-sat + ICMP OWD). **Not** the product lock. Do not mix with `wetlinks_v1`, `zhao_zenodo23`, or Crest 82.09/76.26.
 - Multipath is optional/simplified (ISL delay only).
 - Not production-hardened (no pacing timer fidelity, ECN, or ACK aggregation).
 

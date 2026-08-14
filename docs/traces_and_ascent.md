@@ -32,8 +32,10 @@ python -m experiments.run_trace_suite
 | `starlink_v1` | **Product lock** (`multi_seed` / `run_suite` default): `starlink_rtt` + 40–150 Mbps. |
 
 Era table: `docs/harness_eras.md`. Capacity: `docs/leoaware_v38_capacity_model.md`.
-Measured CSV era: `wetlinks_v1` under `traces/wetlinks/` (WetLinks slices,
-Laniewski et al., TMA 2024). Ingest + inferences: `docs/starlink_csv_ingest.md`.
+Measured CSV eras (research only; do **not** mix with each other or with `starlink_v1` Crest):
+- `wetlinks_v1` under `traces/wetlinks/` (WetLinks slices, Laniewski et al., TMA 2024). Ingest: `docs/starlink_csv_ingest.md`.
+- `zhao_zenodo23` (PR #12, still open): TCP Cubic goodput; IRTT p95 mean ~146.74 FAIL. Not for dual-gate ACCEPT.
+- `leocc_v1` under `traces/leocc/` (LeoCC downlink UDP-sat + ICMP OWD, SIGCOMM 2025). Geometry + cook: `docs/leoaware_v313_leocc.md`.
 
 ## ASCENT freeze hints
 

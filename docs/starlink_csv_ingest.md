@@ -101,3 +101,15 @@ See `docs/leoaware_v311_wetlinks_uncap.md`.
 - Demo CSVs (`traces/starlink_v1_seed13.csv`, etc.) remain **synthetic**.
 - No paid landing bump on synthetic `starlink_v1`.
 - No empty `traces/real/` directory.
+
+## Successor research ingest (`leocc_v1`, v3.13)
+
+[SpaceNetLab/LeoCC](https://github.com/SpaceNetLab/LeoCC) (Lai et al., SIGCOMM
+2025, MIT) publishes concurrent **heavy UDP saturation + ICMP OWD** traces
+(~120 s, 4.8K). That is the first public dump that is actually continuous
+≥90 s UDP-sat + delay — WetLinks is 15 s hold-expand; zhao_zenodo23 is TCP
+Cubic (PR #12, p95 FAIL, not for dual-gate ACCEPT).
+
+Vendored slices: `traces/leocc/`. Design: `docs/leoaware_v313_leocc.md`.
+**Not** a product-lock replacement. Do not mix with `wetlinks_v1` 239.72/70.38
+or `starlink_v1` Crest 82.09/76.26.

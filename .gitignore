@@ -12,3 +12,9 @@ build/
 .DS_Store
 
 .wrangler/
+
+# Never vendor full measurement dumps (leocc_v1 slices live under traces/)
+*.tar.zst
+4.8K.zip
+data-20230913-20230917.tar.zst
+traces/leocc/raw/

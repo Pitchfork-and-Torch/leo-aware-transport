@@ -1,0 +1,41 @@
+{
+  "era": "leocc_v1",
+  "product_lock_era": "starlink_v1",
+  "cook": "leocc_v1_geometry",
+  "decision": "GEOMETRY_ONLY",
+  "cca": "none",
+  "soft_qir_alpha": 0.2,
+  "geometry": {
+    "era": "leocc_v1",
+    "n_windows": 5,
+    "oracle_gp_mean": 394.94738666666666,
+    "path_p95_mean": 85.2,
+    "owd_p95_mean": 42.6,
+    "resampled_oracle_gp_mean": 394.9156511520001,
+    "resampled_path_p95_mean": 85.6,
+    "gp_ge_75_possible": true,
+    "p95_le_138_8_possible": true,
+    "absolute_dual_gate_possible": true,
+    "soft_qir_alpha": 0.2,
+    "rtt_rule": "2 * one-way delay",
+    "capacity_meaning": "UDP iperf3 saturation; not dish PHY",
+    "bars": {
+      "gp_mean": 75.0,
+      "p95_mean": 138.8
+    },
+    "note": "Geometry uses first 90s of LeoCC downlink UDP-sat + ICMP OWD. p95 bar is native 2\u00d7OWD. Do not mix with starlink_v1 / wetlinks_v1 / zhao."
+  },
+  "gates": {
+    "geometry_dual_gate": true,
+    "gp_ge_75": true,
+    "p95_le_138_8": true
+  },
+  "do_not_merge": true,
+  "do_not_mix_with": [
+    "wetlinks_v1",
+    "zhao_zenodo23",
+    "starlink_v1_crest_scorecard",
+    "ope_v36"
+  ],
+  "note": "Geometry-only stop. No Current. No paid. Product lock stays synthetic starlink_v1 / v3.9 Crest."
+}

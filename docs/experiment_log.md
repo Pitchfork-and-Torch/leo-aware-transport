@@ -843,9 +843,46 @@ Design: `docs/leoaware_v311_wetlinks_uncap.md`
 
 ---
 
+## v3.13 - leocc_v1 ingest + dual-gate cook (research era only)
+
+**Date:** 2026-08-14  
+**Branch:** `cursor/v313-leocc-traces-a108`  
+**Hypothesis:** LeoCC / LeoReplayer (SIGCOMM 2025) is a public continuous ≥90s
+UDP-saturation + ICMP delay Starlink dump. Five catalog-quantile **downlink**
+windows can decide absolute 75/138.8 without inventing traces.
+
+### Method
+
+- Source: SpaceNetLab/LeoCC (MIT) + Tsinghua Cloud `4.8K.zip` (download succeeded).
+- 4800 traces; this era is **downlink only** (2400). Uplink not mixed.
+- Validity: delay bins ≥ 9000 (90 s). **2398 / 2400**. Excluded: D/16 (75.92 s),
+  D/212 (88.39 s) — short duration, not gp/p95 cherry-picks.
+- Quantile: catalog `(site A..D, trace 1..600)` nearest-rank q ∈ {0,0.25,0.50,0.75,1}
+  → A/1, A/600, B/600, C/599, D/600.
+- Capacity = UDP sat (12 Mbps/line). RTT = 2 × OWD. `reconfig=0`. No CCA invention.
+- **Not** zhao_zenodo23 (PR #12; Cubic; p95 FAIL). **Not** WetLinks hold-expand.
+
+### Geometry (native 2×OWD p95; UDP-sat oracle)
+
+| q | site/trace | oracle UDP-sat | 2×OWD p95 |
+|---|------------|---------------:|----------:|
+| q00 | A/1 | 425.83 | 32.00 |
+| q25 | A/600 | 353.33 | 32.00 |
+| q50 | B/600 | 408.26 | 60.00 |
+| q75 | C/599 | 406.40 | 108.00 |
+| q100 | D/600 | 380.91 | 194.00 |
+| **mean** | | **394.95** | **85.20** |
+
+gp ≥ 75 **PASS**. p95 ≤ 138.8 **PASS** (mean; D/600 194 is a real far-site tail).
+
+CCA + decision: `docs/leoaware_v313_leocc.md` / `results/archive/20260814-v313-leocc/`.
+Not Current. No paid. Do not merge. Do not mix eras.
+
+---
+
 ## Open ideas (next loops)
 
-1. Denser real Starlink CSVs (continuous 90s RTT+capacity, not hold-expanded 15s iperf).
+1. Denser real Starlink CSVs (continuous 90s RTT+capacity, not hold-expanded 15s iperf). `leocc_v1` is the first such ingest; still not product lock.
 2. Instrument per-seed delivery traces on `starlink_v2` before more fade/rise knobs.
 3. Path-normalized latency `p95(rtt − path_base)` as a *secondary* queue metric (implemented; still not the product gate).
 4. Per-RTT fairness clock for multi-flow (fair_mode still coarse).
