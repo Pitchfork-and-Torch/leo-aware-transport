@@ -950,6 +950,12 @@ Design: `docs/leoaware_v313_leocc.md`
 
 ---
 
+## 2026-08-14 — Public progress (JON-14)
+
+Docs-only. Reproduced ASCENT-D integrity (PASS). Published means-vs-BBR note from the Crest `starlink_v1` archive (`results/archive/20260812-v39-starlink-v1/`) for orbitstack /progress. Product lock remains `starlink_v1` Crest. No VELA operators. No dish/PHY Mbps. No `leocc_v1` numbers on the public note. See `docs/progress/2026-08-14-public-means.md`.
+
+---
+
 ## Open ideas (next loops)
 
 1. Denser real Starlink CSVs (continuous 90s RTT+capacity, not hold-expanded 15s iperf). `leocc_v1` is the first such ingest; still not product lock.
