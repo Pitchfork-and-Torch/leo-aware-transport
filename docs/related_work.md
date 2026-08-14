@@ -10,6 +10,7 @@ LeoAware is a **research prototype**, not a bit-exact clone of any production or
 | **SaTCP / StarQUIC freeze** | Freeze / protect state across known freezes | Medium (event awareness) | LeoAware REPROBE is a soft alternative to hard freeze |
 | **OrbCC-class** | In-network / orbital assists | High | Future path; LeoAware `on_path_hint` is the hook |
 | **Multipath QUIC** | Schedule across paths | Medium | Stretch; ISL flag is a seed only |
+| **Zhao/Pan Starlink traces** | IRTT + iPerf3 Cubic, Victoria→Seattle PoP (PIMRC 2023 / Zenodo 10.5281/zenodo.10020034) | None (measurement) | Research-era `zhao_zenodo23` ingest; not a CCA lock |
 
 ## Design choice summary
 

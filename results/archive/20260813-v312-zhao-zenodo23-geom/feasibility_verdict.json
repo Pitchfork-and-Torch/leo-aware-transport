@@ -1,0 +1,30 @@
+{
+  "era": "zhao_zenodo23",
+  "cca": "none",
+  "bars": {
+    "gp_mean": 75.0,
+    "p95_mean": 138.8,
+    "p95_source": "native_IRTT_10ms"
+  },
+  "n_sessions": 5,
+  "quantile_rule": "calendar start-time nearest-rank q in {0,0.25,0.50,0.75,1} among valid pairs; idx=min(n-1,int(q*(n-1)+0.5))",
+  "oracle_cubic_gp_mean": 30.3705354652955,
+  "irtt_p95_mean": 146.7407416,
+  "resampled_oracle_gp_mean": 30.41481329243687,
+  "resampled_path_p95_mean": 152.59148,
+  "gp_verdict": "INCONCLUSIVE",
+  "gp_note": "cubic-goodput oracle mean < 75; this is a TCP Cubic lower bound on path capacity, not a FAIL",
+  "p95_verdict": "FAIL",
+  "dual_gate": "INCONCLUSIVE on gp (lower bound); p95=FAIL",
+  "sqm": "unknown",
+  "capacity_meaning": "TCP Cubic downlink goodput; lower bound; not dish PHY / RF Mbps",
+  "product_lock": "unchanged (synthetic starlink_v1 / v3.9 Crest). this era is research-only.",
+  "do_not_merge": true,
+  "do_not_mix_with": [
+    "wetlinks_v1",
+    "starlink_v1_crest_scorecard"
+  ],
+  "doi": "10.5281/zenodo.10020034",
+  "license": "CC-BY-4.0",
+  "paper": "https://arxiv.org/abs/2307.06863"
+}
