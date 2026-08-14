@@ -1,0 +1,79 @@
+{
+  "era": "starlink_v1",
+  "soft_qir_alpha": 0.2,
+  "seeds": [
+    13,
+    7,
+    42,
+    99,
+    123
+  ],
+  "variants": [
+    {
+      "variant": "BBRv3approx",
+      "goodput_mean": 82.43904,
+      "goodput_std": 9.695294558275851,
+      "p95_mean": 76.66408239312553,
+      "p95_std": 13.392944442810668,
+      "p95_path_mean": 70.7858934840344,
+      "p95_excess_mean": 9.600000000000222,
+      "n": 5,
+      "gp_ge_75": true,
+      "p95_le_138_8": true,
+      "dual_gate": true
+    },
+    {
+      "variant": "ca",
+      "goodput_mean": 82.28194133333332,
+      "goodput_std": 9.513214550894052,
+      "p95_mean": 76.66408239312553,
+      "p95_std": 13.392944442810668,
+      "p95_path_mean": 70.7858934840344,
+      "p95_excess_mean": 9.600000000000222,
+      "n": 5,
+      "gp_ge_75": true,
+      "p95_le_138_8": true,
+      "dual_gate": true
+    },
+    {
+      "variant": "ca_dlc_lsg",
+      "goodput_mean": 81.98395733333334,
+      "goodput_std": 9.228793860870205,
+      "p95_mean": 76.2640823931256,
+      "p95_std": 13.235829304513672,
+      "p95_path_mean": 70.7858934840344,
+      "p95_excess_mean": 9.600000000000222,
+      "n": 5,
+      "gp_ge_75": true,
+      "p95_le_138_8": true,
+      "dual_gate": true
+    },
+    {
+      "variant": "v37_oce",
+      "goodput_mean": 82.28113066666666,
+      "goodput_std": 9.512861634642746,
+      "p95_mean": 76.66408239312553,
+      "p95_std": 13.392944442810668,
+      "p95_path_mean": 70.7858934840344,
+      "p95_excess_mean": 9.600000000000222,
+      "n": 5,
+      "gp_ge_75": true,
+      "p95_le_138_8": true,
+      "dual_gate": true
+    },
+    {
+      "variant": "v39_full",
+      "goodput_mean": 82.066624,
+      "goodput_std": 9.478304768251434,
+      "p95_mean": 76.2640823931256,
+      "p95_std": 13.235829304513672,
+      "p95_path_mean": 70.7858934840344,
+      "p95_excess_mean": 9.600000000000222,
+      "n": 5,
+      "gp_ge_75": true,
+      "p95_le_138_8": true,
+      "dual_gate": true
+    }
+  ],
+  "note": "Invention ladder on starlink_v1 leo_fast_ho. Not a Current bump. Anticipator is optional."
+}
