@@ -956,6 +956,80 @@ Docs-only. Reproduced ASCENT-D integrity (PASS). Published means-vs-BBR note fro
 
 ---
 
+## v3.15 FastExit died / LeanCatch — REJECT vs BBR (research-only)
+
+**Date:** 2026-08-14  
+**Branch:** `cursor/v315-fastexit-f1ea` (PR #19, draft, do not merge)  
+**Era:** `leocc_v1` (Lai et al., SIGCOMM 2025). **Not Current. Not paid.**  
+**Product lock:** synthetic `starlink_v1` / v3.9 Crest 82.07 / 76.26. Do not mix eras.
+
+### Hypothesis (discarded)
+
+B/600 leftover (391.11 vs BBR 400.60) is Crest lingering in `congestive_recovery`
+after the fade. FastExit = restore cwnd when delivery ≥ 0.95 × pre-cut `bw_est`.
+Must not move A/1 or A/600. Not FarHold. Never gate `ep:loss_burst`.
+
+### Diagnosis (B/600 vs A/1)
+
+`python3 -m experiments.diag_fastexit`. Delivery exits recovery in **one 10 ms
+slot** on A and B. Blind FastExit would fire on A/1 **4371** ACKs and A/600
+**3255**. That taxes A. **FastExit died.**
+
+The leftover is 0.72^n compounding on structural overflow (1 MB buffer < BDP).
+BBR ignores the same marks. Under-windowed (cwnd < 0.70 × delivery BDP) is the
+discriminator: A/1 22/4371 (0.5%), A/600 59/3255 (1.8%), B/600 1760/5466 (32%).
+
+### Replacement: LeanCatch
+
+`use_lean_catch` default **False**. After a 0.72 cut, restore toward delivery
+BDP only if delivery recovered **and** cwnd < 0.70 × that BDP **and** delay
+clean. One-shot per cut. `run_leocc` opts in on LeoCC only. `use_fast_exit`
+stays False and inert. Product Crest unchanged.
+
+### 5-window CCA (dt=0.01, 1 MB, α=0.20, endpoint-only)
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| CUBIC | 31.14 | 87.20 |
+| BBRv3approx | **379.80** | **89.60** |
+| LeoAware Crest (flags off) | 337.97 | 89.60 |
+| FarHold-on (PR #18 cite) | 377.70 | 89.60 |
+| **LeoAware LeanCatch** | **358.94** | **89.60** |
+
+Terr (product Crest, 250 KB, seeds 13,7,42,99,123): **78.62** @ 46 ms.
+
+| q | Crest off | LeanCatch | BBR |
+|---|----------:|----------:|----:|
+| A/1 | 409.44 | **409.65** | 408.33 |
+| A/600 | 344.50 | **344.68** | 338.54 |
+| B/600 | 391.11 | 392.32 | 400.60 |
+| C/599 | 340.20 | 363.61 | 393.25 |
+| D/600 | 204.61 | 284.43 | 358.29 |
+
+A not worse. D/600 kept (284.43 ≥ 204.61). p95 tied 89.60. Mean 358.94 does
+**not** clear BBR 379.80 (short 20.86). Lift is C (+23.4) and D (+79.8);
+B only +1.2. FarHold (D-only hold) is still closer to BBR (377.70) — different
+bug, not generalized.
+
+### Gates
+
+| Check | Bar | Result |
+|-------|-----|--------|
+| LeanCatch gp mean | > 379.80 | **358.94 FAIL** |
+| p95 mean | ≤ 89.60 | **89.60 PASS** |
+| A/1 / A/600 | ≥ 409.44 / 344.50 | **PASS** |
+| D/600 present | ≥ 204.61 | **PASS** (284.43) |
+| Terr | ≥ 77 | **78.62 PASS** |
+| Integrity | flags default False | **PASS** |
+
+**Decision: REJECT vs BBR.** Research-only. Not Current. No paid. Do not merge.
+Do not mix with starlink_v1 82.07/76.26. Do not pile onto PR #18.
+
+Archive: `results/archive/20260814-v315-fastexit/`  
+Design: `docs/leoaware_v315_fastexit.md`
+
+---
+
 ## Open ideas (next loops)
 
 1. Denser real Starlink CSVs (continuous 90s RTT+capacity, not hold-expanded 15s iperf). `leocc_v1` is the first such ingest; still not product lock.

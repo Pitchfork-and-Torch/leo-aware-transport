@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""v3.13 leocc_v1: geometry first, then endpoint CCA on 5 downlink windows.
+"""v3.15 leocc_v1: LeanCatch cook (FastExit died) on the same 5 downlink windows.
 
 Era: leocc_v1. Never mix with starlink_v1 82.09/76.26, wetlinks_v1, zhao_zenodo23,
-or ope_v36 58/152. Crest stays (LeoAwareCCA defaults). No Halo/QSP/PATHHINT.
+or ope_v36 58/152. Product Crest defaults stay off. This cook opts in LeanCatch
+(`use_lean_catch=True`) on LeoCC windows only. FastExit is not implemented.
+No Halo/QSP/PATHHINT/FarHold.
 
 Capacity is UDP saturation (continuous ~120 s, first 90 s). RTT = 2×OWD.
 Not dish PHY. Not Current. Do not merge.
 
 Usage:
   python3 -m experiments.run_leocc --geometry-only
-  python3 -m experiments.run_leocc --tag 20260814-v313-leocc --workers 4
+  python3 -m experiments.run_leocc --tag 20260814-v315-fastexit --workers 4
 """
 from __future__ import annotations
 
@@ -127,7 +129,30 @@ def verdict_from_geometry(df: pd.DataFrame) -> dict:
     }
 
 
-_CCA_CLS = {"CUBIC": CubicCCA, "BBRv3approx": BbrCCA, "LeoAware": LeoAwareCCA}
+# Locked FarHold-off Crest per-window floors (v3.13). Kill if A drops.
+CREST_A1_GP = 409.44
+CREST_A600_GP = 344.50
+CREST_D600_GP = 204.61
+BBR_GP_MEAN = 379.80
+BBR_P95_MEAN = 89.60
+
+
+def _leoaware_leocc() -> LeoAwareCCA:
+    """Research-era opt-in: LeanCatch on leocc_v1 windows. Product default stays off."""
+    return LeoAwareCCA(use_lean_catch=True)
+
+
+def _leoaware_crest() -> LeoAwareCCA:
+    """FarHold-off / LeanCatch-off Crest baseline (same as v3.13)."""
+    return LeoAwareCCA()
+
+
+_CCA_CLS = {
+    "CUBIC": CubicCCA,
+    "BBRv3approx": BbrCCA,
+    "LeoAware": _leoaware_leocc,
+    "LeoAwareCrest": _leoaware_crest,
+}
 
 
 def _cca_job(payload: dict) -> dict:
@@ -166,7 +191,7 @@ def run_window_cca(
     jobs = [
         {"csv": str(path), "cca": name, "buffer_bytes": buffer_bytes}
         for path in window_paths(trace_dir)
-        for name in ("CUBIC", "BBRv3approx", "LeoAware")
+        for name in ("CUBIC", "BBRv3approx", "LeoAware", "LeoAwareCrest")
     ]
     if workers <= 1:
         return pd.DataFrame([_cca_job(j) for j in jobs])
@@ -248,37 +273,77 @@ def scorecard(
     leo_gp, leo_p95 = means(cca_df, "LeoAware")
     bbr_gp, bbr_p95 = means(cca_df, "BBRv3approx")
     cub_gp, cub_p95 = means(cca_df, "CUBIC")
+    crest_off = cca_df[cca_df["cca"] == "LeoAwareCrest"]
+    crest_off_gp = float(crest_off["goodput_mbps"].mean()) if len(crest_off) else None
+    crest_off_p95 = float(crest_off["p95_rtt_ms"].mean()) if len(crest_off) else None
     terr_gp = float(terr_df["goodput_mbps"].mean())
     terr_p95 = float(terr_df["p95_rtt_ms"].mean())
+
+    def _win_gp(df: pd.DataFrame, cca: str, window_id: str) -> float | None:
+        g = df[(df["cca"] == cca) & (df["window_id"] == window_id)]
+        if g.empty:
+            return None
+        return float(g["goodput_mbps"].iloc[0])
+
+    a1 = _win_gp(cca_df, "LeoAware", "q00_A_downlink_001")
+    a600 = _win_gp(cca_df, "LeoAware", "q25_A_downlink_600")
+    d600 = _win_gp(cca_df, "LeoAware", "q100_D_downlink_600")
+    a1_ok = a1 is not None and a1 + 1e-6 >= CREST_A1_GP
+    a600_ok = a600 is not None and a600 + 1e-6 >= CREST_A600_GP
+    d600_present = d600 is not None
+    d600_ok = d600_present and d600 + 1e-6 >= CREST_D600_GP
     gp_ok = leo_gp >= PRODUCT_GP_BAR
     p95_ok = leo_p95 <= PRODUCT_P95_BAR
     terr_ok = terr_gp >= PRODUCT_TERR_GP_BAR
+    # Cook kill: must *clear* locked BBR 379.80 / 89.60 (not just this-run BBR).
+    clears_bbr_lock = leo_gp > BBR_GP_MEAN + 1e-9
+    p95_vs_bbr_lock = leo_p95 <= BBR_P95_MEAN + 1e-9
     crest_clears_bbr = leo_gp > bbr_gp + 1e-9
     p95_vs_bbr = leo_p95 <= bbr_p95 + 1e-9
     abs_ok = bool(geo_v["absolute_dual_gate_possible"] and gp_ok and p95_ok and terr_ok)
-    pareto_bbr = crest_clears_bbr and p95_vs_bbr
-    if abs_ok and pareto_bbr:
-        decision = "ACCEPT"
+    pareto_bbr = clears_bbr_lock and p95_vs_bbr_lock
+    a_ok = a1_ok and a600_ok
+    if not d600_present:
+        decision = "REJECT"
+        decision_note = "D/600 dropped or cherry-picked. Not Current. Do not merge."
+    elif not a_ok:
+        decision = "REJECT"
         decision_note = (
-            "absolute dual-gate PASS and Crest Pareto vs BBR on this era. "
+            "A/1 or A/600 gp dropped vs FarHold-off Crest 409.44 / 344.50. "
             "Not Current. No paid. Do not merge."
         )
-    elif abs_ok:
-        decision = "ACCEPT_ERA_REJECT_BBR"
+    elif not terr_ok:
+        decision = "REJECT"
+        decision_note = "terrestrial Crest < 77. Not Current. Do not merge."
+    elif not p95_vs_bbr_lock:
+        decision = "REJECT"
         decision_note = (
-            "absolute 75/138.8 PASS on leocc_v1 means; Crest does not clear BBR. "
+            f"p95 mean {leo_p95:.2f} > BBR lock 89.60. Not Current. Do not merge."
+        )
+    elif not clears_bbr_lock:
+        decision = "REJECT"
+        decision_note = (
+            f"LeanCatch gp mean {leo_gp:.2f} ≤ BBR lock 379.80. "
             "Not Current. No paid. Do not merge."
+        )
+    elif abs_ok and pareto_bbr and d600_ok:
+        decision = "ACCEPT"
+        decision_note = (
+            "research-only: LeanCatch clears BBR 379.80 with p95 ≤ 89.60 "
+            "and A windows not worse. Not Current. No paid. Do not merge."
         )
     else:
         decision = "REJECT"
         decision_note = (
-            "absolute dual-gate FAIL on leocc_v1 CCA means. Not Current. Do not merge."
+            "absolute dual-gate or D/600 floor FAIL. Not Current. Do not merge."
         )
     ceiling = send_ceiling_mbps(buffer_bytes)
     return {
         "era": ERA,
         "product_lock_era": PRODUCT_PATH_PROFILE,
-        "cook": "leocc_v1",
+        "cook": "leocc_v1_leancatch",
+        "fast_exit": False,
+        "lean_catch": True,
         "decision": decision,
         "decision_note": decision_note,
         "soft_qir_alpha": SOFT_QIR_ALPHA,
@@ -288,10 +353,20 @@ def scorecard(
         "windows": {
             "LeoAware_gp_mean": leo_gp,
             "LeoAware_p95_mean": leo_p95,
+            "LeoAwareCrest_gp_mean": crest_off_gp,
+            "LeoAwareCrest_p95_mean": crest_off_p95,
             "BBR_gp_mean": bbr_gp,
             "BBR_p95_mean": bbr_p95,
             "CUBIC_gp_mean": cub_gp,
             "CUBIC_p95_mean": cub_p95,
+            "A1_gp": a1,
+            "A600_gp": a600,
+            "D600_gp": d600,
+            "FarHold_on_cite": {
+                "gp_mean": 377.70,
+                "p95_mean": 89.60,
+                "source": "PR #18 SHA 01d8567e; not re-run this cook",
+            },
         },
         "terrestrial": {
             "LeoAware_gp_mean": terr_gp,
@@ -305,6 +380,12 @@ def scorecard(
             "terr_ge_77": terr_ok,
             "crest_gp_clears_bbr": crest_clears_bbr,
             "crest_p95_le_bbr": p95_vs_bbr,
+            "clears_bbr_lock_379_80": clears_bbr_lock,
+            "p95_le_bbr_lock_89_60": p95_vs_bbr_lock,
+            "a1_ge_409_44": a1_ok,
+            "a600_ge_344_50": a600_ok,
+            "d600_present": d600_present,
+            "d600_ge_204_61": d600_ok,
             "absolute_dual_gate": abs_ok,
             "pareto_vs_bbr": pareto_bbr,
         },
@@ -318,7 +399,9 @@ def scorecard(
         "note": (
             "leocc_v1 research era. Continuous ≥90s UDP-sat + ICMP OWD (RTT=2×OWD). "
             f"dt={SIM_DT_S}; buffer={buffer_bytes} B; send ceiling {ceiling:.0f} Mbps. "
-            "Not dish PHY. Crest defaults unchanged. No Current bump. No merge. "
+            "Not dish PHY. LeanCatch opted in on LeoCC windows; product Crest "
+            "default stays use_lean_catch=False / use_fast_exit=False. "
+            "FastExit died (would tax A). No Current bump. No merge. "
             "Do not mix with wetlinks_v1, zhao_zenodo23, or starlink_v1 82.09/76.26."
         ),
     }
@@ -326,7 +409,7 @@ def scorecard(
 
 def write_table(out_dir: Path, geo: pd.DataFrame, verdict: dict, card: dict) -> None:
     lines = [
-        "# leocc_v1 scorecard (v3.13)",
+        "# leocc_v1 scorecard (v3.15 LeanCatch; FastExit died)",
         "",
         f"Decision: **{card['decision']}**. {card.get('decision_note') or card.get('note')}",
         "",
@@ -365,19 +448,86 @@ def write_table(out_dir: Path, geo: pd.DataFrame, verdict: dict, card: dict) -> 
             "|-----|--------:|---------:|",
             f"| CUBIC | {wins['CUBIC_gp_mean']:.2f} | {wins['CUBIC_p95_mean']:.2f} |",
             f"| BBRv3approx | {wins['BBR_gp_mean']:.2f} | {wins['BBR_p95_mean']:.2f} |",
-            f"| **LeoAware Crest** | **{wins['LeoAware_gp_mean']:.2f}** | **{wins['LeoAware_p95_mean']:.2f}** |",
+            f"| **LeoAware LeanCatch** | **{wins['LeoAware_gp_mean']:.2f}** | **{wins['LeoAware_p95_mean']:.2f}** |",
+        ]
+        if wins.get("LeoAwareCrest_gp_mean") is not None:
+            lines.append(
+                f"| LeoAware Crest (flags off) | {wins['LeoAwareCrest_gp_mean']:.2f} | "
+                f"{wins['LeoAwareCrest_p95_mean']:.2f} |"
+            )
+        lines += [
+            f"| FarHold-on (PR #18 cite) | 377.70 | 89.60 |",
             "",
             f"Terrestrial LeoAware {card['terrestrial']['LeoAware_gp_mean']:.2f} @ "
-            f"{card['terrestrial']['LeoAware_p95_mean']:.1f} ms.",
+            f"{card['terrestrial']['LeoAware_p95_mean']:.1f} ms (product defaults, flag off).",
             "",
-            "Per-window rows live in `window_cca.csv`. The gate is the **mean**.",
+            "The gate is the **mean**. D/600 is not dropped. A/1 and A/600 must not "
+            "drop vs 409.44 / 344.50.",
         ]
     (out_dir / "TABLE.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def write_means_tables(
+    out_dir: Path, geo: pd.DataFrame, card: dict, cca_df: pd.DataFrame | None
+) -> None:
+    wins = card.get("windows") or {}
+    lines = [
+        "# leocc_v1 v3.15 LeanCatch means",
+        "",
+        f"Decision: **{card['decision']}**.",
+        "",
+        "Era `leocc_v1` (Lai et al., SIGCOMM 2025). Capacity = UDP iperf3 sat, "
+        "not dish PHY. p95 = 2× ICMP OWD. Do not mix with starlink_v1 82.07/76.26.",
+        "",
+        "| CCA | gp mean | p95 mean |",
+        "|-----|--------:|---------:|",
+        f"| CUBIC | {wins.get('CUBIC_gp_mean', float('nan')):.2f} | "
+        f"{wins.get('CUBIC_p95_mean', float('nan')):.2f} |",
+        f"| BBRv3approx | {wins.get('BBR_gp_mean', float('nan')):.2f} | "
+        f"{wins.get('BBR_p95_mean', float('nan')):.2f} |",
+        f"| LeoAware Crest (flags off) | {wins.get('LeoAwareCrest_gp_mean') or float('nan'):.2f} | "
+        f"{wins.get('LeoAwareCrest_p95_mean') or float('nan'):.2f} |",
+        f"| FarHold-on (PR #18 cite) | 377.70 | 89.60 |",
+        f"| **LeoAware LeanCatch** | **{wins.get('LeoAware_gp_mean', float('nan')):.2f}** | "
+        f"**{wins.get('LeoAware_p95_mean', float('nan')):.2f}** |",
+        "",
+        f"Terr (product Crest, 250 KB, seeds 13,7,42,99,123): "
+        f"{card.get('terrestrial', {}).get('LeoAware_gp_mean', float('nan')):.2f} @ "
+        f"{card.get('terrestrial', {}).get('LeoAware_p95_mean', float('nan')):.1f} ms.",
+        "",
+    ]
+    if cca_df is not None and len(cca_df):
+        lines += [
+            "### Per-window (gate is the mean; D/600 kept)",
+            "",
+            "| q | CUBIC | BBR | Crest off | LeanCatch |",
+            "|---|------:|----:|----------:|----------:|",
+        ]
+        order = list(geo["window_id"]) if "window_id" in geo.columns else []
+        if not order:
+            order = sorted(cca_df["window_id"].unique())
+
+        def gp_p95(df: pd.DataFrame, wid: str, name: str) -> str:
+            row = df[(df["window_id"] == wid) & (df["cca"] == name)]
+            if row.empty:
+                return "— / —"
+            r = row.iloc[0]
+            return f"{r['goodput_mbps']:.2f} / {r['p95_rtt_ms']:.0f}"
+
+        for wid in order:
+            q = wid.split("_")[0] if "_" in wid else wid
+            lines.append(
+                f"| {q} {wid} | {gp_p95(cca_df, wid, 'CUBIC')} | "
+                f"{gp_p95(cca_df, wid, 'BBRv3approx')} | "
+                f"{gp_p95(cca_df, wid, 'LeoAwareCrest')} | "
+                f"{gp_p95(cca_df, wid, 'LeoAware')} |"
+            )
+    (out_dir / "means_tables.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--tag", default="20260814-v313-leocc")
+    ap.add_argument("--tag", default="20260814-v315-fastexit")
     ap.add_argument("--trace-dir", type=Path, default=OUT_DIR)
     ap.add_argument("--buffer-bytes", type=int, default=LEOCC_BUFFER_BYTES)
     ap.add_argument("--geometry-only", action="store_true")
@@ -469,6 +619,7 @@ def main() -> None:
         json.dumps(card, indent=2) + "\n", encoding="utf-8"
     )
     write_table(out_dir, geo, verdict, card)
+    write_means_tables(out_dir, geo, card, cca_df)
     print("\n=== 5-window CCA means ===")
     print(
         cca_df.groupby("cca")[["goodput_mbps", "p95_rtt_ms"]]
