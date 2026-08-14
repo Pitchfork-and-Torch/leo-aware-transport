@@ -33,6 +33,8 @@ ERA_STARLINK_V1 = "starlink_v1"
 ERA_COUPLED_RNG = "coupled_rng"
 # CSV replay era (v3.11). Not a generative profile; not the product default.
 ERA_WETLINKS_V1 = "wetlinks_v1"
+# CSV replay era (v3.13). LeoCC downlink UDP-sat + ICMP OWD. Not product default.
+ERA_LEOCC_V1 = "leocc_v1"
 
 
 def resolve_path_profile(name: str | None) -> str:

@@ -156,9 +156,11 @@ def load_trace_csv(path: str | Path) -> list[TraceSample]:
     Required columns (case-insensitive):
       t_s OR time_s OR t
       rtt_ms OR rtt_s
-      capacity_mbps OR capacity_bps OR bw_mbps OR cubic_goodput_mbps
+      capacity_mbps OR capacity_bps OR bw_mbps OR udp_sat_mbps OR cubic_goodput_mbps
     Optional: loss_p, reconfig (0/1)
 
+    `udp_sat_mbps` is a capacity alias used by the leocc_v1 research era:
+    UDP iperf3 saturation (not dish PHY / TCP Cubic).
     `cubic_goodput_mbps` is a capacity alias used by the zhao_zenodo23 research
     era: TCP Cubic downlink goodput (lower bound), not dish PHY / UDP sat.
     """
@@ -183,6 +185,7 @@ def load_trace_csv(path: str | Path) -> list[TraceSample]:
             "bw_mbps",
             "capacity_bps",
             "bw_bps",
+            "udp_sat_mbps",
             "cubic_goodput_mbps",
         )
         loss_key = col("loss_p", "loss", "loss_rate")
