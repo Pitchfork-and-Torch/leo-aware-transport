@@ -171,6 +171,9 @@ class BbrCCA(BaseCCA):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.bw_window: Deque[tuple[float, float]] = deque()  # (t, bps)
+        # Decreasing-sample deque: bw_est == max(sample) over bw_window in O(1).
+        # Identity vs scanning max(); required at LeoCC ~400 Mbps (16k marks / 0.5s).
+        self.bw_max_q: Deque[tuple[float, float]] = deque()
         self.delivered_marks: Deque[tuple[float, float]] = deque()  # (t, cum_bytes)
         self.cum_delivered = 0.0
         self.min_rtt_stamp = 0.0
@@ -194,11 +197,16 @@ class BbrCCA(BaseCCA):
             if dt > 1e-4:
                 sample = (b1 - b0) * 8.0 / dt
                 self.bw_window.append((t, sample))
+                while self.bw_max_q and self.bw_max_q[-1][1] <= sample:
+                    self.bw_max_q.pop()
+                self.bw_max_q.append((t, sample))
         while self.bw_window and t - self.bw_window[0][0] > win:
-            self.bw_window.popleft()
-        if self.bw_window:
-            # max filter (BBR-style)
-            self.bw_est = max(b for _, b in self.bw_window)
+            t0, _ = self.bw_window.popleft()
+            if self.bw_max_q and self.bw_max_q[0][0] == t0:
+                self.bw_max_q.popleft()
+        if self.bw_max_q:
+            # max filter (BBR-style); same value as max(b for _, b in bw_window)
+            self.bw_est = self.bw_max_q[0][1]
 
     def _bdp(self) -> float:
         if self.min_rtt >= 1e17 or self.bw_est <= 0:

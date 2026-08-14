@@ -7,6 +7,7 @@ LeoAware is a **research prototype**, not a bit-exact clone of any production or
 | **CUBIC** | Loss-driven cubic window | None | Baseline; fails on non-congestive LEO loss |
 | **BBR family** | Max BW + min RTT model | None | Baseline; stale min-RTT across LEO epochs hurts BDP |
 | **LeoCC-style** | Endpoint signals (ACK IA / RTT patterns) for LEO | Low | LeoAware detection is in this family |
+| **LeoCC / LeoReplayer traces** | Concurrent UDP-sat + ICMP OWD, ~120 s, 4.8K (SIGCOMM 2025) | None (measurement) | Research-era `leocc_v1` ingest; not a CCA lock |
 | **SaTCP / StarQUIC freeze** | Freeze / protect state across known freezes | Medium (event awareness) | LeoAware REPROBE is a soft alternative to hard freeze |
 | **OrbCC-class** | In-network / orbital assists | High | Future path; LeoAware `on_path_hint` is the hook |
 | **Multipath QUIC** | Schedule across paths | Medium | Stretch; ISL flag is a seed only |
