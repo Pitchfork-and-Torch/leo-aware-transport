@@ -16,8 +16,10 @@ from experiments.run_leocc import (
     SIM_DT_S,
     send_ceiling_mbps,
 )
+from collections import deque
+
 from experiments.slice_leocc import DURATION_S, DT_S, OUT_DIR
-from leo_cc.ccas import LeoAwareCCA
+from leo_cc.ccas import BbrCCA, LeoAwareCCA
 from leo_cc.harness import PRODUCT_PATH_PROFILE
 from leo_cc.network import LeoPathConfig, load_trace_csv, walk_path_geometry
 
@@ -112,6 +114,34 @@ def test_era_buffer_does_not_move_product_default():
     )
 
 
+def test_bbr_max_filter_matches_naive_scan():
+    """O(1) bw_max_q must equal max(bw_window) on a long high-rate stream."""
+    rng = __import__("random").Random(13)
+    bbr = BbrCCA()
+    bbr.min_rtt = 0.032
+    t = 0.0
+    naive: deque[tuple[float, float]] = deque()
+    for i in range(8000):
+        t += 0.00003  # ~33k marks/s, LeoCC-ish
+        sample = 1e8 + rng.random() * 4e8
+        bbr.bw_window.append((t, sample))
+        while bbr.bw_max_q and bbr.bw_max_q[-1][1] <= sample:
+            bbr.bw_max_q.pop()
+        bbr.bw_max_q.append((t, sample))
+        naive.append((t, sample))
+        win = max(0.5, 10 * bbr.min_rtt)
+        while bbr.bw_window and t - bbr.bw_window[0][0] > win:
+            t0, _ = bbr.bw_window.popleft()
+            if bbr.bw_max_q and bbr.bw_max_q[0][0] == t0:
+                bbr.bw_max_q.popleft()
+        while naive and t - naive[0][0] > win:
+            naive.popleft()
+        got = bbr.bw_max_q[0][1] if bbr.bw_max_q else 0.0
+        want = max(b for _, b in naive) if naive else 0.0
+        assert got == want, (i, got, want)
+    print("ok: BBR sliding max matches naive scan (identity, not a CCA retune)")
+
+
 def run_all() -> None:
     test_no_empty_real_scaffold()
     test_leocc_windows_present()
@@ -119,6 +149,7 @@ def run_all() -> None:
     test_leocc_geometry_walks()
     test_crest_defaults_stay_off()
     test_era_buffer_does_not_move_product_default()
+    test_bbr_max_filter_matches_naive_scan()
     print("ALL leocc_v1 integrity tests passed")
 
 

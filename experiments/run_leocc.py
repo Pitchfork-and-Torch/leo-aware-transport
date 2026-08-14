@@ -9,13 +9,14 @@ Not dish PHY. Not Current. Do not merge.
 
 Usage:
   python3 -m experiments.run_leocc --geometry-only
-  python3 -m experiments.run_leocc --tag 20260814-v313-leocc
+  python3 -m experiments.run_leocc --tag 20260814-v313-leocc --workers 4
 """
 from __future__ import annotations
 
 import argparse
 import json
 import sys
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 import pandas as pd
@@ -126,36 +127,60 @@ def verdict_from_geometry(df: pd.DataFrame) -> dict:
     }
 
 
-def run_window_cca(trace_dir: Path, buffer_bytes: int) -> pd.DataFrame:
-    rows = []
-    algos = [("CUBIC", CubicCCA), ("BBRv3approx", BbrCCA), ("LeoAware", LeoAwareCCA)]
+_CCA_CLS = {"CUBIC": CubicCCA, "BBRv3approx": BbrCCA, "LeoAware": LeoAwareCCA}
+
+
+def _cca_job(payload: dict) -> dict:
+    """One (window, CCA) pair. Top-level so ProcessPoolExecutor can pickle it."""
+    name = payload["cca"]
+    path = Path(payload["csv"])
+    buffer_bytes = int(payload["buffer_bytes"])
     ceiling = send_ceiling_mbps(buffer_bytes)
-    for path in window_paths(trace_dir):
-        cfg = window_cfg(path, buffer_bytes=buffer_bytes)
-        for name, cls in algos:
+    print(
+        f"cca {path.stem} {name}  buffer={buffer_bytes}  "
+        f"ceiling={ceiling:.0f}Mbps ...",
+        flush=True,
+    )
+    cfg = window_cfg(path, buffer_bytes=buffer_bytes)
+    res = run_sim(_CCA_CLS[name], cfg=cfg, n_flows=1)
+    m = summarize_result(res)[0]
+    return {
+        "era": ERA,
+        "window_id": path.stem,
+        "cca": name,
+        "buffer_bytes": buffer_bytes,
+        "send_ceiling_mbps": ceiling,
+        "goodput_mbps": m.goodput_bps / 1e6,
+        "p95_rtt_ms": m.p95_rtt_s * 1000,
+        "p95_path_rtt_ms": m.p95_path_rtt_s * 1000,
+        "p95_excess_rtt_ms": m.p95_excess_rtt_s * 1000,
+        "mean_excess_rtt_ms": m.mean_excess_rtt_s * 1000,
+        "handovers": len(res.handovers),
+        "soft_qir_alpha": res.soft_qir_alpha,
+    }
+
+
+def run_window_cca(
+    trace_dir: Path, buffer_bytes: int, workers: int = 1
+) -> pd.DataFrame:
+    jobs = [
+        {"csv": str(path), "cca": name, "buffer_bytes": buffer_bytes}
+        for path in window_paths(trace_dir)
+        for name in ("CUBIC", "BBRv3approx", "LeoAware")
+    ]
+    if workers <= 1:
+        return pd.DataFrame([_cca_job(j) for j in jobs])
+    rows: list[dict] = []
+    with ProcessPoolExecutor(max_workers=workers) as pool:
+        futs = [pool.submit(_cca_job, j) for j in jobs]
+        for fut in as_completed(futs):
+            row = fut.result()
             print(
-                f"cca {path.stem} {name}  buffer={buffer_bytes}  "
-                f"ceiling={ceiling:.0f}Mbps ...",
+                f"done {row['window_id']} {row['cca']}  "
+                f"gp={row['goodput_mbps']:.2f}  p95={row['p95_rtt_ms']:.2f}",
                 flush=True,
             )
-            res = run_sim(cls, cfg=cfg, n_flows=1)
-            m = summarize_result(res)[0]
-            rows.append(
-                {
-                    "era": ERA,
-                    "window_id": path.stem,
-                    "cca": name,
-                    "buffer_bytes": buffer_bytes,
-                    "send_ceiling_mbps": ceiling,
-                    "goodput_mbps": m.goodput_bps / 1e6,
-                    "p95_rtt_ms": m.p95_rtt_s * 1000,
-                    "p95_path_rtt_ms": m.p95_path_rtt_s * 1000,
-                    "p95_excess_rtt_ms": m.p95_excess_rtt_s * 1000,
-                    "mean_excess_rtt_ms": m.mean_excess_rtt_s * 1000,
-                    "handovers": len(res.handovers),
-                    "soft_qir_alpha": res.soft_qir_alpha,
-                }
-            )
+            rows.append(row)
     return pd.DataFrame(rows)
 
 
@@ -354,6 +379,12 @@ def main() -> None:
     ap.add_argument("--trace-dir", type=Path, default=OUT_DIR)
     ap.add_argument("--buffer-bytes", type=int, default=LEOCC_BUFFER_BYTES)
     ap.add_argument("--geometry-only", action="store_true")
+    ap.add_argument(
+        "--workers",
+        type=int,
+        default=4,
+        help="Process pool size for (window, CCA) jobs. 1 = sequential.",
+    )
     args = ap.parse_args()
     buffer_bytes = int(args.buffer_bytes)
     out_dir = ROOT / "results" / "archive" / args.tag
@@ -421,10 +452,13 @@ def main() -> None:
     print(
         f"buffer={buffer_bytes} B  send_ceiling="
         f"{send_ceiling_mbps(buffer_bytes):.0f} Mbps  "
+        f"workers={max(1, int(args.workers))}  "
         f"(product default stays {CAPPED_BUFFER_BYTES} B)",
         flush=True,
     )
-    cca_df = run_window_cca(args.trace_dir, buffer_bytes=buffer_bytes)
+    cca_df = run_window_cca(
+        args.trace_dir, buffer_bytes=buffer_bytes, workers=max(1, int(args.workers))
+    )
     terr_df = run_terr_control()
     cca_df.to_csv(out_dir / "window_cca.csv", index=False)
     terr_df.to_csv(out_dir / "terr_control.csv", index=False)
