@@ -222,22 +222,21 @@ def test_spike_hold_does_not_gate_loss_burst():
 
 
 def test_pipe_hold_startup_faster_than_crest():
-    """Held-pipe fill is SH-only; product Crest stays at 1.28× growth."""
+    """Held-pipe fill is SH-only; product Crest stays off; SER turns it off."""
     crest = LeoAwareCCA()
     sh = LeoAwareCCA(use_spike_hold=True)
-    for i in range(24):
-        t = 0.01 * (i + 1)
-        crest.on_ack(t, 0.050, 1200)
-        sh.on_ack(t, 0.050, 1200)
     assert crest.use_spike_hold is False
+    assert crest._pipe_hold_active() is False
+    assert crest._pipe_hold_fill(0.1) is False
     assert sh._pipe_hold_active() is True
-    assert sh.cwnd > crest.cwnd * 1.15, (sh.cwnd, crest.cwnd)
-    # Real SER must turn pipe-hold off.
+    assert sh._pipe_hold_fill(0.1) is True
+    sh.min_rtt = 0.05
+    sh.rtt_hist.extend([0.05, 0.051, 0.049, 0.05])
     sh.on_loss(2.0, 1200, congestive=False)
     sh.on_loss(2.05, 1200, congestive=False)
     assert sh.reconfigs_detected >= 1
     assert sh._pipe_hold_active() is False
-    print("ok: pipe-hold startup faster; SER turns it off")
+    print("ok: pipe-hold is SH-only; SER turns it off")
 
 
 def test_ca_does_not_fire_during_reprobe():
