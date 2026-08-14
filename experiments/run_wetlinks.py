@@ -115,20 +115,30 @@ def verdict_from_geometry(df: pd.DataFrame) -> dict:
     }
 
 
-def run_window_cca(trace_dir: Path, buffer_bytes: int) -> pd.DataFrame:
+def run_window_cca(
+    trace_dir: Path,
+    buffer_bytes: int,
+    *,
+    spike_hold: bool = True,
+) -> pd.DataFrame:
     rows = []
-    algos = [("CUBIC", CubicCCA), ("BBRv3approx", BbrCCA), ("LeoAware", LeoAwareCCA)]
+    algos = [
+        ("CUBIC", CubicCCA),
+        ("BBRv3approx", BbrCCA),
+        ("LeoAware", lambda: LeoAwareCCA(use_spike_hold=spike_hold)),
+    ]
     ceiling = send_ceiling_mbps(buffer_bytes)
     for path in window_paths(trace_dir):
         cfg = window_cfg(path, buffer_bytes=buffer_bytes)
-        for name, cls in algos:
+        for name, factory in algos:
             print(
                 f"cca {path.stem} {name}  buffer={buffer_bytes}  "
-                f"ceiling={ceiling:.0f}Mbps ...",
+                f"ceiling={ceiling:.0f}Mbps  spike_hold={spike_hold} ...",
                 flush=True,
             )
-            res = run_sim(cls, cfg=cfg, n_flows=1)
+            res = run_sim(factory, cfg=cfg, n_flows=1)
             m = summarize_result(res)[0]
+            cca = res.flows[0].cca
             rows.append(
                 {
                     "era": ERA,
@@ -136,6 +146,9 @@ def run_window_cca(trace_dir: Path, buffer_bytes: int) -> pd.DataFrame:
                     "cca": name,
                     "buffer_bytes": buffer_bytes,
                     "send_ceiling_mbps": ceiling,
+                    "spike_hold": bool(spike_hold) if name == "LeoAware" else False,
+                    "spike_holds": int(getattr(cca, "spike_holds", 0) or 0),
+                    "reconfigs_detected": int(getattr(cca, "reconfigs_detected", 0) or 0),
                     "goodput_mbps": m.goodput_bps / 1e6,
                     "p95_rtt_ms": m.p95_rtt_s * 1000,
                     "p95_path_rtt_ms": m.p95_path_rtt_s * 1000,
@@ -203,7 +216,7 @@ def scorecard(
     return {
         "era": ERA,
         "product_lock_era": PRODUCT_PATH_PROFILE,
-        "cook": "wetlinks_uncap",
+        "cook": "wetlinks_uncap_spike_hold",
         "decision": "ACCEPT" if accept else "REJECT",
         "soft_qir_alpha": SOFT_QIR_ALPHA,
         "buffer_bytes": buffer_bytes,
@@ -238,19 +251,20 @@ def scorecard(
             "terr_ge_77": terr_ok,
         },
         "note": (
-            "wetlinks_v1 research era, uncapped-buffer cook. Gate is this "
-            "table (Crest vs BBR at the same 1 MB buffer). Do not mix with "
+            "wetlinks_v1 research era, uncap + spike-hold cook. Gate is this "
+            "table (LeoAware+SH vs BBR at the same 1 MB buffer). Product Crest "
+            "keeps use_spike_hold=False. Do not mix with uncap 239.72/240.48, "
             "capped 156.70/63.98, starlink_v1 82.09/76.26, or ope_v36 58/152. "
             f"dt={SIM_DT_S}; buffer={buffer_bytes} B; send ceiling "
             f"{ceiling:.0f} Mbps. Capacity is UDP iperf mean, not dish PHY. "
-            "Crest defaults unchanged. No Current bump. No merge."
+            "No Halo/QSP/PATHHINT. No Current bump. No merge."
         ),
     }
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--tag", default="20260813-v311-wetlinks-uncap")
+    ap.add_argument("--tag", default="20260814-v311-wetlinks-sh")
     ap.add_argument("--trace-dir", type=Path, default=OUT_DIR)
     ap.add_argument(
         "--buffer-bytes",
@@ -262,6 +276,19 @@ def main() -> None:
         "--geometry-only",
         action="store_true",
         help="walk geometry and stop (no CCA). Use if bars fail.",
+    )
+    ap.add_argument(
+        "--spike-hold",
+        dest="spike_hold",
+        action="store_true",
+        default=True,
+        help="LeoAware spike-hold on WetLinks only (default on for this cook)",
+    )
+    ap.add_argument(
+        "--no-spike-hold",
+        dest="spike_hold",
+        action="store_false",
+        help="plain Crest on WetLinks (uncap footnote)",
     )
     args = ap.parse_args()
     buffer_bytes = int(args.buffer_bytes)
@@ -319,10 +346,13 @@ def main() -> None:
     print(
         f"uncap buffer={buffer_bytes} B  send_ceiling="
         f"{send_ceiling_mbps(buffer_bytes):.0f} Mbps  "
-        f"(product default stays {CAPPED_BUFFER_BYTES} B)",
+        f"(product default stays {CAPPED_BUFFER_BYTES} B)  "
+        f"spike_hold={args.spike_hold}",
         flush=True,
     )
-    cca_df = run_window_cca(args.trace_dir, buffer_bytes=buffer_bytes)
+    cca_df = run_window_cca(
+        args.trace_dir, buffer_bytes=buffer_bytes, spike_hold=args.spike_hold
+    )
     terr_df = run_terr_control()
     cca_df.to_csv(out_dir / "window_cca.csv", index=False)
     terr_df.to_csv(out_dir / "terr_control.csv", index=False)

@@ -204,6 +204,23 @@ def test_loss_burst_not_gated():
     print("ok: ep:loss_burst still enters SER/REPROBE")
 
 
+def test_spike_hold_does_not_gate_loss_burst():
+    """SH may skip RTT-jump REPROBE; ep:loss_burst must still SER."""
+    cca = LeoAwareCCA(use_spike_hold=True)
+    cca.min_rtt = 0.05
+    cca.bw_est = 80e6
+    cca.rate_ewma = 80e6
+    cca.rtt_hist.extend([0.05, 0.051, 0.049, 0.05])
+    cca.last_reconfig_t = -10.0
+    rec0 = cca.reconfigs_detected
+    t = 5.0
+    cca.on_loss(t, 1200, congestive=False)
+    cca.on_loss(t + 0.05, 1200, congestive=False)
+    assert cca.reconfigs_detected == rec0 + 1, (cca.reconfigs_detected, cca.mode)
+    assert "ser" in cca.mode, cca.mode
+    print("ok: spike-hold does not gate ep:loss_burst")
+
+
 def test_ca_does_not_fire_during_reprobe():
     cca = LeoAwareCCA()
     cca.min_rtt = 0.05
@@ -225,6 +242,7 @@ def run_all() -> None:
     test_starlink_profile_is_opt_in()
     test_starlink_v1_geometry_allows_absolute_bars()
     test_loss_burst_not_gated()
+    test_spike_hold_does_not_gate_loss_burst()
     test_ca_does_not_fire_during_reprobe()
     print("ALL OPE integrity tests passed")
 
