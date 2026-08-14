@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""v3.13 leocc_v1: geometry first, then endpoint CCA on 5 downlink windows.
+"""v3.14 leocc_v1: FarHold cook on the same 5 downlink windows.
 
 Era: leocc_v1. Never mix with starlink_v1 82.09/76.26, wetlinks_v1, zhao_zenodo23,
-or ope_v36 58/152. Crest stays (LeoAwareCCA defaults). No Halo/QSP/PATHHINT.
+or ope_v36 58/152. Product Crest defaults stay off. This cook opts in FarHold
+(`use_far_hold=True`) on LeoCC windows only. No Halo/QSP/PATHHINT.
 
 Capacity is UDP saturation (continuous ~120 s, first 90 s). RTT = 2×OWD.
 Not dish PHY. Not Current. Do not merge.
 
 Usage:
   python3 -m experiments.run_leocc --geometry-only
-  python3 -m experiments.run_leocc --tag 20260814-v313-leocc --workers 4
+  python3 -m experiments.run_leocc --tag 20260814-v314-d600 --workers 4
 """
 from __future__ import annotations
 
@@ -127,7 +128,12 @@ def verdict_from_geometry(df: pd.DataFrame) -> dict:
     }
 
 
-_CCA_CLS = {"CUBIC": CubicCCA, "BBRv3approx": BbrCCA, "LeoAware": LeoAwareCCA}
+def _leoaware_leocc() -> LeoAwareCCA:
+    """Research-era opt-in: FarHold on leocc_v1 windows. Product default stays off."""
+    return LeoAwareCCA(use_far_hold=True)
+
+
+_CCA_CLS = {"CUBIC": CubicCCA, "BBRv3approx": BbrCCA, "LeoAware": _leoaware_leocc}
 
 
 def _cca_job(payload: dict) -> dict:
@@ -278,7 +284,8 @@ def scorecard(
     return {
         "era": ERA,
         "product_lock_era": PRODUCT_PATH_PROFILE,
-        "cook": "leocc_v1",
+        "cook": "leocc_v1_farhold",
+        "far_hold": True,
         "decision": decision,
         "decision_note": decision_note,
         "soft_qir_alpha": SOFT_QIR_ALPHA,
@@ -318,15 +325,22 @@ def scorecard(
         "note": (
             "leocc_v1 research era. Continuous ≥90s UDP-sat + ICMP OWD (RTT=2×OWD). "
             f"dt={SIM_DT_S}; buffer={buffer_bytes} B; send ceiling {ceiling:.0f} Mbps. "
-            "Not dish PHY. Crest defaults unchanged. No Current bump. No merge. "
+            "Not dish PHY. FarHold opted in on LeoCC windows; product Crest "
+            "default stays use_far_hold=False. No Current bump. No merge. "
             "Do not mix with wetlinks_v1, zhao_zenodo23, or starlink_v1 82.09/76.26."
         ),
     }
 
 
-def write_table(out_dir: Path, geo: pd.DataFrame, verdict: dict, card: dict) -> None:
+def write_table(
+    out_dir: Path,
+    geo: pd.DataFrame,
+    verdict: dict,
+    card: dict,
+    cca_df: pd.DataFrame | None = None,
+) -> None:
     lines = [
-        "# leocc_v1 scorecard (v3.13)",
+        "# leocc_v1 scorecard (v3.14 FarHold)",
         "",
         f"Decision: **{card['decision']}**. {card.get('decision_note') or card.get('note')}",
         "",
@@ -370,14 +384,37 @@ def write_table(out_dir: Path, geo: pd.DataFrame, verdict: dict, card: dict) -> 
             f"Terrestrial LeoAware {card['terrestrial']['LeoAware_gp_mean']:.2f} @ "
             f"{card['terrestrial']['LeoAware_p95_mean']:.1f} ms.",
             "",
-            "Per-window rows live in `window_cca.csv`. The gate is the **mean**.",
+            "The gate is the **mean**. D/600 is not dropped.",
         ]
+        if cca_df is not None and len(cca_df):
+            lines += [
+                "",
+                "### Per-window CCA (gate is the mean, not these rows)",
+                "",
+                "| q | CUBIC gp/p95 | BBR gp/p95 | Crest gp/p95 |",
+                "|---|-------------:|-----------:|-------------:|",
+            ]
+            order = list(geo["window_id"]) if "window_id" in geo.columns else []
+            if not order:
+                order = sorted(cca_df["window_id"].unique())
+            for wid in order:
+                g = cca_df[cca_df["window_id"] == wid]
+                q = wid.split("_")[0] if "_" in wid else wid
+                def gp_p95(name: str) -> str:
+                    row = g[g["cca"] == name]
+                    if row.empty:
+                        return "— / —"
+                    r = row.iloc[0]
+                    return f"{r['goodput_mbps']:.2f} / {r['p95_rtt_ms']:.0f}"
+                lines.append(
+                    f"| {q} {wid} | {gp_p95('CUBIC')} | {gp_p95('BBRv3approx')} | {gp_p95('LeoAware')} |"
+                )
     (out_dir / "TABLE.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--tag", default="20260814-v313-leocc")
+    ap.add_argument("--tag", default="20260814-v314-d600")
     ap.add_argument("--trace-dir", type=Path, default=OUT_DIR)
     ap.add_argument("--buffer-bytes", type=int, default=LEOCC_BUFFER_BYTES)
     ap.add_argument("--geometry-only", action="store_true")
@@ -468,7 +505,7 @@ def main() -> None:
     (out_dir / "scorecard.json").write_text(
         json.dumps(card, indent=2) + "\n", encoding="utf-8"
     )
-    write_table(out_dir, geo, verdict, card)
+    write_table(out_dir, geo, verdict, card, cca_df=cca_df)
     print("\n=== 5-window CCA means ===")
     print(
         cca_df.groupby("cca")[["goodput_mbps", "p95_rtt_ms"]]

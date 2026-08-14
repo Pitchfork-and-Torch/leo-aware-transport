@@ -142,6 +142,12 @@ def test_skypulse_does_not_gate_loss_burst():
     print("ok: SkyPulse freeze does not gate ep:loss_burst")
 
 
+def test_far_hold_default_off_does_not_change_ascent():
+    cca = LeoAwareCCA(use_path_hints=True)
+    assert cca.use_far_hold is False
+    print("ok: FarHold default off on ASCENT path")
+
+
 if __name__ == "__main__":
     test_roundtrip_ok()
     test_erase_on_corruption()
@@ -150,6 +156,7 @@ if __name__ == "__main__":
     test_role_reject()
     test_skypulse_freeze_only_no_hint_reprobe()
     test_skypulse_does_not_gate_loss_burst()
+    test_far_hold_default_off_does_not_change_ascent()
     from experiments.test_ope_integrity import run_all as run_ope
     run_ope()
     print("ALL ASCENT-D integrity tests passed")
