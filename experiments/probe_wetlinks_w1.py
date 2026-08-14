@@ -27,9 +27,16 @@ def main() -> None:
         ("BBR", BbrCCA),
     ):
         print(f"probe w1 25s {name} ...", flush=True)
-        res = run_sim(factory, cfg=cfg, n_flows=1)
+        held: dict = {"cca": None}
+
+        def _factory(f=factory, h=held):
+            cca = f()
+            h["cca"] = cca
+            return cca
+
+        res = run_sim(_factory, cfg=cfg, n_flows=1)
         m = summarize_result(res)[0]
-        cca = res.flows[0].cca
+        cca = held["cca"]
         print(
             f"  {name:9s} gp={m.goodput_bps/1e6:.2f}  p95={m.p95_rtt_s*1000:.2f}  "
             f"reconfigs={getattr(cca, 'reconfigs_detected', 0)}  "

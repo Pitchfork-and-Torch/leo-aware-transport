@@ -136,9 +136,16 @@ def run_window_cca(
                 f"ceiling={ceiling:.0f}Mbps  spike_hold={spike_hold} ...",
                 flush=True,
             )
-            res = run_sim(factory, cfg=cfg, n_flows=1)
+            held: dict = {"cca": None}
+
+            def _factory(f=factory, h=held):
+                cca = f()
+                h["cca"] = cca
+                return cca
+
+            res = run_sim(_factory, cfg=cfg, n_flows=1)
             m = summarize_result(res)[0]
-            cca = res.flows[0].cca
+            cca = held["cca"]
             rows.append(
                 {
                     "era": ERA,
