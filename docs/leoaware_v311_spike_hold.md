@@ -27,9 +27,23 @@ Two taxes, not one:
   - startup growth **1.92×**, clean-delay bw **0.30·p82 + 0.70·max**
   - first 1.5 s: **no pace bind** (BBR is not pace-bound in this sim;
     Crest's 1.08× `bw_est` starved t=0–1) and pace_gain ≥ 2.20
-  - cwnd cap **2.20× BDP** (uncapped 1.92× hit 17 MB by t=2)
+  - delay-gated cwnd cap **2.20× BDP** only if `bw_est > 50 Mbps` and
+    `delay_ratio > 1.30` (a cold 2.20× cap deadlocked SH at 82 KB / 7 Mbps)
   - loss ignore while live RTT < 1.55× min_rtt (BBR `loss_ignored`)
   - a real SER turns this off. Product Crest never enters.
+
+## 25s w1 probe (includes t=12 spike)
+
+| CCA | gp | p95 | reconfigs | sh |
+|-----|---:|----:|----------:|---:|
+| Crest | 364.78 | 62.74 | 1 | 0 |
+| Crest+SH skip-only | 365.93 | 62.74 | 0 | 1 |
+| Crest+SH + fill (deadlock cap) | 7.24 | 60.74 | 0 | 1 |
+| **Crest+SH + fill + pace-unbind** | **382.02** | 62.74 | 1 | 1 |
+| BBR | 372.91 | 62.74 | 0 | 0 |
+
+t=1 cumulative: Crest 8.16 / SH 120.45 / BBR 34.63. Same p95. This is the
+window that held the entire 90s uncap gap.
 
 ## Gate
 
@@ -41,5 +55,17 @@ python3 -m experiments.probe_wetlinks_w1
 python3 -m experiments.run_wetlinks --tag 20260814-v311-wetlinks-sh
 ```
 
+## Gate result
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| CUBIC | 94.22 | 68.38 |
+| BBRv3approx | 240.48 | 71.38 |
+| **LeoAware+SH** | **242.03** | 71.38 |
+
+Terr 78.623. **ACCEPT** (`wetlinks_v1` research only). Per-window vs BBR:
+w1 +2.53, w2 +2.35, w3 +0.23, w4 +1.82, w5 +0.79.
+
 Do **not** default-on without a `starlink_v1` 5-seed check. Real HO has
 loss + cap redraw; SH should not fire, but first-ACK lag is a risk.
+No Current. No paid bump. No merge.
