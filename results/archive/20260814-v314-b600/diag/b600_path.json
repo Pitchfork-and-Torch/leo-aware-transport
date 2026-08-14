@@ -1,0 +1,20 @@
+{
+  "n": 1800,
+  "rtt_min_ms": 46.0,
+  "rtt_p50_ms": 52.0,
+  "rtt_p95_ms": 60.0,
+  "rtt_max_ms": 82.0,
+  "rtt_jump_p95_ms": 9.999999999999995,
+  "rtt_jump_max_ms": 34.0,
+  "cap_min_mbps": 16.56,
+  "cap_p50_mbps": 425.15999999999997,
+  "cap_p82_mbps": 445.92,
+  "cap_p95_mbps": 455.52,
+  "cap_max_mbps": 463.92,
+  "cap_mean_mbps": 408.2628,
+  "classic_jump_slots": 1,
+  "rtt_mad_like_slots": 4,
+  "frac_rtt_gt_1_35_p50": 0.0044444444444444444,
+  "frac_rtt_gt_1_18_min": 0.13444444444444445,
+  "frac_rtt_gt_1_35_min": 0.008333333333333333
+}

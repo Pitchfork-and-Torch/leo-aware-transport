@@ -956,6 +956,70 @@ Docs-only. Reproduced ASCENT-D integrity (PASS). Published means-vs-BBR note fro
 
 ---
 
+## v3.14 - FarHold on leocc_v1 D/600 (research era only)
+
+**Date:** 2026-08-14  
+**Branch:** `cursor/v314-d600-crest-b6ab`  
+**Hypothesis:** Crest leaves ~150 Mbps vs BBR on D/600 because SER-lite /
+REPROBE wipe samples on fade overflow while BBR’s max-filter rides through.
+Crest Abort is not the cause.
+
+### Diagnosis (D/600 only)
+
+131 REPROBE/SER responses on `reconfig=0`. Dominant `ep:ack_ia+loss_burst`.
+CA = 0. Anticipator off is +72 Mbps (still 82 behind BBR). LSG off *hurts*.
+BBR `bw_est` 384.5 vs Crest 267.1. Path: RTT p50 182 / p95 194; UDP-sat
+cellar 22.8 Mbps. Cite Lai et al. SIGCOMM 2025 / LeoCC.
+
+### Lever
+
+FarHold (`use_far_hold`, default **False**). `min_rtt ≥ 80 ms`: detect still
+fires (`ep:loss_burst` not gated); no sample wipe / bw discount / cwnd cut;
+clean-delay overflow ignored; anticipator does not hold. `run_leocc` opts in.
+Not Halo / Pulse / EpochMemory / QSP / PATHHINT / hybrid freeze.
+
+### Same 5 windows (dt=0.01, 1 MB, Soft-QIR α=0.20)
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| CUBIC | 31.14 | 87.20 |
+| BBRv3approx | 379.80 | 89.60 |
+| **LeoAware Crest + FarHold** | **377.70** | **89.60** |
+
+Terr 78.62 @ 46.0 ms. D/600 204.61 → **353.18** (BBR 358.29). C/599 340.20 →
+**390.25** (BBR 393.25). A/B unchanged (below 80 ms). p95 tied 89.60.
+
+**Decision: ACCEPT_ERA_REJECT_BBR / REJECT vs BBR.** Crest 377.70 ≤ 379.80.
+Absolute 75/138.8 PASS. D/600 kept. Integrity green. Flag stays off (not a
+Pareto). Not Current. No paid. Do not merge. Do not mix with starlink_v1
+82.07/76.26.
+
+Archive: `results/archive/20260814-v314-d600/`  
+Design: `docs/leoaware_v314_d600.md`
+
+---
+
+## v3.14 follow-up — B/600 diagnosis (stop)
+
+**Date:** 2026-08-14  
+**Hypothesis:** leftover 2.1 Mbps is the same SER-lite / `ack_ia+loss_burst`
+wipe on B/600, so FarHold can generalize to fade-on-reconfig=0 without
+lowering the 80 ms floor.
+
+**Falsified.** B/600 `ser_lite=0`, zero `ep:ack_ia+loss_burst`. Crest
+`bw_est` 418 vs BBR 423. Gap is 73% `congestive_recovery` + 26 full
+`rtt_mad+loss_burst` invalidates. A/1 already has fade+`ep:loss_burst` and
+beats BBR — a reconfig=0 hold would move A. 80 ms floor not lowered. No
+second knob.
+
+**Decision: stop. Official gate still REJECT vs BBR (377.70 ≤ 379.80).**
+Not Current. Do not merge.
+
+Archive: `results/archive/20260814-v314-b600/`  
+Design: `docs/leoaware_v314_b600.md`
+
+---
+
 ## Open ideas (next loops)
 
 1. Denser real Starlink CSVs (continuous 90s RTT+capacity, not hold-expanded 15s iperf). `leocc_v1` is the first such ingest; still not product lock.

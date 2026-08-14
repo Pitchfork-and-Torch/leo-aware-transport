@@ -1,0 +1,1860 @@
+[
+  {
+    "variant": "BBRv3approx",
+    "goodput_mbps": 358.2901333333333,
+    "p95_rtt_ms": 198.00000000000307,
+    "p95_path_rtt_ms": 194.0,
+    "p95_excess_rtt_ms": 6.000000000003059,
+    "mean_excess_rtt_ms": 4.181210013784438,
+    "mode_hist": {
+      "startup": 9,
+      "probe": 56,
+      "loss_ignored": 1696,
+      "cruise": 39
+    },
+    "mean_cwnd_mss": 11793.855137234055,
+    "p50_cwnd_mss": 12146.510000000255,
+    "mean_bw_mbps": 384.4817083586047,
+    "p50_bw_mbps": 377.32716329380304,
+    "p95_bw_mbps": 449.6550993375183,
+    "mean_min_rtt_ms": 161.2129122448987
+  },
+  {
+    "variant": "Crest",
+    "goodput_mbps": 204.60576,
+    "p95_rtt_ms": 198.00000000000097,
+    "p95_path_rtt_ms": 194.0,
+    "p95_excess_rtt_ms": 6.000000000003059,
+    "mean_excess_rtt_ms": 3.1175224001517967,
+    "mode_hist": {
+      "startup": 18,
+      "cruise": 885,
+      "reprobe_explore": 172,
+      "oce_echo": 213,
+      "congestive_recovery": 441,
+      "mobility_loss": 69,
+      "ser:loss_burst": 2
+    },
+    "mean_cwnd_mss": 3449.765507351381,
+    "p50_cwnd_mss": 3432.1993629306025,
+    "reconfigs_detected": 131,
+    "reprobe_reasons": {
+      "ep:rtt_mad": 6,
+      "ep:rtt_mad+ack_ia": 3,
+      "ep:loss_burst": 10,
+      "ep:ack_ia+loss_burst": 92,
+      "ep:rtt_mad+loss_burst": 15,
+      "ep:rtt_mad+ack_ia+loss_burst": 2,
+      "ep:ack_ia+loss_rtt": 2,
+      "ep:rtt_mad+loss_rtt": 1
+    },
+    "reprobe_events": [
+      {
+        "t": 1.350000000000001,
+        "reason": "ep:rtt_mad",
+        "cwnd_mss": 132.8,
+        "bw_mbps": 2.207999999999998,
+        "min_rtt_ms": 182.0,
+        "prior_bw_mbps": 0.0
+      },
+      {
+        "t": 2.9799999999999804,
+        "reason": "ep:rtt_mad+ack_ia",
+        "cwnd_mss": 1136.8872,
+        "bw_mbps": 14.929655172414112,
+        "min_rtt_ms": 173.99999999999994,
+        "prior_bw_mbps": 2.207999999999998
+      },
+      {
+        "t": 4.42999999999995,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 6726.9250000000175,
+        "bw_mbps": 101.13951219512404,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 14.929655172414112
+      },
+      {
+        "t": 5.7199999999999225,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4396.50281854108,
+        "bw_mbps": 255.64915662651148,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 101.13951219512404
+      },
+      {
+        "t": 6.1399999999999135,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5085.145231324162,
+        "bw_mbps": 283.47388235294716,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 255.64915662651148
+      },
+      {
+        "t": 6.739999999999901,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4522.3805471527385,
+        "bw_mbps": 265.4713846153903,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 283.47388235294716
+      },
+      {
+        "t": 7.979999999999874,
+        "reason": "ep:rtt_mad",
+        "cwnd_mss": 2683.999704906049,
+        "bw_mbps": 181.09301204819664,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 265.4713846153903
+      },
+      {
+        "t": 8.389999999999866,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2576.342796578386,
+        "bw_mbps": 185.65511111111505,
+        "min_rtt_ms": 181.99999999999994,
+        "prior_bw_mbps": 181.09301204819664
+      },
+      {
+        "t": 8.989999999999853,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2832.199887685751,
+        "bw_mbps": 183.47642553191884,
+        "min_rtt_ms": 177.99999999999994,
+        "prior_bw_mbps": 185.65511111111505
+      },
+      {
+        "t": 9.60999999999984,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2817.556605687078,
+        "bw_mbps": 196.71400000000418,
+        "min_rtt_ms": 173.99999999999994,
+        "prior_bw_mbps": 183.47642553191884
+      },
+      {
+        "t": 10.229999999999826,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2885.0917958508776,
+        "bw_mbps": 194.22025531915307,
+        "min_rtt_ms": 173.99999999999994,
+        "prior_bw_mbps": 196.71400000000418
+      },
+      {
+        "t": 10.809999999999814,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2757.315455548166,
+        "bw_mbps": 195.20818604651575,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 194.22025531915307
+      },
+      {
+        "t": 11.399999999999801,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2829.3644270783784,
+        "bw_mbps": 192.54826666667074,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 195.20818604651575
+      },
+      {
+        "t": 12.009999999999788,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3985.0388124451365,
+        "bw_mbps": 190.79400000000405,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 192.54826666667074
+      },
+      {
+        "t": 12.609999999999776,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3485.3183159155155,
+        "bw_mbps": 221.03400000000468,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 190.79400000000405
+      },
+      {
+        "t": 13.229999999999762,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2996.0994289157766,
+        "bw_mbps": 218.57400000000465,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 221.03400000000468
+      },
+      {
+        "t": 13.84999999999975,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2390.317801679958,
+        "bw_mbps": 215.60578723404714,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 218.57400000000465
+      },
+      {
+        "t": 15.419999999999716,
+        "reason": "ep:rtt_mad+ack_ia",
+        "cwnd_mss": 2084.3114901983067,
+        "bw_mbps": 135.16556962025604,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 215.60578723404714
+      },
+      {
+        "t": 15.799999999999708,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 1791.4797451130569,
+        "bw_mbps": 180.10800000000384,
+        "min_rtt_ms": 177.99999999999994,
+        "prior_bw_mbps": 135.16556962025604
+      },
+      {
+        "t": 16.389999999999763,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2651.8855249911894,
+        "bw_mbps": 168.93163636362425,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 180.10800000000384
+      },
+      {
+        "t": 16.969999999999853,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3049.4098160857466,
+        "bw_mbps": 190.99399999997013,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 168.93163636362425
+      },
+      {
+        "t": 17.78999999999998,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 1503.9375806595153,
+        "bw_mbps": 221.5587945205133,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 190.99399999997013
+      },
+      {
+        "t": 18.42000000000008,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3140.942446459881,
+        "bw_mbps": 172.10626415091647,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 221.5587945205133
+      },
+      {
+        "t": 19.010000000000172,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4008.6382438622586,
+        "bw_mbps": 216.12369230765853,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 172.10626415091647
+      },
+      {
+        "t": 19.39000000000023,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3817.719627251047,
+        "bw_mbps": 264.8578064515715,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 216.12369230765853
+      },
+      {
+        "t": 19.780000000000292,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3339.618207911547,
+        "bw_mbps": 259.5003870967336,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 264.8578064515715
+      },
+      {
+        "t": 22.230000000000675,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 3280.092971003383,
+        "bw_mbps": 171.19199999997323,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 259.5003870967336
+      },
+      {
+        "t": 22.790000000000763,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3592.381858469901,
+        "bw_mbps": 200.29399999996872,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 171.19199999997323
+      },
+      {
+        "t": 23.22000000000083,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3577.663035386442,
+        "bw_mbps": 262.39199999995895,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 200.29399999996872
+      },
+      {
+        "t": 24.740000000001068,
+        "reason": "ep:rtt_mad",
+        "cwnd_mss": 3560.8571195490813,
+        "bw_mbps": 193.67414634143313,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 262.39199999995895
+      },
+      {
+        "t": 25.420000000001174,
+        "reason": "ep:rtt_mad+ack_ia",
+        "cwnd_mss": 3007.2312177905533,
+        "bw_mbps": 177.2805517241102,
+        "min_rtt_ms": 170.0000000000003,
+        "prior_bw_mbps": 193.67414634143313
+      },
+      {
+        "t": 25.830000000001238,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2716.7242288445086,
+        "bw_mbps": 201.9313548386781,
+        "min_rtt_ms": 184.0000000000006,
+        "prior_bw_mbps": 177.2805517241102
+      },
+      {
+        "t": 26.41000000000133,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3407.592905980162,
+        "bw_mbps": 224.04369230765727,
+        "min_rtt_ms": 162.0000000000003,
+        "prior_bw_mbps": 201.9313548386781
+      },
+      {
+        "t": 28.52000000000166,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 3544.5631359313597,
+        "bw_mbps": 200.40615384612252,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 224.04369230765727
+      },
+      {
+        "t": 29.010000000001735,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3883.3334409226454,
+        "bw_mbps": 218.71314285710866,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 200.40615384612252
+      },
+      {
+        "t": 29.450000000001804,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4375.188739258211,
+        "bw_mbps": 268.1435675675256,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 218.71314285710866
+      },
+      {
+        "t": 29.860000000001868,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3400.2812242344407,
+        "bw_mbps": 284.03490909086463,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 268.1435675675256
+      },
+      {
+        "t": 30.460000000001962,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3655.5370264834382,
+        "bw_mbps": 244.36141176466768,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 284.03490909086463
+      },
+      {
+        "t": 30.84000000000202,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4272.667084158684,
+        "bw_mbps": 290.61439999995457,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 244.36141176466768
+      },
+      {
+        "t": 31.230000000002082,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3517.3635935017173,
+        "bw_mbps": 278.3309999999565,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 290.61439999995457
+      }
+    ],
+    "n_reprobe_events": 131,
+    "ca_aborts": 0,
+    "n_ca_events": 0,
+    "lsg_clamps": 130338,
+    "n_lsg_events": 130338,
+    "anticipator_holds": 159,
+    "keel_rollbacks": 0,
+    "oce_echos": 441733,
+    "ser_lite_count": 92,
+    "mean_bw_mbps": 267.0735544951461,
+    "p50_bw_mbps": 260.94139534870374,
+    "p95_bw_mbps": 451.461599999938,
+    "mean_min_rtt_ms": 171.43488555643276,
+    "mean_delay_ratio": 1.0840952816725844,
+    "frac_delay_ratio_gt_118": 0.06629834254143646,
+    "frac_delay_ratio_gt_135": 0.0,
+    "frac_reprobe_mode": 0.09666666666666666
+  },
+  {
+    "variant": "Crest_noCA",
+    "goodput_mbps": 204.60576,
+    "p95_rtt_ms": 198.00000000000097,
+    "p95_path_rtt_ms": 194.0,
+    "p95_excess_rtt_ms": 6.000000000003059,
+    "mean_excess_rtt_ms": 3.1175224001517967,
+    "mode_hist": {
+      "startup": 18,
+      "cruise": 885,
+      "reprobe_explore": 172,
+      "oce_echo": 213,
+      "congestive_recovery": 441,
+      "mobility_loss": 69,
+      "ser:loss_burst": 2
+    },
+    "mean_cwnd_mss": 3449.765507351381,
+    "p50_cwnd_mss": 3432.1993629306025,
+    "reconfigs_detected": 131,
+    "reprobe_reasons": {
+      "ep:rtt_mad": 6,
+      "ep:rtt_mad+ack_ia": 3,
+      "ep:loss_burst": 10,
+      "ep:ack_ia+loss_burst": 92,
+      "ep:rtt_mad+loss_burst": 15,
+      "ep:rtt_mad+ack_ia+loss_burst": 2,
+      "ep:ack_ia+loss_rtt": 2,
+      "ep:rtt_mad+loss_rtt": 1
+    },
+    "reprobe_events": [
+      {
+        "t": 1.350000000000001,
+        "reason": "ep:rtt_mad",
+        "cwnd_mss": 132.8,
+        "bw_mbps": 2.207999999999998,
+        "min_rtt_ms": 182.0,
+        "prior_bw_mbps": 0.0
+      },
+      {
+        "t": 2.9799999999999804,
+        "reason": "ep:rtt_mad+ack_ia",
+        "cwnd_mss": 1136.8872,
+        "bw_mbps": 14.929655172414112,
+        "min_rtt_ms": 173.99999999999994,
+        "prior_bw_mbps": 2.207999999999998
+      },
+      {
+        "t": 4.42999999999995,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 6726.9250000000175,
+        "bw_mbps": 101.13951219512404,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 14.929655172414112
+      },
+      {
+        "t": 5.7199999999999225,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4396.50281854108,
+        "bw_mbps": 255.64915662651148,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 101.13951219512404
+      },
+      {
+        "t": 6.1399999999999135,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5085.145231324162,
+        "bw_mbps": 283.47388235294716,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 255.64915662651148
+      },
+      {
+        "t": 6.739999999999901,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4522.3805471527385,
+        "bw_mbps": 265.4713846153903,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 283.47388235294716
+      },
+      {
+        "t": 7.979999999999874,
+        "reason": "ep:rtt_mad",
+        "cwnd_mss": 2683.999704906049,
+        "bw_mbps": 181.09301204819664,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 265.4713846153903
+      },
+      {
+        "t": 8.389999999999866,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2576.342796578386,
+        "bw_mbps": 185.65511111111505,
+        "min_rtt_ms": 181.99999999999994,
+        "prior_bw_mbps": 181.09301204819664
+      },
+      {
+        "t": 8.989999999999853,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2832.199887685751,
+        "bw_mbps": 183.47642553191884,
+        "min_rtt_ms": 177.99999999999994,
+        "prior_bw_mbps": 185.65511111111505
+      },
+      {
+        "t": 9.60999999999984,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2817.556605687078,
+        "bw_mbps": 196.71400000000418,
+        "min_rtt_ms": 173.99999999999994,
+        "prior_bw_mbps": 183.47642553191884
+      },
+      {
+        "t": 10.229999999999826,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2885.0917958508776,
+        "bw_mbps": 194.22025531915307,
+        "min_rtt_ms": 173.99999999999994,
+        "prior_bw_mbps": 196.71400000000418
+      },
+      {
+        "t": 10.809999999999814,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2757.315455548166,
+        "bw_mbps": 195.20818604651575,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 194.22025531915307
+      },
+      {
+        "t": 11.399999999999801,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2829.3644270783784,
+        "bw_mbps": 192.54826666667074,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 195.20818604651575
+      },
+      {
+        "t": 12.009999999999788,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3985.0388124451365,
+        "bw_mbps": 190.79400000000405,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 192.54826666667074
+      },
+      {
+        "t": 12.609999999999776,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3485.3183159155155,
+        "bw_mbps": 221.03400000000468,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 190.79400000000405
+      },
+      {
+        "t": 13.229999999999762,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2996.0994289157766,
+        "bw_mbps": 218.57400000000465,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 221.03400000000468
+      },
+      {
+        "t": 13.84999999999975,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2390.317801679958,
+        "bw_mbps": 215.60578723404714,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 218.57400000000465
+      },
+      {
+        "t": 15.419999999999716,
+        "reason": "ep:rtt_mad+ack_ia",
+        "cwnd_mss": 2084.3114901983067,
+        "bw_mbps": 135.16556962025604,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 215.60578723404714
+      },
+      {
+        "t": 15.799999999999708,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 1791.4797451130569,
+        "bw_mbps": 180.10800000000384,
+        "min_rtt_ms": 177.99999999999994,
+        "prior_bw_mbps": 135.16556962025604
+      },
+      {
+        "t": 16.389999999999763,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2651.8855249911894,
+        "bw_mbps": 168.93163636362425,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 180.10800000000384
+      },
+      {
+        "t": 16.969999999999853,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3049.4098160857466,
+        "bw_mbps": 190.99399999997013,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 168.93163636362425
+      },
+      {
+        "t": 17.78999999999998,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 1503.9375806595153,
+        "bw_mbps": 221.5587945205133,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 190.99399999997013
+      },
+      {
+        "t": 18.42000000000008,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3140.942446459881,
+        "bw_mbps": 172.10626415091647,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 221.5587945205133
+      },
+      {
+        "t": 19.010000000000172,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4008.6382438622586,
+        "bw_mbps": 216.12369230765853,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 172.10626415091647
+      },
+      {
+        "t": 19.39000000000023,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3817.719627251047,
+        "bw_mbps": 264.8578064515715,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 216.12369230765853
+      },
+      {
+        "t": 19.780000000000292,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3339.618207911547,
+        "bw_mbps": 259.5003870967336,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 264.8578064515715
+      },
+      {
+        "t": 22.230000000000675,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 3280.092971003383,
+        "bw_mbps": 171.19199999997323,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 259.5003870967336
+      },
+      {
+        "t": 22.790000000000763,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3592.381858469901,
+        "bw_mbps": 200.29399999996872,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 171.19199999997323
+      },
+      {
+        "t": 23.22000000000083,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3577.663035386442,
+        "bw_mbps": 262.39199999995895,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 200.29399999996872
+      },
+      {
+        "t": 24.740000000001068,
+        "reason": "ep:rtt_mad",
+        "cwnd_mss": 3560.8571195490813,
+        "bw_mbps": 193.67414634143313,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 262.39199999995895
+      },
+      {
+        "t": 25.420000000001174,
+        "reason": "ep:rtt_mad+ack_ia",
+        "cwnd_mss": 3007.2312177905533,
+        "bw_mbps": 177.2805517241102,
+        "min_rtt_ms": 170.0000000000003,
+        "prior_bw_mbps": 193.67414634143313
+      },
+      {
+        "t": 25.830000000001238,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2716.7242288445086,
+        "bw_mbps": 201.9313548386781,
+        "min_rtt_ms": 184.0000000000006,
+        "prior_bw_mbps": 177.2805517241102
+      },
+      {
+        "t": 26.41000000000133,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3407.592905980162,
+        "bw_mbps": 224.04369230765727,
+        "min_rtt_ms": 162.0000000000003,
+        "prior_bw_mbps": 201.9313548386781
+      },
+      {
+        "t": 28.52000000000166,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 3544.5631359313597,
+        "bw_mbps": 200.40615384612252,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 224.04369230765727
+      },
+      {
+        "t": 29.010000000001735,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3883.3334409226454,
+        "bw_mbps": 218.71314285710866,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 200.40615384612252
+      },
+      {
+        "t": 29.450000000001804,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4375.188739258211,
+        "bw_mbps": 268.1435675675256,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 218.71314285710866
+      },
+      {
+        "t": 29.860000000001868,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3400.2812242344407,
+        "bw_mbps": 284.03490909086463,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 268.1435675675256
+      },
+      {
+        "t": 30.460000000001962,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3655.5370264834382,
+        "bw_mbps": 244.36141176466768,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 284.03490909086463
+      },
+      {
+        "t": 30.84000000000202,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4272.667084158684,
+        "bw_mbps": 290.61439999995457,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 244.36141176466768
+      },
+      {
+        "t": 31.230000000002082,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3517.3635935017173,
+        "bw_mbps": 278.3309999999565,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 290.61439999995457
+      }
+    ],
+    "n_reprobe_events": 131,
+    "ca_aborts": 0,
+    "n_ca_events": 0,
+    "lsg_clamps": 130338,
+    "n_lsg_events": 130338,
+    "anticipator_holds": 159,
+    "keel_rollbacks": 0,
+    "oce_echos": 441733,
+    "ser_lite_count": 92,
+    "mean_bw_mbps": 267.0735544951461,
+    "p50_bw_mbps": 260.94139534870374,
+    "p95_bw_mbps": 451.461599999938,
+    "mean_min_rtt_ms": 171.43488555643276,
+    "mean_delay_ratio": 1.0840952816725844,
+    "frac_delay_ratio_gt_118": 0.06629834254143646,
+    "frac_delay_ratio_gt_135": 0.0,
+    "frac_reprobe_mode": 0.09666666666666666
+  },
+  {
+    "variant": "Crest_noLSG",
+    "goodput_mbps": 187.15328,
+    "p95_rtt_ms": 198.00000000000102,
+    "p95_path_rtt_ms": 194.0,
+    "p95_excess_rtt_ms": 6.000000000003059,
+    "mean_excess_rtt_ms": 2.9939312489389396,
+    "mode_hist": {
+      "startup": 16,
+      "cruise": 1024,
+      "reprobe_explore": 148,
+      "oce_echo": 207,
+      "congestive_recovery": 335,
+      "mobility_loss": 66,
+      "ser:loss_burst": 4
+    },
+    "mean_cwnd_mss": 3233.4379396191093,
+    "p50_cwnd_mss": 3179.2420005107083,
+    "reconfigs_detected": 124,
+    "reprobe_reasons": {
+      "ep:rtt_mad": 7,
+      "ep:rtt_mad+ack_ia": 2,
+      "ep:loss_burst": 11,
+      "ep:ack_ia+loss_burst": 94,
+      "ep:rtt_mad+loss_burst": 8,
+      "ep:ack_ia+loss_rtt": 1,
+      "ep:rtt_mad+loss_rtt": 1
+    },
+    "reprobe_events": [
+      {
+        "t": 1.350000000000001,
+        "reason": "ep:rtt_mad",
+        "cwnd_mss": 132.8,
+        "bw_mbps": 2.207999999999998,
+        "min_rtt_ms": 182.0,
+        "prior_bw_mbps": 0.0
+      },
+      {
+        "t": 2.9799999999999804,
+        "reason": "ep:rtt_mad+ack_ia",
+        "cwnd_mss": 1136.8872,
+        "bw_mbps": 14.929655172414112,
+        "min_rtt_ms": 173.99999999999994,
+        "prior_bw_mbps": 2.207999999999998
+      },
+      {
+        "t": 4.42999999999995,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 6726.9250000000175,
+        "bw_mbps": 101.13951219512404,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 14.929655172414112
+      },
+      {
+        "t": 5.7199999999999225,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4396.50281854108,
+        "bw_mbps": 255.64915662651148,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 101.13951219512404
+      },
+      {
+        "t": 6.1399999999999135,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5085.145231324162,
+        "bw_mbps": 283.47388235294716,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 255.64915662651148
+      },
+      {
+        "t": 6.739999999999901,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4522.3805471527385,
+        "bw_mbps": 265.4713846153903,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 283.47388235294716
+      },
+      {
+        "t": 7.979999999999874,
+        "reason": "ep:rtt_mad",
+        "cwnd_mss": 2683.999704906049,
+        "bw_mbps": 181.09301204819664,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 265.4713846153903
+      },
+      {
+        "t": 8.389999999999866,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2576.342796578386,
+        "bw_mbps": 185.65511111111505,
+        "min_rtt_ms": 181.99999999999994,
+        "prior_bw_mbps": 181.09301204819664
+      },
+      {
+        "t": 8.989999999999853,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2832.199887685751,
+        "bw_mbps": 183.47642553191884,
+        "min_rtt_ms": 177.99999999999994,
+        "prior_bw_mbps": 185.65511111111505
+      },
+      {
+        "t": 9.60999999999984,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2817.556605687078,
+        "bw_mbps": 196.71400000000418,
+        "min_rtt_ms": 173.99999999999994,
+        "prior_bw_mbps": 183.47642553191884
+      },
+      {
+        "t": 10.229999999999826,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2885.0917958508776,
+        "bw_mbps": 194.22025531915307,
+        "min_rtt_ms": 173.99999999999994,
+        "prior_bw_mbps": 196.71400000000418
+      },
+      {
+        "t": 10.809999999999814,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2757.315455548166,
+        "bw_mbps": 195.20818604651575,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 194.22025531915307
+      },
+      {
+        "t": 11.399999999999801,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2829.3644270783784,
+        "bw_mbps": 192.54826666667074,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 195.20818604651575
+      },
+      {
+        "t": 12.009999999999788,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3985.0388124451365,
+        "bw_mbps": 190.79400000000405,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 192.54826666667074
+      },
+      {
+        "t": 12.609999999999776,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3485.3183159155155,
+        "bw_mbps": 221.03400000000468,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 190.79400000000405
+      },
+      {
+        "t": 13.229999999999762,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2996.0994289157766,
+        "bw_mbps": 218.57400000000465,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 221.03400000000468
+      },
+      {
+        "t": 13.84999999999975,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2390.317801679958,
+        "bw_mbps": 215.60578723404714,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 218.57400000000465
+      },
+      {
+        "t": 15.419999999999716,
+        "reason": "ep:rtt_mad+ack_ia",
+        "cwnd_mss": 2084.3114901983067,
+        "bw_mbps": 135.16556962025604,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 215.60578723404714
+      },
+      {
+        "t": 15.799999999999708,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 1791.4797451130569,
+        "bw_mbps": 180.10800000000384,
+        "min_rtt_ms": 177.99999999999994,
+        "prior_bw_mbps": 135.16556962025604
+      },
+      {
+        "t": 16.389999999999763,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2651.8855249911894,
+        "bw_mbps": 168.93163636362425,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 180.10800000000384
+      },
+      {
+        "t": 16.969999999999853,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3049.4098160857466,
+        "bw_mbps": 190.99399999997013,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 168.93163636362425
+      },
+      {
+        "t": 17.78999999999998,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 1503.9375806595153,
+        "bw_mbps": 221.5587945205133,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 190.99399999997013
+      },
+      {
+        "t": 20.300000000000374,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 2633.899425451114,
+        "bw_mbps": 156.55111111108664,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 221.5587945205133
+      },
+      {
+        "t": 20.67000000000043,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4412.3974134507,
+        "bw_mbps": 214.99839999996638,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 156.55111111108664
+      },
+      {
+        "t": 21.070000000000494,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4080.622993952418,
+        "bw_mbps": 236.23199999996305,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 214.99839999996638
+      },
+      {
+        "t": 21.540000000000568,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4140.118520588029,
+        "bw_mbps": 227.60457142853582,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 236.23199999996305
+      },
+      {
+        "t": 22.340000000000693,
+        "reason": "ep:rtt_mad",
+        "cwnd_mss": 6756.859177378523,
+        "bw_mbps": 289.06707692303166,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 227.60457142853582
+      },
+      {
+        "t": 24.740000000001068,
+        "reason": "ep:rtt_mad+loss_burst",
+        "cwnd_mss": 5422.090792266728,
+        "bw_mbps": 263.7272727272315,
+        "min_rtt_ms": 178.00000000000028,
+        "prior_bw_mbps": 289.06707692303166
+      },
+      {
+        "t": 25.34000000000116,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3917.6258384757634,
+        "bw_mbps": 261.389142857102,
+        "min_rtt_ms": 170.0000000000003,
+        "prior_bw_mbps": 263.7272727272315
+      },
+      {
+        "t": 25.77000000000123,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4876.528718931108,
+        "bw_mbps": 266.18338461534296,
+        "min_rtt_ms": 170.0000000000003,
+        "prior_bw_mbps": 261.389142857102
+      },
+      {
+        "t": 26.16000000000129,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4108.506580306225,
+        "bw_mbps": 290.9609999999545,
+        "min_rtt_ms": 162.0000000000003,
+        "prior_bw_mbps": 266.18338461534296
+      },
+      {
+        "t": 26.580000000001355,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3675.983725671655,
+        "bw_mbps": 267.97270588231106,
+        "min_rtt_ms": 162.0000000000003,
+        "prior_bw_mbps": 290.9609999999545
+      },
+      {
+        "t": 26.99000000000142,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3297.969201797153,
+        "bw_mbps": 249.98682352937269,
+        "min_rtt_ms": 162.0000000000003,
+        "prior_bw_mbps": 267.97270588231106
+      },
+      {
+        "t": 27.420000000001487,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3057.470082396724,
+        "bw_mbps": 253.48662857138893,
+        "min_rtt_ms": 162.0000000000003,
+        "prior_bw_mbps": 249.98682352937269
+      },
+      {
+        "t": 29.900000000001874,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 2467.7261065730063,
+        "bw_mbps": 183.99999999997124,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 253.48662857138893
+      },
+      {
+        "t": 30.400000000001953,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3481.2035103644876,
+        "bw_mbps": 207.35070967738693,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 183.99999999997124
+      },
+      {
+        "t": 30.97000000000204,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3786.057244785979,
+        "bw_mbps": 234.25371428567766,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 207.35070967738693
+      },
+      {
+        "t": 31.360000000002103,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4060.367154069696,
+        "bw_mbps": 281.053935483827,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 234.25371428567766
+      },
+      {
+        "t": 31.770000000002167,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3093.2339635036387,
+        "bw_mbps": 272.15099999995743,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 281.053935483827
+      },
+      {
+        "t": 32.20000000000216,
+        "reason": "ep:rtt_mad",
+        "cwnd_mss": 3758.9843524433627,
+        "bw_mbps": 226.4399999999872,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 272.15099999995743
+      }
+    ],
+    "n_reprobe_events": 124,
+    "ca_aborts": 0,
+    "n_ca_events": 0,
+    "lsg_clamps": 0,
+    "n_lsg_events": 0,
+    "anticipator_holds": 224,
+    "keel_rollbacks": 0,
+    "oce_echos": 381562,
+    "ser_lite_count": 94,
+    "mean_bw_mbps": 246.42035453660264,
+    "p50_bw_mbps": 242.06344827573824,
+    "p95_bw_mbps": 432.018109090849,
+    "mean_min_rtt_ms": 169.31028340080996,
+    "mean_delay_ratio": 1.0964049503562963,
+    "frac_delay_ratio_gt_118": 0.0931174089068826,
+    "frac_delay_ratio_gt_135": 0.0008097165991902834,
+    "frac_reprobe_mode": 0.08444444444444445
+  },
+  {
+    "variant": "Crest_noAnt",
+    "goodput_mbps": 276.27776,
+    "p95_rtt_ms": 197.99999999999963,
+    "p95_path_rtt_ms": 194.0,
+    "p95_excess_rtt_ms": 6.000000000003059,
+    "mean_excess_rtt_ms": 3.3920178494767432,
+    "mode_hist": {
+      "startup": 19,
+      "cruise": 632,
+      "reprobe_explore": 169,
+      "oce_echo": 328,
+      "congestive_recovery": 613,
+      "mobility_loss": 34,
+      "ser:loss_burst": 5
+    },
+    "mean_cwnd_mss": 4159.182794472113,
+    "p50_cwnd_mss": 4287.541055044586,
+    "reconfigs_detected": 124,
+    "reprobe_reasons": {
+      "ep:rtt_mad": 1,
+      "ep:rtt_mad+ack_ia": 1,
+      "ep:loss_burst": 18,
+      "ep:ack_ia+loss_burst": 75,
+      "ep:rtt_mad+loss_burst": 28,
+      "ep:rtt_mad+ack_ia+loss_burst": 1
+    },
+    "reprobe_events": [
+      {
+        "t": 1.350000000000001,
+        "reason": "ep:rtt_mad",
+        "cwnd_mss": 132.8,
+        "bw_mbps": 2.207999999999998,
+        "min_rtt_ms": 182.0,
+        "prior_bw_mbps": 0.0
+      },
+      {
+        "t": 2.9799999999999804,
+        "reason": "ep:rtt_mad+ack_ia",
+        "cwnd_mss": 1136.8872,
+        "bw_mbps": 14.929655172414112,
+        "min_rtt_ms": 173.99999999999994,
+        "prior_bw_mbps": 2.207999999999998
+      },
+      {
+        "t": 4.42999999999995,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 6726.9250000000175,
+        "bw_mbps": 101.13951219512404,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 14.929655172414112
+      },
+      {
+        "t": 7.109999999999893,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 5216.506017891012,
+        "bw_mbps": 352.27373493976654,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 101.13951219512404
+      },
+      {
+        "t": 7.579999999999883,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 6344.626139711025,
+        "bw_mbps": 297.28926315790113,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 352.27373493976654
+      },
+      {
+        "t": 7.979999999999874,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5777.719372830732,
+        "bw_mbps": 362.504470588243,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 297.28926315790113
+      },
+      {
+        "t": 8.389999999999866,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5948.827038089512,
+        "bw_mbps": 347.6489142857217,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 362.504470588243
+      },
+      {
+        "t": 8.809999999999857,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5404.912003037295,
+        "bw_mbps": 344.0832000000073,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 347.6489142857217
+      },
+      {
+        "t": 9.209999999999848,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4631.5878107161625,
+        "bw_mbps": 330.201000000007,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 344.0832000000073
+      },
+      {
+        "t": 9.62999999999984,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5426.738819475356,
+        "bw_mbps": 326.3068235294187,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 330.201000000007
+      },
+      {
+        "t": 10.03999999999983,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5106.03825395582,
+        "bw_mbps": 324.6974117647128,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 326.3068235294187
+      },
+      {
+        "t": 10.419999999999822,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 6079.4397932804795,
+        "bw_mbps": 377.3876363636444,
+        "min_rtt_ms": 163.99999999999991,
+        "prior_bw_mbps": 324.6974117647128
+      },
+      {
+        "t": 10.819999999999814,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5314.951521202121,
+        "bw_mbps": 348.4997647058898,
+        "min_rtt_ms": 163.99999999999991,
+        "prior_bw_mbps": 377.3876363636444
+      },
+      {
+        "t": 11.219999999999805,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4626.965649637365,
+        "bw_mbps": 327.06917647059515,
+        "min_rtt_ms": 163.99999999999991,
+        "prior_bw_mbps": 348.4997647058898
+      },
+      {
+        "t": 11.639999999999796,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5464.287739534596,
+        "bw_mbps": 322.57920000000684,
+        "min_rtt_ms": 163.99999999999991,
+        "prior_bw_mbps": 327.06917647059515
+      },
+      {
+        "t": 12.049999999999788,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5044.067329500102,
+        "bw_mbps": 324.3021176470657,
+        "min_rtt_ms": 163.99999999999991,
+        "prior_bw_mbps": 322.57920000000684
+      },
+      {
+        "t": 12.43999999999978,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5548.978995662584,
+        "bw_mbps": 347.5680000000074,
+        "min_rtt_ms": 163.99999999999991,
+        "prior_bw_mbps": 324.3021176470657
+      },
+      {
+        "t": 12.85999999999977,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4909.332670582933,
+        "bw_mbps": 331.52091428572135,
+        "min_rtt_ms": 163.99999999999991,
+        "prior_bw_mbps": 347.5680000000074
+      },
+      {
+        "t": 13.269999999999762,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 6376.651468674523,
+        "bw_mbps": 353.71062857143613,
+        "min_rtt_ms": 163.99999999999991,
+        "prior_bw_mbps": 331.52091428572135
+      },
+      {
+        "t": 13.679999999999753,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4604.2722731444355,
+        "bw_mbps": 370.0150588235373,
+        "min_rtt_ms": 163.99999999999991,
+        "prior_bw_mbps": 353.71062857143613
+      },
+      {
+        "t": 14.089999999999744,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 6291.9919088360775,
+        "bw_mbps": 330.6980571428642,
+        "min_rtt_ms": 163.99999999999991,
+        "prior_bw_mbps": 370.0150588235373
+      },
+      {
+        "t": 15.039999999999724,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4549.8156585572315,
+        "bw_mbps": 327.14666666667364,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 330.6980571428642
+      },
+      {
+        "t": 15.459999999999715,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5315.704293604277,
+        "bw_mbps": 288.39200000000613,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 327.14666666667364
+      },
+      {
+        "t": 15.839999999999707,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4965.6679780724735,
+        "bw_mbps": 367.54683870968523,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 288.39200000000613
+      },
+      {
+        "t": 16.229999999999738,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4001.49620443076,
+        "bw_mbps": 325.5545806451421,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 367.54683870968523
+      },
+      {
+        "t": 16.669999999999806,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4323.2387820199865,
+        "bw_mbps": 302.9279999999526,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 325.5545806451421
+      },
+      {
+        "t": 17.06999999999987,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3521.0695214833163,
+        "bw_mbps": 327.18455172408676,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 302.9279999999526
+      },
+      {
+        "t": 17.479999999999933,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4406.856943841283,
+        "bw_mbps": 300.43839999995305,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 327.18455172408676
+      },
+      {
+        "t": 17.869999999999994,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2477.6552132788365,
+        "bw_mbps": 286.9663999999552,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 300.43839999995305
+      },
+      {
+        "t": 18.29000000000006,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3663.053855817589,
+        "bw_mbps": 203.8319999999681,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 286.9663999999552
+      },
+      {
+        "t": 18.73000000000013,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5281.909943349371,
+        "bw_mbps": 272.3292631578521,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 203.8319999999681
+      },
+      {
+        "t": 19.100000000000186,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4094.1986533505183,
+        "bw_mbps": 330.4474838709161,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 272.3292631578521
+      },
+      {
+        "t": 19.50000000000025,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4018.176834292355,
+        "bw_mbps": 309.81741176465744,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 330.4474838709161
+      },
+      {
+        "t": 19.90000000000031,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5767.5047422305815,
+        "bw_mbps": 292.23199999995427,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 309.81741176465744
+      },
+      {
+        "t": 21.650000000000585,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 4855.436343662213,
+        "bw_mbps": 277.3283720929799,
+        "min_rtt_ms": 174.00000000000028,
+        "prior_bw_mbps": 292.23199999995427
+      },
+      {
+        "t": 22.340000000000693,
+        "reason": "ep:rtt_mad+loss_burst",
+        "cwnd_mss": 4468.637583657033,
+        "bw_mbps": 311.4719999999514,
+        "min_rtt_ms": 174.00000000000028,
+        "prior_bw_mbps": 277.3283720929799
+      },
+      {
+        "t": 22.790000000000763,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4982.953552870543,
+        "bw_mbps": 273.24175609751825,
+        "min_rtt_ms": 182.0000000000003,
+        "prior_bw_mbps": 311.4719999999514
+      },
+      {
+        "t": 23.240000000000833,
+        "reason": "ep:rtt_mad+loss_burst",
+        "cwnd_mss": 6032.172726281581,
+        "bw_mbps": 284.97934883716476,
+        "min_rtt_ms": 180.0000000000003,
+        "prior_bw_mbps": 273.24175609751825
+      },
+      {
+        "t": 23.680000000000902,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4373.961838776814,
+        "bw_mbps": 294.15663157890134,
+        "min_rtt_ms": 180.0000000000003,
+        "prior_bw_mbps": 284.97934883716476
+      },
+      {
+        "t": 24.070000000000963,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4361.103326523292,
+        "bw_mbps": 295.1185454544993,
+        "min_rtt_ms": 178.00000000000028,
+        "prior_bw_mbps": 294.15663157890134
+      }
+    ],
+    "n_reprobe_events": 124,
+    "ca_aborts": 0,
+    "n_ca_events": 0,
+    "lsg_clamps": 39181,
+    "n_lsg_events": 39181,
+    "anticipator_holds": 0,
+    "keel_rollbacks": 0,
+    "oce_echos": 981308,
+    "ser_lite_count": 75,
+    "mean_bw_mbps": 318.51350984722484,
+    "p50_bw_mbps": 315.9766153846221,
+    "p95_bw_mbps": 473.2974545455067,
+    "mean_min_rtt_ms": 170.76890920966713,
+    "mean_delay_ratio": 1.0890575633438189,
+    "frac_delay_ratio_gt_118": 0.07119529719137818,
+    "frac_delay_ratio_gt_135": 0.0006531678641410843,
+    "frac_reprobe_mode": 0.09666666666666666
+  },
+  {
+    "variant": "v37_oce",
+    "goodput_mbps": 276.6413866666667,
+    "p95_rtt_ms": 197.99999999999963,
+    "p95_path_rtt_ms": 194.0,
+    "p95_excess_rtt_ms": 6.000000000003059,
+    "mean_excess_rtt_ms": 3.40692643530268,
+    "mode_hist": {
+      "startup": 15,
+      "cruise": 638,
+      "reprobe_explore": 135,
+      "oce_echo": 324,
+      "mobility_loss": 47,
+      "congestive_recovery": 638,
+      "ser:loss_burst": 3
+    },
+    "mean_cwnd_mss": 4198.311559112956,
+    "p50_cwnd_mss": 4304.84221048144,
+    "reconfigs_detected": 115,
+    "reprobe_reasons": {
+      "ep:rtt_mad+ack_ia": 2,
+      "ep:loss_burst": 21,
+      "ep:ack_ia+loss_burst": 72,
+      "ep:rtt_mad+loss_burst": 20
+    },
+    "reprobe_events": [
+      {
+        "t": 1.6500000000000012,
+        "reason": "ep:rtt_mad+ack_ia",
+        "cwnd_mss": 51.66,
+        "bw_mbps": 1.9062857142857126,
+        "min_rtt_ms": 182.0,
+        "prior_bw_mbps": 0.0
+      },
+      {
+        "t": 2.9799999999999804,
+        "reason": "ep:rtt_mad+ack_ia",
+        "cwnd_mss": 735.3081749999999,
+        "bw_mbps": 11.431724137931278,
+        "min_rtt_ms": 173.99999999999994,
+        "prior_bw_mbps": 1.9062857142857126
+      },
+      {
+        "t": 4.539999999999948,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 5809.905937500013,
+        "bw_mbps": 80.32771084337516,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 11.431724137931278
+      },
+      {
+        "t": 5.979999999999917,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 5945.543728000021,
+        "bw_mbps": 240.4395180722943,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 80.32771084337516
+      },
+      {
+        "t": 7.779999999999879,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 3671.92341428931,
+        "bw_mbps": 255.2546341463469,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 240.4395180722943
+      },
+      {
+        "t": 9.369999999999845,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 6309.544956255821,
+        "bw_mbps": 385.4342168674781,
+        "min_rtt_ms": 165.99999999999994,
+        "prior_bw_mbps": 255.2546341463469
+      },
+      {
+        "t": 11.239999999999805,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 4839.862171928535,
+        "bw_mbps": 267.9585185185242,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 385.4342168674781
+      },
+      {
+        "t": 12.709999999999773,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 6219.206890866217,
+        "bw_mbps": 274.96296296296885,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 267.9585185185242
+      },
+      {
+        "t": 13.089999999999765,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4789.372383281871,
+        "bw_mbps": 325.0110000000069,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 274.96296296296885
+      },
+      {
+        "t": 13.509999999999756,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 6570.984633168472,
+        "bw_mbps": 314.2754594594661,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 325.0110000000069
+      },
+      {
+        "t": 14.939999999999726,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4207.280171445934,
+        "bw_mbps": 275.48444444445033,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 314.2754594594661
+      },
+      {
+        "t": 15.339999999999717,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 6013.084741927898,
+        "bw_mbps": 290.9562352941238,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 275.48444444445033
+      },
+      {
+        "t": 15.729999999999709,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4727.6441894698355,
+        "bw_mbps": 358.01505882353706,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 290.9562352941238
+      },
+      {
+        "t": 16.129999999999722,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4762.88051004258,
+        "bw_mbps": 351.3515294117612,
+        "min_rtt_ms": 161.99999999999994,
+        "prior_bw_mbps": 358.01505882353706
+      },
+      {
+        "t": 16.549999999999788,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5225.972754321859,
+        "bw_mbps": 325.1919999999491,
+        "min_rtt_ms": 180.50000000000028,
+        "prior_bw_mbps": 351.3515294117612
+      },
+      {
+        "t": 16.94999999999985,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 6101.495157787547,
+        "bw_mbps": 323.59405714280655,
+        "min_rtt_ms": 180.50000000000028,
+        "prior_bw_mbps": 325.1919999999491
+      },
+      {
+        "t": 17.349999999999913,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 6216.709828307654,
+        "bw_mbps": 343.8637714285177,
+        "min_rtt_ms": 180.0000000000003,
+        "prior_bw_mbps": 323.59405714280655
+      },
+      {
+        "t": 17.759999999999977,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 2940.904654231995,
+        "bw_mbps": 340.11762162156845,
+        "min_rtt_ms": 180.0000000000003,
+        "prior_bw_mbps": 343.8637714285177
+      },
+      {
+        "t": 19.26000000000021,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 5142.932435320658,
+        "bw_mbps": 284.8624390243457,
+        "min_rtt_ms": 166.0000000000003,
+        "prior_bw_mbps": 340.11762162156845
+      },
+      {
+        "t": 20.67000000000043,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5361.009743276892,
+        "bw_mbps": 300.339512195075,
+        "min_rtt_ms": 166.0000000000003,
+        "prior_bw_mbps": 284.8624390243457
+      },
+      {
+        "t": 21.070000000000494,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4683.370064833945,
+        "bw_mbps": 301.0203428570958,
+        "min_rtt_ms": 166.0000000000003,
+        "prior_bw_mbps": 300.339512195075
+      },
+      {
+        "t": 21.480000000000558,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4947.950420331505,
+        "bw_mbps": 300.711999999953,
+        "min_rtt_ms": 166.0000000000003,
+        "prior_bw_mbps": 301.0203428570958
+      },
+      {
+        "t": 21.900000000000624,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4630.469951516227,
+        "bw_mbps": 308.72302702697874,
+        "min_rtt_ms": 166.0000000000003,
+        "prior_bw_mbps": 300.711999999953
+      },
+      {
+        "t": 22.310000000000688,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5056.106287960594,
+        "bw_mbps": 315.6946285713792,
+        "min_rtt_ms": 166.0000000000003,
+        "prior_bw_mbps": 308.72302702697874
+      },
+      {
+        "t": 22.730000000000754,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5099.533664490723,
+        "bw_mbps": 285.13816216211757,
+        "min_rtt_ms": 166.0000000000003,
+        "prior_bw_mbps": 315.6946285713792
+      },
+      {
+        "t": 23.15000000000082,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5877.788372085412,
+        "bw_mbps": 304.312421052584,
+        "min_rtt_ms": 166.0000000000003,
+        "prior_bw_mbps": 285.13816216211757
+      },
+      {
+        "t": 24.56000000000104,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 4838.543700767843,
+        "bw_mbps": 282.15804878044366,
+        "min_rtt_ms": 166.0000000000003,
+        "prior_bw_mbps": 304.312421052584
+      },
+      {
+        "t": 25.34000000000116,
+        "reason": "ep:rtt_mad+loss_burst",
+        "cwnd_mss": 3930.0735583285027,
+        "bw_mbps": 300.194559999953,
+        "min_rtt_ms": 166.0000000000003,
+        "prior_bw_mbps": 282.15804878044366
+      },
+      {
+        "t": 25.790000000001232,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4257.927107780677,
+        "bw_mbps": 262.168799999959,
+        "min_rtt_ms": 184.0000000000006,
+        "prior_bw_mbps": 300.194559999953
+      },
+      {
+        "t": 27.530000000001504,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 5782.266594155336,
+        "bw_mbps": 287.0399999999551,
+        "min_rtt_ms": 162.0000000000003,
+        "prior_bw_mbps": 262.168799999959
+      },
+      {
+        "t": 29.540000000001818,
+        "reason": "ep:loss_burst",
+        "cwnd_mss": 5342.724838433767,
+        "bw_mbps": 267.69230769226584,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 287.0399999999551
+      },
+      {
+        "t": 29.980000000001887,
+        "reason": "ep:rtt_mad+loss_burst",
+        "cwnd_mss": 5600.509474271577,
+        "bw_mbps": 317.87004878043814,
+        "min_rtt_ms": 158.0000000000003,
+        "prior_bw_mbps": 267.69230769226584
+      },
+      {
+        "t": 30.400000000001953,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4940.700661081836,
+        "bw_mbps": 300.0429473683741,
+        "min_rtt_ms": 174.00000000000028,
+        "prior_bw_mbps": 317.87004878043814
+      },
+      {
+        "t": 31.970000000002198,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5308.707003331299,
+        "bw_mbps": 291.3828571428116,
+        "min_rtt_ms": 170.0000000000003,
+        "prior_bw_mbps": 300.0429473683741
+      },
+      {
+        "t": 32.40000000000212,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 5057.202799040929,
+        "bw_mbps": 309.6934736842635,
+        "min_rtt_ms": 170.0000000000003,
+        "prior_bw_mbps": 291.3828571428116
+      },
+      {
+        "t": 33.020000000002,
+        "reason": "ep:rtt_mad+loss_burst",
+        "cwnd_mss": 5583.56120154456,
+        "bw_mbps": 248.57003389835452,
+        "min_rtt_ms": 170.0000000000003,
+        "prior_bw_mbps": 309.6934736842635
+      },
+      {
+        "t": 33.46000000000191,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 3565.8078160137807,
+        "bw_mbps": 298.40084210532245,
+        "min_rtt_ms": 171.99999999999963,
+        "prior_bw_mbps": 248.57003389835452
+      },
+      {
+        "t": 33.89000000000183,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4721.383810464454,
+        "bw_mbps": 279.71545945951505,
+        "min_rtt_ms": 171.99999999999963,
+        "prior_bw_mbps": 298.40084210532245
+      },
+      {
+        "t": 34.700000000001666,
+        "reason": "ep:ack_ia+loss_burst",
+        "cwnd_mss": 4986.911980201181,
+        "bw_mbps": 300.7414736842704,
+        "min_rtt_ms": 171.99999999999963,
+        "prior_bw_mbps": 279.71545945951505
+      },
+      {
+        "t": 35.74000000000146,
+        "reason": "ep:rtt_mad+loss_burst",
+        "cwnd_mss": 4813.266295785669,
+        "bw_mbps": 297.09767441866376,
+        "min_rtt_ms": 171.99999999999963,
+        "prior_bw_mbps": 300.7414736842704
+      }
+    ],
+    "n_reprobe_events": 115,
+    "ca_aborts": 0,
+    "n_ca_events": 0,
+    "lsg_clamps": 0,
+    "n_lsg_events": 0,
+    "anticipator_holds": 0,
+    "keel_rollbacks": 0,
+    "oce_echos": 1055359,
+    "ser_lite_count": 72,
+    "mean_bw_mbps": 314.485990106375,
+    "p50_bw_mbps": 307.8587225807064,
+    "p95_bw_mbps": 471.7281818180241,
+    "mean_min_rtt_ms": 169.70117955439082,
+    "mean_delay_ratio": 1.095408199649752,
+    "frac_delay_ratio_gt_118": 0.08519003931847968,
+    "frac_delay_ratio_gt_135": 0.000655307994757536,
+    "frac_reprobe_mode": 0.07666666666666666
+  }
+]

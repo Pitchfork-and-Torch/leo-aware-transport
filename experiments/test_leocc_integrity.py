@@ -98,8 +98,40 @@ def test_crest_defaults_stay_off():
     assert cca.use_cfr is False
     assert cca.use_qsp is False
     assert cca.hint_freeze_only is False
+    assert cca.use_far_hold is False
     assert PRODUCT_PATH_PROFILE == "starlink_v1"
     print("ok: Crest defaults off; product profile still starlink_v1")
+
+
+def test_far_hold_does_not_gate_loss_burst():
+    """FarHold counts ep:loss_burst and does not wipe bw / cut cwnd."""
+    cca = LeoAwareCCA(use_far_hold=True)
+    cca.min_rtt = 0.182
+    cca.bw_est = 300e6
+    cca.cwnd = 100 * 1200
+    cca.delivered_marks.append((1.0, 0.0))
+    cca.delivered_marks.append((1.1, 10_000.0))
+    rec0 = cca.reconfigs_detected
+    marks0 = len(cca.delivered_marks)
+    cca._enter_reprobe(2.0, "ep:loss_burst", confidence=0.7)
+    assert cca.reconfigs_detected == rec0 + 1
+    assert cca.bw_est == 300e6
+    assert cca.cwnd == 100 * 1200
+    assert len(cca.delivered_marks) == marks0
+    assert str(cca.mode).startswith("far_hold")
+    print("ok: FarHold counts loss_burst without wipe/cut")
+
+
+def test_far_hold_stays_off_below_rtt_floor():
+    """A/B-class RTT must still take the SER cut (no silent product change)."""
+    cca = LeoAwareCCA(use_far_hold=True)
+    cca.min_rtt = 0.040
+    cca.bw_est = 80e6
+    cca.cwnd = 100 * 1200
+    cca._enter_reprobe(1.0, "ep:loss_burst", confidence=0.7)
+    assert cca.cwnd < 100 * 1200
+    assert cca.mode == "ser:loss_burst"
+    print("ok: FarHold does not arm below 80 ms min_rtt")
 
 
 def test_era_buffer_does_not_move_product_default():
@@ -148,6 +180,8 @@ def run_all() -> None:
     test_rtt_is_twice_owd()
     test_leocc_geometry_walks()
     test_crest_defaults_stay_off()
+    test_far_hold_does_not_gate_loss_burst()
+    test_far_hold_stays_off_below_rtt_floor()
     test_era_buffer_does_not_move_product_default()
     test_bbr_max_filter_matches_naive_scan()
     print("ALL leocc_v1 integrity tests passed")

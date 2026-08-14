@@ -360,6 +360,14 @@ class LeoAwareCCA(BaseCCA):
       (`hint_freeze_only`). Growth-freeze only — never hint-REPROBE, never
       gate ep:loss_burst. Public suite stays `use_path_hints=False`.
 
+    v3.14 FarHold (leocc_v1 D/600 research; default OFF):
+      - On far-RTT (min_rtt ≥ 80 ms) treat endpoint fade/jitter detects as a
+        hold, not an epoch reset. Detect still fires; ep:loss_burst is not
+        gated. No sample wipe, no bw_est discount, no cwnd cut.
+      - Clean-delay overflow: no 0.72× congestive cut (BBR-like fade ignore).
+      - Anticipator does not hold on ACK-IA (far-RTT IA is fade, not HO lead).
+      - Not Halo / Pulse / EpochMemory / QSP / PATHHINT / hybrid freeze.
+
     Related: LeoCC response-interval outliers; SaTCP freeze; OrbCC pathID/U;
     BBR delivery-rate without stale min-RTT across epochs.
     """
@@ -381,6 +389,7 @@ class LeoAwareCCA(BaseCCA):
         use_cfr: bool = False,
         use_qsp: bool = False,
         hint_freeze_only: bool = False,
+        use_far_hold: bool = False,
         **kw,
     ):
         super().__init__(**kw)
@@ -403,6 +412,10 @@ class LeoAwareCCA(BaseCCA):
         # SkyPulse: PATHHINT growth-freeze only. Never hint-REPROBE, never
         # gate ep:loss_burst. Public suite keeps use_path_hints=False.
         self.hint_freeze_only = bool(hint_freeze_only)
+        # v3.14 FarHold: far-RTT fade hold. Default OFF (product Crest).
+        self.use_far_hold = bool(use_far_hold)
+        self._far_hold_until = -1.0
+        self.far_holds = 0
         self.rtt_hist: Deque[float] = deque(maxlen=48)
         self.ack_times: Deque[float] = deque(maxlen=40)
         self.bw_samples: Deque[tuple[float, float]] = deque(maxlen=48)
@@ -606,6 +619,37 @@ class LeoAwareCCA(BaseCCA):
             return True
         return False
 
+    # Far-site floor: C/599 p50 RTT ≈ 102 ms, D/600 ≈ 182 ms.
+    # A/B leocc and starlink_v1 cruise stay below. Not a seed-id branch.
+    FAR_HOLD_RTT_S = 0.080
+
+    def _far_hold_armed(self) -> bool:
+        return (
+            self.use_far_hold
+            and not self.fair_mode
+            and self.min_rtt >= self.FAR_HOLD_RTT_S
+            and self.min_rtt < 1e17
+        )
+
+    def _far_hold_reason(self, reason: str) -> bool:
+        """Endpoint fade/jitter — not a classic hop, not assist/orb."""
+        if not reason.startswith("ep:"):
+            return False
+        # Classic 1.55× jump is a real path step; still full REPROBE.
+        if "rtt_classic" in reason:
+            return False
+        return True
+
+    def _apply_far_hold(self, t: float, reason: str, confidence: float) -> None:
+        """Count the detect; do not wipe samples, discount bw, or cut cwnd."""
+        self.reconfigs_detected += 1
+        self._last_signal_confidence = max(0.0, min(1.0, float(confidence)))
+        if t >= self._far_hold_until:
+            self.far_holds += 1
+        rtt_ref = self.min_rtt if self.min_rtt < 1e17 else 0.04
+        self._far_hold_until = t + max(self.detect_cooldown, 2.0 * rtt_ref)
+        self.mode = f"far_hold:{reason}"
+
     def _crest_hit(self, t: float, rtt_s: float, delay_ratio: float) -> bool:
         """CA-hard crest: rtt > k×recent_median (k≈1.35), cruise/reclaim only.
 
@@ -706,6 +750,12 @@ class LeoAwareCCA(BaseCCA):
         # Belt-and-suspenders: never apply Orb cut while suppress active
         if reason.startswith("orb") and self._should_suppress_orb_reprobe(t):
             self.orb_reprobe_suppressed += 1
+            return
+
+        # v3.14 FarHold: far-RTT fade/jitter is a hold, not an epoch reset.
+        # Detect still fires (reconfigs_detected++). ep:loss_burst is not gated.
+        if self._far_hold_armed() and self._far_hold_reason(reason):
+            self._apply_far_hold(t, reason, confidence)
             return
 
         # v3.6/v3.7 Selective Epoch Reset family: RTT-stable mobility keeps min_rtt.
@@ -1071,8 +1121,10 @@ class LeoAwareCCA(BaseCCA):
             and not self.fair_mode
             and "ack_ia" in reason
             and t >= self.reprobe_until
+            and not self._far_hold_armed()
         ):
             # Freeze-only HO anticipator: hold growth, never detect-suppress.
+            # FarHold: far-RTT ACK-IA is a capacity fade, not an HO lead.
             if t >= self._anticipator_until:
                 self.anticipator_holds += 1
             self._anticipator_until = t + 0.12
@@ -1526,6 +1578,19 @@ class LeoAwareCCA(BaseCCA):
     def on_loss(self, t: float, bytes_lost: int, congestive: bool) -> None:
         self.on_delivered(bytes_lost)
         self.loss_burst.append(t)
+        # v3.14 FarHold: fade overflow without delay inflation is not congestion.
+        # BBR ignores these marks; Crest's 0.72× cut is the D/600 cellar.
+        if self._far_hold_armed():
+            recent = self.rtt_hist[-1] if self.rtt_hist else 0.0
+            if recent <= 0 and self.min_rtt < 1e17:
+                recent = self.min_rtt
+            if recent > 0 and recent < 1.25 * self.min_rtt:
+                if t >= self._far_hold_until:
+                    self.far_holds += 1
+                rtt_ref = self.min_rtt if self.min_rtt < 1e17 else 0.04
+                self._far_hold_until = t + max(self.detect_cooldown, 2.0 * rtt_ref)
+                self.mode = "far_hold:loss"
+                return
         # OrbCC / empty-queue hint: treat as mobility even if labeled congestive
         if t < self._orb_mobility_until and congestive:
             congestive = False
