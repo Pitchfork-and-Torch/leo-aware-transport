@@ -360,6 +360,13 @@ class LeoAwareCCA(BaseCCA):
       (`hint_freeze_only`). Growth-freeze only — never hint-REPROBE, never
       gate ep:loss_burst. Public suite stays `use_path_hints=False`.
 
+    v3.16 OpenSlot (starlink_v1 product-era cook):
+      - Delay-clean cruise/startup: skip the soft-pace can_send bind so a
+        slot may use cwnd room (BBR has no pace bind in this sim).
+      - Never gates ep:loss_burst. No REPROBE skip. No max-filter. No
+        first-epoch special case. Not SpikeHold / QSP / Pulse / CCH.
+      - Default OFF until a 5-seed Pareto vs BBR ACCEPT.
+
     Related: LeoCC response-interval outliers; SaTCP freeze; OrbCC pathID/U;
     BBR delivery-rate without stale min-RTT across epochs.
     """
@@ -381,6 +388,7 @@ class LeoAwareCCA(BaseCCA):
         use_cfr: bool = False,
         use_qsp: bool = False,
         hint_freeze_only: bool = False,
+        use_openslot: bool = False,
         **kw,
     ):
         super().__init__(**kw)
@@ -403,6 +411,8 @@ class LeoAwareCCA(BaseCCA):
         # SkyPulse: PATHHINT growth-freeze only. Never hint-REPROBE, never
         # gate ep:loss_burst. Public suite keeps use_path_hints=False.
         self.hint_freeze_only = bool(hint_freeze_only)
+        # v3.16 OpenSlot: delay-clean pace unbind. Default OFF.
+        self.use_openslot = bool(use_openslot)
         self.rtt_hist: Deque[float] = deque(maxlen=48)
         self.ack_times: Deque[float] = deque(maxlen=40)
         self.bw_samples: Deque[tuple[float, float]] = deque(maxlen=48)
@@ -479,6 +489,7 @@ class LeoAwareCCA(BaseCCA):
         self._qsp_excess = 0.0
         self.qsp_discounts = 0
         self.skypulse_freezes = 0
+        self.openslot_releases = 0
 
     @staticmethod
     def _median(xs: list[float]) -> float:
@@ -984,6 +995,29 @@ class LeoAwareCCA(BaseCCA):
         self.ssthresh = min(self.ssthresh, self.cwnd)
         self.mode = "ecn_backoff"
 
+    def _openslot_delay_clean(self, t: float) -> bool:
+        """Delay-clean cruise/startup (no detect veto)."""
+        if not self.use_openslot or self.fair_mode:
+            return False
+        if t < self.reprobe_until or t < self._ca_hold_until:
+            return False
+        if not self.rtt_hist or self.min_rtt >= 1e17 or self.min_rtt <= 0:
+            return False
+        delay = self.rtt_hist[-1] / self.min_rtt
+        return delay < 1.12 and self.high_delay_streak == 0
+
+    def _openslot_underfilled(self) -> bool:
+        """Real slack vs BDP. Unconstrained unbind regresses seed 13."""
+        rtt_ref = self.min_rtt if self.min_rtt < 1e17 else 0.0
+        bdp = self.bw_est * rtt_ref / 8.0 if self.bw_est > 1e6 and rtt_ref > 0 else 0.0
+        if bdp > 0:
+            return self.bytes_in_flight < 0.80 * bdp
+        return self.bytes_in_flight < 0.70 * self.cwnd
+
+    def _openslot_clean(self, t: float) -> bool:
+        """Full pace unbind: delay-clean AND underfilled."""
+        return self._openslot_delay_clean(t) and self._openslot_underfilled()
+
     def _qsp_pace_gain(self, t: float, delay_ratio_early: float, rtt_s: float) -> float:
         """Map visible soft-QIR excess to a pace discount. Does not touch BDP.
 
@@ -1023,6 +1057,11 @@ class LeoAwareCCA(BaseCCA):
             burst = 1.5
             if self.use_qsp and not self.fair_mode and self._qsp_excess > 0.008:
                 burst = 1.15
+            # OpenSlot: delay-clean + underfilled — drop the pace bind.
+            # Burst-2.5 on non-slack clean slots regressed seed 13; do not.
+            if self._openslot_clean(t):
+                self.openslot_releases += 1
+                return int(room // MSS) * MSS
             room = min(room, max(self._pace_credit * burst, 4 * MSS))
         return int(room // MSS) * MSS
 
