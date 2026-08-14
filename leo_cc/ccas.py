@@ -360,6 +360,13 @@ class LeoAwareCCA(BaseCCA):
       (`hint_freeze_only`). Growth-freeze only — never hint-REPROBE, never
       gate ep:loss_burst. Public suite stays `use_path_hints=False`.
 
+    v3.15 FastExit — DEAD after diagnosis (would tax A/1 and A/600).
+      Blind restore-when-delivery≥0.95×pre-cut fires on A (~4k ACKs).
+      Replacement: LeanCatch (default OFF). After a 0.72 congestive cut,
+      restore cwnd toward live delivery BDP only if cwnd < 0.70× that BDP
+      and delay is clean. Detect still fires. ep:loss_burst is never gated.
+      Not FarHold (no 80 ms floor, no fade-hold, no overflow ignore).
+
     Related: LeoCC response-interval outliers; SaTCP freeze; OrbCC pathID/U;
     BBR delivery-rate without stale min-RTT across epochs.
     """
@@ -381,6 +388,8 @@ class LeoAwareCCA(BaseCCA):
         use_cfr: bool = False,
         use_qsp: bool = False,
         hint_freeze_only: bool = False,
+        use_fast_exit: bool = False,
+        use_lean_catch: bool = False,
         **kw,
     ):
         super().__init__(**kw)
@@ -403,6 +412,15 @@ class LeoAwareCCA(BaseCCA):
         # SkyPulse: PATHHINT growth-freeze only. Never hint-REPROBE, never
         # gate ep:loss_burst. Public suite keeps use_path_hints=False.
         self.hint_freeze_only = bool(hint_freeze_only)
+        # v3.15 FastExit died (would tax A). Flag kept default False so
+        # integrity can assert it is off. LeanCatch is the replacement.
+        self.use_fast_exit = bool(use_fast_exit)
+        self.use_lean_catch = bool(use_lean_catch)
+        self._lc_pre_bw = 0.0
+        self._lc_pre_cwnd = 0.0
+        self._lc_in_recovery = False
+        self.lean_catches = 0
+        self.fast_exits = 0  # stays 0 — FastExit is not implemented
         self.rtt_hist: Deque[float] = deque(maxlen=48)
         self.ack_times: Deque[float] = deque(maxlen=40)
         self.bw_samples: Deque[tuple[float, float]] = deque(maxlen=48)
@@ -593,6 +611,50 @@ class LeoAwareCCA(BaseCCA):
         )
         reason = "+".join(reasons) if reasons else "fused"
         return hit, score, reason
+
+    # v3.15 LeanCatch: only restore after a 0.72 cut when the window is
+    # lean (cwnd < 0.70 × live delivery BDP). Diagnosis: A/1 under-exits
+    # 22/4371, A/600 59/3255, B/600 1760/5466. FastExit (no under-gate)
+    # would fire on A and is dead.
+    LEAN_CATCH_DELIV_RATIO = 0.95
+    LEAN_CATCH_UNDER = 0.70
+
+    def _maybe_lean_catch(self, t: float, rtt_s: float) -> None:
+        """Restore cwnd only if delivery recovered AND cwnd is under-windowed.
+
+        Detect / ep:loss_burst are untouched. Product default is off.
+        """
+        if (
+            not self.use_lean_catch
+            or self.fair_mode
+            or not self._lc_in_recovery
+            or self._lc_pre_bw <= 1e6
+        ):
+            return
+        rate = self.rate_ewma if self.rate_ewma > 0 else self._delivery_rate_sample(t)
+        if rate < self.LEAN_CATCH_DELIV_RATIO * self._lc_pre_bw:
+            return
+        rtt_ref = self.min_rtt if self.min_rtt < 1e17 else max(rtt_s, 0.02)
+        if rtt_ref <= 0:
+            self._lc_in_recovery = False
+            return
+        deliv_bdp = rate * rtt_ref / 8.0
+        delay_ok = True
+        if self.min_rtt < 1e17 and self.min_rtt > 0:
+            delay_ok = rtt_s < 1.18 * self.min_rtt
+        if (
+            deliv_bdp > 0
+            and self.cwnd < self.LEAN_CATCH_UNDER * deliv_bdp
+            and delay_ok
+        ):
+            target = min(self._lc_pre_cwnd, deliv_bdp)
+            if self.cwnd < target:
+                self.cwnd = max(4 * MSS, target)
+                self.ssthresh = max(self.ssthresh, self.cwnd)
+                self.lean_catches += 1
+                self.mode = "lean_catch"
+        # One-shot per cut: do not keep hunting on A after a healthy cut.
+        self._lc_in_recovery = False
 
     def _should_suppress_orb_reprobe(self, t: float) -> bool:
         """PR A: block Orb pathID REPROBE when assist/freeze/REPROBE owns the hop."""
@@ -1201,6 +1263,9 @@ class LeoAwareCCA(BaseCCA):
             if self.hint_capacity_bps > 0:
                 self.bw_est = 0.72 * self.bw_est + 0.28 * self.hint_capacity_bps
 
+        # v3.15 LeanCatch (FastExit replacement). After delivery-rate update.
+        self._maybe_lean_catch(t, rtt_s)
+
         if self.bw_est > 0:
             # Reclaim: pacing can stay a bit optimistic; cwnd is delay-capped below.
             # QSP may discount pace from sojourn excess; never changes BDP/cwnd target.
@@ -1544,6 +1609,13 @@ class LeoAwareCCA(BaseCCA):
                         self._enter_reprobe(t, "ep:loss_burst", confidence=0.7)
                     return
         # True congestion: slightly milder than CUBIC for multi-flow friendliness
+        if self.use_lean_catch and not self.fair_mode:
+            rate = self._delivery_rate_sample(t)
+            if rate <= 0:
+                rate = self.rate_ewma
+            self._lc_pre_bw = max(self.bw_est, self.rate_ewma, rate)
+            self._lc_pre_cwnd = self.cwnd
+            self._lc_in_recovery = True
         self.ssthresh = max(4 * MSS, self.cwnd * 0.72)
         self.cwnd = self.ssthresh
         self.pacing_rate_bps = max(

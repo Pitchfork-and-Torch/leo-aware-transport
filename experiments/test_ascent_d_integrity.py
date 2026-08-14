@@ -60,6 +60,14 @@ def test_erase_on_corruption():
     print(f"ok: erase status={status}")
 
 
+def test_crest_research_flags_default_off():
+    cca = LeoAwareCCA()
+    assert cca.use_path_hints is False
+    assert cca.use_fast_exit is False
+    assert cca.use_lean_catch is False
+    print("ok: ASCENT-D / FastExit / LeanCatch defaults off")
+
+
 def test_fail_closed_no_rate_change():
     cca = LeoAwareCCA(use_path_hints=True)
     cca.cwnd = 100_000
@@ -145,6 +153,7 @@ def test_skypulse_does_not_gate_loss_burst():
 if __name__ == "__main__":
     test_roundtrip_ok()
     test_erase_on_corruption()
+    test_crest_research_flags_default_off()
     test_fail_closed_no_rate_change()
     test_plain_unit()
     test_role_reject()
