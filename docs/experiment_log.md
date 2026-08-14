@@ -930,8 +930,23 @@ windows can decide absolute 75/138.8 without inventing traces.
 
 gp ≥ 75 **PASS**. p95 ≤ 138.8 **PASS** (mean; D/600 194 is a real far-site tail).
 
-CCA + decision: `docs/leoaware_v313_leocc.md` / `results/archive/20260814-v313-leocc/`.
-Not Current. No paid. Do not merge. Do not mix eras.
+### CCA means (dt=0.01, 1 MB era buffer; product default stays 250 KB)
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| CUBIC | 31.14 | 87.20 |
+| BBRv3approx | 379.80 | 89.60 |
+| **LeoAware Crest** | **337.97** | **89.60** |
+
+Terr 78.62 @ 46 ms. Crest 337.97 < BBR 379.80. p95 tied at 89.60.
+Crest wins A/1 and A/600 by a little; loses B/C and especially D/600
+(204.61 vs BBR 358.29 on the 194 ms far-site tail).
+
+**Decision: ACCEPT_ERA_REJECT_BBR.** Absolute 75/138.8 PASS on means.
+Crest does not clear BBR. Not Current. No paid. Do not merge. Do not mix eras.
+
+Archive: `results/archive/20260814-v313-leocc/`  
+Design: `docs/leoaware_v313_leocc.md`
 
 ---
 

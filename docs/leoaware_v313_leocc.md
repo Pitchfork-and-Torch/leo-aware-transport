@@ -3,7 +3,7 @@
 **Date:** 2026-08-14  
 **Branch:** `cursor/v313-leocc-traces-a108`  
 **Base:** `main` @ `e7d4cbf` (WetLinks uncap #11)  
-**Decision:** see scorecard. **Not Current. No paid. Do not merge.**
+**Decision:** `ACCEPT_ERA_REJECT_BBR`. Absolute 75/138.8 **PASS** on means. Crest does **not** clear BBR (337.97 < 379.80 gp). **Not Current. No paid. Do not merge.**
 
 This is **not** a mix with `wetlinks_v1` (hold-expanded 15 s iperf), `zhao_zenodo23`
 (PR #12, TCP Cubic goodput, IRTT p95 mean 146.74 FAIL), or synthetic
@@ -88,11 +88,51 @@ q100 D/600 is **194 ms** (above 138.8). That is a real far-site calendar
 endpoint, not a parse bug. Dropping it would be a cherry-pick. The bar is
 the **mean**. Soft-QIR α frozen 0.20.
 
-## CCA
+## CCA (means of 5 downlink windows)
 
 Endpoint Crest defaults. `dt=0.01`. Era buffer **1 MB** (send ceiling 800 Mbps)
 so ~350–430 Mbps UDP-sat is not clipped by the product 250 KB / 200 Mbps
-ceiling. Product `LeoPathConfig.buffer_bytes` stays 250 KB.
+ceiling. Product `LeoPathConfig.buffer_bytes` stays 250 KB. Soft-QIR α = 0.20.
+Seeds are the five catalog windows (not the product 13/7/42/99/123 path RNG).
+Terrestrial control uses those product seeds at the product 250 KB buffer.
+
+BBR's per-ACK `max(bw_window)` scan was replaced with an **identity** sliding
+max (same value; `test_bbr_max_filter_matches_naive_scan`). Not a CCA retune.
+Jobs ran 4-wide (`--workers 4`).
+
+| CCA | gp mean | p95 mean | vs bars |
+|-----|--------:|---------:|---------|
+| CUBIC | 31.14 | 87.20 | gp FAIL (expected collapse) |
+| BBRv3approx | 379.80 | 89.60 | both PASS |
+| **LeoAware Crest** | **337.97** | **89.60** | **gp PASS, p95 PASS** |
+| terrestrial LeoAware | 78.62 | 46.0 | terr ≥77 PASS |
+
+| Check | Bar | Result |
+|-------|-----|--------|
+| LeoAware gp mean | ≥ 75 | **PASS** (337.97) |
+| LeoAware p95 mean | ≤ 138.8 | **PASS** (89.60) |
+| terrestrial gp | ≥ 77 | **PASS** (78.62) |
+| Crest gp > BBR | — | **FAIL** (337.97 < 379.80) |
+| Crest p95 ≤ BBR | — | **PASS** (89.60 = 89.60) |
+| Pareto vs BBR | both | **FAIL** |
+
+### Per-window (not the gate; gate is the mean)
+
+| q | site/trace | CUBIC gp/p95 | BBR gp/p95 | Crest gp/p95 |
+|---|------------|-------------:|-----------:|-------------:|
+| q00 | A/1 | 49.88 / 34 | 408.33 / 36 | 409.44 / 36 |
+| q25 | A/600 | 51.61 / 34 | 338.54 / 38 | 344.50 / 38 |
+| q50 | B/600 | 29.56 / 62 | 400.60 / 64 | 391.11 / 64 |
+| q75 | C/599 | 16.28 / 110 | 393.25 / 112 | 340.20 / 112 |
+| q100 | D/600 | 8.38 / 196 | 358.29 / 198 | 204.61 / 198 |
+
+Crest is slightly ahead on the two low-OWD windows (A/1, A/600) and behind on
+B/C/D. The D/600 far-site tail (path p95 194 ms) is where Crest leaves the most
+UDP-sat on the table (204.61 vs BBR 358.29). Do not drop D/600. Do not advertise
+the A/1 peak as a BBR win.
+
+**Decision: ACCEPT_ERA_REJECT_BBR.** Absolute dual-gate holds on this era.
+Crest is not a Pareto improvement vs BBR. Not Current. No paid. Do not merge.
 
 Numbers: `results/archive/20260814-v313-leocc/scorecard.json` and `TABLE.md`.
 
@@ -113,5 +153,5 @@ curl -L -o /tmp/leocc/4.8K.zip \
 python -m experiments.slice_leocc --zip /tmp/leocc/4.8K.zip
 python -m experiments.test_leocc_integrity
 python -m experiments.run_leocc --geometry-only --tag 20260814-v313-leocc
-python -m experiments.run_leocc --tag 20260814-v313-leocc
+python -m experiments.run_leocc --tag 20260814-v313-leocc --workers 4
 ```

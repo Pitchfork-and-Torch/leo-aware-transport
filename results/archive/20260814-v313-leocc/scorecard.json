@@ -1,10 +1,12 @@
 {
   "era": "leocc_v1",
   "product_lock_era": "starlink_v1",
-  "cook": "leocc_v1_geometry",
-  "decision": "GEOMETRY_ONLY",
-  "cca": "none",
+  "cook": "leocc_v1",
+  "decision": "ACCEPT_ERA_REJECT_BBR",
+  "decision_note": "absolute 75/138.8 PASS on leocc_v1 means; Crest does not clear BBR. Not Current. No paid. Do not merge.",
   "soft_qir_alpha": 0.2,
+  "buffer_bytes": 1000000,
+  "send_ceiling_mbps": 800.0,
   "geometry": {
     "era": "leocc_v1",
     "n_windows": 5,
@@ -25,10 +27,28 @@
     },
     "note": "Geometry uses first 90s of LeoCC downlink UDP-sat + ICMP OWD. p95 bar is native 2\u00d7OWD. Do not mix with starlink_v1 / wetlinks_v1 / zhao."
   },
+  "windows": {
+    "LeoAware_gp_mean": 337.9712,
+    "LeoAware_p95_mean": 89.6000000000009,
+    "BBR_gp_mean": 379.80162133333334,
+    "BBR_p95_mean": 89.60000000000166,
+    "CUBIC_gp_mean": 31.142975999999994,
+    "CUBIC_p95_mean": 87.20000000000032
+  },
+  "terrestrial": {
+    "LeoAware_gp_mean": 78.6232,
+    "LeoAware_p95_mean": 46.000000000000945,
+    "note": "synthetic terrestrial control at product 250 KB; not a LeoCC window"
+  },
   "gates": {
     "geometry_dual_gate": true,
     "gp_ge_75": true,
-    "p95_le_138_8": true
+    "p95_le_138_8": true,
+    "terr_ge_77": true,
+    "crest_gp_clears_bbr": false,
+    "crest_p95_le_bbr": true,
+    "absolute_dual_gate": true,
+    "pareto_vs_bbr": false
   },
   "do_not_merge": true,
   "do_not_mix_with": [
@@ -37,5 +57,5 @@
     "starlink_v1_crest_scorecard",
     "ope_v36"
   ],
-  "note": "Geometry-only stop. No Current. No paid. Product lock stays synthetic starlink_v1 / v3.9 Crest."
+  "note": "leocc_v1 research era. Continuous \u226590s UDP-sat + ICMP OWD (RTT=2\u00d7OWD). dt=0.01; buffer=1000000 B; send ceiling 800 Mbps. Not dish PHY. Crest defaults unchanged. No Current bump. No merge. Do not mix with wetlinks_v1, zhao_zenodo23, or starlink_v1 82.09/76.26."
 }

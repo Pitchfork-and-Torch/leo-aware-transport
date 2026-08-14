@@ -369,6 +369,8 @@ def write_table(out_dir: Path, geo: pd.DataFrame, verdict: dict, card: dict) -> 
             "",
             f"Terrestrial LeoAware {card['terrestrial']['LeoAware_gp_mean']:.2f} @ "
             f"{card['terrestrial']['LeoAware_p95_mean']:.1f} ms.",
+            "",
+            "Per-window rows live in `window_cca.csv`. The gate is the **mean**.",
         ]
     (out_dir / "TABLE.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
