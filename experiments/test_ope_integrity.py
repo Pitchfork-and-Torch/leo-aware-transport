@@ -221,6 +221,25 @@ def test_spike_hold_does_not_gate_loss_burst():
     print("ok: spike-hold does not gate ep:loss_burst")
 
 
+def test_pipe_hold_startup_faster_than_crest():
+    """Held-pipe fill is SH-only; product Crest stays at 1.28× growth."""
+    crest = LeoAwareCCA()
+    sh = LeoAwareCCA(use_spike_hold=True)
+    for i in range(24):
+        t = 0.01 * (i + 1)
+        crest.on_ack(t, 0.050, 1200)
+        sh.on_ack(t, 0.050, 1200)
+    assert crest.use_spike_hold is False
+    assert sh._pipe_hold_active() is True
+    assert sh.cwnd > crest.cwnd * 1.15, (sh.cwnd, crest.cwnd)
+    # Real SER must turn pipe-hold off.
+    sh.on_loss(2.0, 1200, congestive=False)
+    sh.on_loss(2.05, 1200, congestive=False)
+    assert sh.reconfigs_detected >= 1
+    assert sh._pipe_hold_active() is False
+    print("ok: pipe-hold startup faster; SER turns it off")
+
+
 def test_ca_does_not_fire_during_reprobe():
     cca = LeoAwareCCA()
     cca.min_rtt = 0.05
@@ -243,6 +262,7 @@ def run_all() -> None:
     test_starlink_v1_geometry_allows_absolute_bars()
     test_loss_burst_not_gated()
     test_spike_hold_does_not_gate_loss_burst()
+    test_pipe_hold_startup_faster_than_crest()
     test_ca_does_not_fire_during_reprobe()
     print("ALL OPE integrity tests passed")
 

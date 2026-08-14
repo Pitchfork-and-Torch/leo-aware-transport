@@ -405,6 +405,9 @@ class LeoAwareCCA(BaseCCA):
         # gate ep:loss_burst. Public suite keeps use_path_hints=False.
         self.hint_freeze_only = bool(hint_freeze_only)
         # v3.11-SH: RTT jump + delivery still ≥0.90×bw → skip full REPROBE.
+        # Held-pipe fill: while no real REPROBE has fired, grow like BBR
+        # startup (1.92×) and soft-max-filter bw. WetLinks capacity is held
+        # flat; Crest's 1.28× / p82 is the leftover ~7 Mbps 25s tax.
         # Never gates ep:loss_burst. Default OFF (product Crest unchanged).
         self.use_spike_hold = bool(use_spike_hold)
         self._spike_hold_until = -1.0
@@ -651,6 +654,19 @@ class LeoAwareCCA(BaseCCA):
         if rate < 1e6 or ref < 1e6:
             return False
         return rate >= 0.90 * ref
+
+    def _pipe_hold_active(self) -> bool:
+        """Held-capacity assist: SH on and no real REPROBE yet.
+
+        WetLinks windows hold UDP-mean capacity flat. A skipped RTT-spike
+        does not increment reconfigs_detected, so this stays armed. A real
+        ep:loss_burst SER turns it off. Product Crest never enters (flag off).
+        """
+        return (
+            self.use_spike_hold
+            and not self.fair_mode
+            and self.reconfigs_detected == 0
+        )
 
     def _halo_ref_bw(self) -> float:
         """Soft capacity reference: max(prior, epoch-memory p50)."""
@@ -1216,6 +1232,15 @@ class LeoAwareCCA(BaseCCA):
                 and delay_ratio_early < 1.28
             ):
                 self.bw_est = max(pct_val, 0.70 * pct_val + 0.30 * max_val)
+            elif (
+                self._pipe_hold_active()
+                and len(vals) >= 3
+                and delay_ratio_early < 1.28
+            ):
+                # Held pipe: BBR-like max-filter while delay is clean.
+                # Cold-start age is huge (last_reconfig_t=-1e9), so the
+                # age<0.85 branch never fires without this.
+                self.bw_est = max(pct_val, 0.30 * pct_val + 0.70 * max_val)
             else:
                 self.bw_est = pct_val
             floor_ref = (
@@ -1330,7 +1355,13 @@ class LeoAwareCCA(BaseCCA):
             "ascent_freeze",
         ):
             self.mode = "startup"
-            self.cwnd += bytes_acked * (1.15 if self.fair_mode else 1.28)
+            if self._pipe_hold_active():
+                # BBR startup is +2× ACKed; Crest 1.28× is the ~6 Mbps 25s tax
+                # on a held ~400 Mbps pipe (w1 first 25s = entire 90s gap).
+                growth = 1.92
+            else:
+                growth = 1.15 if self.fair_mode else 1.28
+            self.cwnd += bytes_acked * growth
             # Cap startup overshoot when delay is already elevated
             if delay_ratio > 1.45 and self.bw_est > 0:
                 self.cwnd = min(self.cwnd, bdp * 1.08)

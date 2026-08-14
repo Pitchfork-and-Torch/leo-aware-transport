@@ -1,17 +1,31 @@
-# v3.11-SH — spike-hold on uncapped WetLinks
+# v3.11-SH — spike-hold + held-pipe fill on uncapped WetLinks
 
 **Era:** `wetlinks_v1` research. **Not Current. Not paid. Do not merge.**  
 Product Crest keeps `use_spike_hold=False`. No Halo / QSP / PATHHINT.
 
 ## Hypothesis
 
-Uncap REJECT left Crest **239.72 < BBR 240.48**. The leftover is mostly
-w1 (−2.26 Mbps): Crest full-REPROBEs the inferred 0.4 s `ping_worst` spike
-at t=12 while UDP capacity is **held flat**. BBR keeps its max-filter.
+Uncap REJECT left Crest **239.72 < BBR 240.48**. The leftover is **all in
+w1's first 25s** (90s: 386.98 vs 389.24; after t=25 both sit at ~395.5).
 
-**Spike-hold:** if an endpoint RTT-jump detect fires and live delivery is
-still ≥ 0.90× `bw_est`, skip full REPROBE for 0.50 s. Never skip
-`ep:loss_burst`. Do not update `last_reconfig_t`.
+Two taxes, not one:
+
+1. **False REPROBE** at the inferred 0.4 s `ping_worst` spike (t=12) while
+   UDP capacity is held flat. 25s probe: Crest 364.78 → Crest+SH 365.93
+   (+1.15). BBR 372.91. SH fires (`sh=1`, `reconfigs=0`).
+2. **Startup fill.** Crest grows +1.28× ACKed and uses p82 (soft max-filter
+   only when `age < 0.85` after a REPROBE). Cold-start `last_reconfig_t=-1e9`
+   so the max-filter never arms. BBR doubles and max-filters. The ~7 Mbps
+   leftover after SH is this ramp, not cruise (post-t=25 they match).
+
+## Cook (`use_spike_hold=True`, WetLinks suite only)
+
+- **Spike-hold:** RTT-jump detect + delivery ≥ 0.90× `bw_est` → skip full
+  REPROBE for 0.50 s. Never skip `ep:loss_burst`. Do not update
+  `last_reconfig_t`.
+- **Held-pipe fill:** while `reconfigs_detected==0`, startup growth **1.92×**
+  and clean-delay bw blend **0.30·p82 + 0.70·max**. A real SER turns this
+  off. Product Crest never enters.
 
 ## Gate
 
@@ -19,5 +33,9 @@ Same 5 windows, 1 MB buffer, dt=0.01, α=0.20. ACCEPT only if LeoAware+SH
 gp mean **>** BBR. Else REJECT. Do not mix with 239.72/240.48 or 156.70.
 
 ```bash
+python3 -m experiments.probe_wetlinks_w1
 python3 -m experiments.run_wetlinks --tag 20260814-v311-wetlinks-sh
 ```
+
+Do **not** default-on without a `starlink_v1` 5-seed check. Real HO has
+loss + cap redraw; SH should not fire, but first-ACK lag is a risk.

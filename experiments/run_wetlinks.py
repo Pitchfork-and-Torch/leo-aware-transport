@@ -223,7 +223,7 @@ def scorecard(
     return {
         "era": ERA,
         "product_lock_era": PRODUCT_PATH_PROFILE,
-        "cook": "wetlinks_uncap_spike_hold",
+        "cook": "wetlinks_uncap_spike_hold_pipefill",
         "decision": "ACCEPT" if accept else "REJECT",
         "soft_qir_alpha": SOFT_QIR_ALPHA,
         "buffer_bytes": buffer_bytes,
@@ -258,9 +258,10 @@ def scorecard(
             "terr_ge_77": terr_ok,
         },
         "note": (
-            "wetlinks_v1 research era, uncap + spike-hold cook. Gate is this "
-            "table (LeoAware+SH vs BBR at the same 1 MB buffer). Product Crest "
-            "keeps use_spike_hold=False. Do not mix with uncap 239.72/240.48, "
+            "wetlinks_v1 research era, uncap + spike-hold + held-pipe fill. "
+            "Gate is this table (LeoAware+SH vs BBR at the same 1 MB buffer). "
+            "Product Crest keeps use_spike_hold=False. Do not mix with uncap "
+            "239.72/240.48, "
             "capped 156.70/63.98, starlink_v1 82.09/76.26, or ope_v36 58/152. "
             f"dt={SIM_DT_S}; buffer={buffer_bytes} B; send ceiling "
             f"{ceiling:.0f} Mbps. Capacity is UDP iperf mean, not dish PHY. "
