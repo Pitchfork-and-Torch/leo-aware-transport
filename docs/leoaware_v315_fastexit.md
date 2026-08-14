@@ -130,6 +130,46 @@ only. Product Crest / terrestrial / `starlink_v1` stay off.
 ACCEPT is **research-only** on `leocc_v1`. Still not Current. Still not paid.
 Still do not merge. Do not mix with starlink_v1 82.07/76.26.
 
+## 5-window cook (locked)
+
+`python3 -m experiments.run_leocc --tag 20260814-v315-fastexit --workers 4`
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| CUBIC | 31.14 | 87.20 |
+| BBRv3approx | **379.80** | **89.60** |
+| LeoAware Crest (flags off) | 337.97 | 89.60 |
+| FarHold-on (PR #18 cite, SHA 01d8567e) | 377.70 | 89.60 |
+| **LeoAware LeanCatch** | **358.94** | **89.60** |
+
+Terr (product Crest, 250 KB, seeds 13,7,42,99,123): **78.62** @ 46 ms.
+
+| q | Crest off | LeanCatch | BBR |
+|---|----------:|----------:|----:|
+| A/1 | 409.44 | **409.65** | 408.33 |
+| A/600 | 344.50 | **344.68** | 338.54 |
+| B/600 | 391.11 | 392.32 | 400.60 |
+| C/599 | 340.20 | 363.61 | 393.25 |
+| D/600 | 204.61 | 284.43 | 358.29 |
+
+A not worse (small +0.21 / +0.18). D/600 kept. p95 tied. Mean **358.94 ≤
+379.80**. Lift is mostly C (+23.4) and D (+79.8); B only +1.2 — the 9.5 Mbps
+B leftover is not a late-exit bug. FarHold remains closer to BBR because it
+holds the D/600 SER-lite wipe; that is a different mechanism and is not
+generalized here.
+
+| Check | Result |
+|-------|--------|
+| gp > 379.80 | **FAIL** (358.94) |
+| p95 ≤ 89.60 | **PASS** |
+| A/1 ≥ 409.44 | **PASS** (409.65) |
+| A/600 ≥ 344.50 | **PASS** (344.68) |
+| D/600 ≥ 204.61 | **PASS** (284.43) |
+| Terr ≥ 77 | **PASS** (78.62) |
+| Integrity | **PASS** |
+
+**Decision: REJECT vs BBR.** Not Current. No paid. Do not merge.
+
 ## Reproduce
 
 ```bash

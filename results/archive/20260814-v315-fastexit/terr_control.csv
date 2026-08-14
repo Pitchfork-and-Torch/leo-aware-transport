@@ -1,0 +1,6 @@
+era,window_id,cca,goodput_mbps,p95_rtt_ms,p95_path_rtt_ms,p95_excess_rtt_ms,mean_excess_rtt_ms,handovers,soft_qir_alpha
+synthetic_terrestrial,terr_seed13,LeoAware,78.62672,46.000000000000945,40.0,6.000000000000942,4.763563328089714,0,0.2
+synthetic_terrestrial,terr_seed7,LeoAware,78.61248,46.000000000000945,40.0,6.000000000000942,4.74783444053639,0,0.2
+synthetic_terrestrial,terr_seed42,LeoAware,78.62384,46.000000000000945,40.0,6.000000000000942,4.696436093683268,0,0.2
+synthetic_terrestrial,terr_seed99,LeoAware,78.63376,46.000000000000945,40.0,6.000000000000942,4.797076471988342,0,0.2
+synthetic_terrestrial,terr_seed123,LeoAware,78.6192,46.000000000000945,40.0,6.000000000000942,4.769009097014192,0,0.2
