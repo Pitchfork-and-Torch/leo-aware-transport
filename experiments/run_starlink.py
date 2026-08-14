@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""v3.16 product-era cook runner (synthetic starlink_v1).
+"""v3.17 product-era cook runner (synthetic starlink_v1).
 
-Same windows/seeds as the v3.9 Crest lock. OpenSlot is opt-in for this
-archive only; LeoAwareCCA() default stays False unless the cook ACCEPTs
-vs BBR (still not Current; still do not merge).
+Same windows/seeds as the v3.9 Crest lock. FillGap is opt-in for this
+archive only; LeoAwareCCA() default stays False. OpenSlot 0.80 is not
+retuned; the archive may keep it on so FillGap closes the leftover.
 
 Usage:
   python3 -m experiments.run_starlink
-  python3 -m experiments.run_starlink --no-openslot
+  python3 -m experiments.run_starlink --no-fill-gap --no-openslot
 """
 from __future__ import annotations
 
@@ -38,22 +38,32 @@ BBR_GP_LOCK = 82.44
 BBR_P95_LOCK = 76.66
 CREST_GP_LOCK = 82.07
 CREST_P95_LOCK = 76.26
-TAG = "20260814-v316-starlink"
+OPENSLOT_GP_LOCK = 82.38
+CREST_SEED13_FLOOR = 96.65
+OPENSLOT_SEED13_FLOOR = 96.69
+TAG = "20260814-v317-fillgap"
 SCENARIOS = ("leo_fast_ho", "leo_single", "terrestrial")
 
 
-def _rows(openslot: bool) -> list[dict]:
+def _rows(openslot: bool, fill_gap: bool) -> list[dict]:
     algos = [
         ("CUBIC", lambda: CubicCCA()),
         ("BBRv3approx", lambda: BbrCCA()),
-        ("LeoAware", lambda: LeoAwareCCA(use_openslot=openslot)),
+        (
+            "LeoAware",
+            lambda: LeoAwareCCA(use_openslot=openslot, use_fill_gap=fill_gap),
+        ),
     ]
     rows: list[dict] = []
     for scen in SCENARIOS:
         for seed in PRODUCT_SEEDS:
             cfg, n_flows = scenario_cfg(scen, seed, PRODUCT_PATH_PROFILE)
             for name, factory in algos:
-                print(f"{scen} seed={seed} {name} openslot={openslot} ...", flush=True)
+                print(
+                    f"{scen} seed={seed} {name} openslot={openslot} "
+                    f"fill_gap={fill_gap} ...",
+                    flush=True,
+                )
                 res = run_sim(factory, cfg=cfg, n_flows=n_flows)
                 metrics = summarize_result(res)
                 thr = [m.goodput_bps for m in metrics]
@@ -66,6 +76,7 @@ def _rows(openslot: bool) -> list[dict]:
                             "cca": name,
                             "path_profile": cfg.path_profile,
                             "openslot": openslot,
+                            "fill_gap": fill_gap,
                             "goodput_mbps": m.goodput_bps / 1e6,
                             "avg_rtt_ms": m.avg_rtt_s * 1000,
                             "p95_rtt_ms": m.p95_rtt_s * 1000,
@@ -107,15 +118,17 @@ def _per_seed(rows: list[dict], scen: str, cca: str) -> list[dict]:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--no-openslot", action="store_true", help="Crest defaults (OpenSlot off)")
+    ap.add_argument("--no-openslot", action="store_true", help="OpenSlot off (do not retune 0.80)")
+    ap.add_argument("--no-fill-gap", action="store_true", help="Crest/OpenSlot without FillGap")
     ap.add_argument("--tag", default=TAG)
     args = ap.parse_args()
     openslot = not args.no_openslot
+    fill_gap = not args.no_fill_gap
     assert PRODUCT_PATH_PROFILE == "starlink_v1"
     assert SOFT_QIR_ALPHA == 0.20
     assert list(PRODUCT_SEEDS) == [13, 7, 42, 99, 123]
 
-    rows = _rows(openslot)
+    rows = _rows(openslot, fill_gap)
     out = ROOT / "results" / "archive" / args.tag
     out.mkdir(parents=True, exist_ok=True)
 
@@ -140,12 +153,22 @@ def main() -> None:
 
     seeds_ok = {r["seed"] for r in rows if r["scenario"] == "leo_fast_ho" and r["cca"] == "LeoAware"}
     dropped = [s for s in PRODUCT_SEEDS if s not in seeds_ok]
+    per_seed = _per_seed(rows, "leo_fast_ho", "LeoAware")
+    seed13 = next((p["gp"] for p in per_seed if p["seed"] == 13), float("nan"))
+    seed13_crest_ok = (not math.isnan(seed13)) and seed13 >= CREST_SEED13_FLOOR
+    seed13_openslot_ok = (not math.isnan(seed13)) and seed13 >= OPENSLOT_SEED13_FLOOR
     gp_clears = (not math.isnan(leo_gp)) and leo_gp > BBR_GP_LOCK
     p95_ok = (not math.isnan(leo_p95)) and leo_p95 <= BBR_P95_LOCK
     terr_ok = (not math.isnan(terr_gp)) and terr_gp >= PRODUCT_TERR_GP_BAR
     abs_gp = leo_gp >= PRODUCT_GP_BAR
     abs_p95 = leo_p95 <= PRODUCT_P95_BAR
-    accept = bool(gp_clears and p95_ok and terr_ok and not dropped)
+    accept = bool(
+        gp_clears
+        and p95_ok
+        and terr_ok
+        and seed13_crest_ok
+        and not dropped
+    )
     decision = "ACCEPT" if accept else "REJECT"
 
     card = {
@@ -153,8 +176,11 @@ def main() -> None:
         "product_lock_era": PRODUCT_PATH_PROFILE,
         "synthetic": True,
         "soft_qir_alpha": SOFT_QIR_ALPHA,
-        "lever": "OpenSlot",
+        "lever": "FillGap",
+        "use_fill_gap": fill_gap,
         "use_openslot": openslot,
+        "openslot_threshold_untouched": 0.80,
+        "fill_gap_committed_default": False,
         "openslot_committed_default": False,
         "seeds": list(PRODUCT_SEEDS),
         "dropped_seeds": dropped,
@@ -164,6 +190,8 @@ def main() -> None:
             "terr_gp": PRODUCT_TERR_GP_BAR,
             "bbr_gp_clear": BBR_GP_LOCK,
             "bbr_p95_cap": BBR_P95_LOCK,
+            "crest_seed13_floor": CREST_SEED13_FLOOR,
+            "openslot_seed13_floor": OPENSLOT_SEED13_FLOOR,
         },
         "leo_fast_ho": {
             "CUBIC_gp_mean": cub_gp,
@@ -172,8 +200,9 @@ def main() -> None:
             "BBR_p95_mean": bbr_p95,
             "LeoAware_gp_mean": leo_gp,
             "LeoAware_p95_mean": leo_p95,
-            "per_seed": _per_seed(rows, "leo_fast_ho", "LeoAware"),
+            "per_seed": per_seed,
             "bbr_per_seed": _per_seed(rows, "leo_fast_ho", "BBRv3approx"),
+            "seed13_gp": seed13,
         },
         "leo_single": {
             "LeoAware_gp_mean": single_leo_gp,
@@ -192,6 +221,8 @@ def main() -> None:
             "gp_ge_75": abs_gp,
             "p95_le_138_8": abs_p95,
             "terr_ge_77": terr_ok,
+            "seed13_ge_crest_96_65": seed13_crest_ok,
+            "seed13_ge_openslot_96_69": seed13_openslot_ok,
             "no_seed_dropped": not dropped,
             "product_era": True,
         },
@@ -210,13 +241,14 @@ def main() -> None:
         w.writeheader()
         w.writerows(terr_rows)
 
-    means = f"""# v3.16 OpenSlot means — synthetic starlink_v1
+    means = f"""# v3.17 FillGap means — synthetic starlink_v1
 
 Harness: `python3 -m experiments.run_starlink` (same as v3.9
 `multi_seed` seeds 13,7,42,99,123 · 90s · endpoint-only · α=0.20).
 **Synthetic** `starlink_v1`. Not dish PHY. No leocc / WetLinks / Zhao numbers.
 
-OpenSlot archive opt-in: `{openslot}`. Committed `LeoAwareCCA()` default: **False**.
+FillGap archive opt-in: `{fill_gap}`. OpenSlot archive opt-in: `{openslot}`
+(0.80 not retuned). Committed `LeoAwareCCA()` defaults: **False**.
 
 ## leo_fast_ho means
 
@@ -225,7 +257,8 @@ OpenSlot archive opt-in: `{openslot}`. Committed `LeoAwareCCA()` default: **Fals
 | CUBIC | {cub_gp:.2f} | {cub_p95:.2f} |
 | BBRv3approx | {bbr_gp:.2f} | {bbr_p95:.2f} |
 | LeoAware v3.9 Crest (lock) | {CREST_GP_LOCK:.2f} | {CREST_P95_LOCK:.2f} |
-| **LeoAware + OpenSlot** | **{leo_gp:.2f}** | **{leo_p95:.2f}** |
+| LeoAware + OpenSlot (v3.16) | {OPENSLOT_GP_LOCK:.2f} | {CREST_P95_LOCK:.2f} |
+| **LeoAware + FillGap** | **{leo_gp:.2f}** | **{leo_p95:.2f}** |
 
 BBR lock reference: **{BBR_GP_LOCK:.2f} / {BBR_P95_LOCK:.2f}**.
 
@@ -234,9 +267,11 @@ BBR lock reference: **{BBR_GP_LOCK:.2f} / {BBR_P95_LOCK:.2f}**.
 | seed | gp | p95 |
 |-----:|---:|----:|
 """
-    for p in card["leo_fast_ho"]["per_seed"]:
+    for p in per_seed:
         means += f"| {p['seed']} | {p['gp']:.2f} | {p['p95']:.2f} |\n"
     means += f"""
+Seed 13 floor: Crest {CREST_SEED13_FLOOR:.2f} / OpenSlot {OPENSLOT_SEED13_FLOOR:.2f} → {seed13:.2f}.
+
 ## Other scenarios
 
 | Scenario | LeoAware gp | p95 | note |
@@ -250,6 +285,8 @@ BBR lock reference: **{BBR_GP_LOCK:.2f} / {BBR_P95_LOCK:.2f}**.
 |-------|-----|--------|
 | gp mean clears BBR | > {BBR_GP_LOCK:.2f} | {leo_gp:.2f} {'PASS' if gp_clears else 'FAIL'} |
 | p95 mean vs BBR | ≤ {BBR_P95_LOCK:.2f} | {leo_p95:.2f} {'PASS' if p95_ok else 'FAIL'} |
+| seed 13 vs Crest lock | ≥ {CREST_SEED13_FLOOR:.2f} | {seed13:.2f} {'PASS' if seed13_crest_ok else 'FAIL'} |
+| seed 13 vs OpenSlot | ≥ {OPENSLOT_SEED13_FLOOR:.2f} | {seed13:.2f} {'PASS' if seed13_openslot_ok else 'FAIL'} |
 | absolute gp | ≥ {PRODUCT_GP_BAR:.0f} | {'PASS' if abs_gp else 'FAIL'} |
 | absolute p95 | ≤ {PRODUCT_P95_BAR:.1f} | {'PASS' if abs_p95 else 'FAIL'} |
 | terrestrial | ≥ {PRODUCT_TERR_GP_BAR:.0f} | {terr_gp:.2f} {'PASS' if terr_ok else 'FAIL'} |
