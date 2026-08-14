@@ -4,6 +4,7 @@
 **Branch:** `cursor/v316-starlink-e853`  
 **Era:** synthetic `starlink_v1` (same harness / seeds as the v3.9 Crest lock)  
 **Lever:** **OpenSlot** (`use_openslot`, default **False**)  
+**Decision:** **REJECT vs BBR** (82.38 ≤ 82.44; p95 76.26 ≤ 76.66; terr 79.05).  
 **Not Current. Not paid. Do not merge.**
 
 ## Lock we are chasing
@@ -60,9 +61,12 @@ Killed before the archive, same name:
 - unconstrained unbind (no slack gate): seed 13 **96.20** vs Crest 96.65
 - extra 2.5× burst on clean-but-not-slack slots: seed 13 **96.15**; mean 82.34
 
-5-seed smoke of the slack-gated lever: OpenSlot **82.38 / 76.26** vs BBR
-**82.44 / 76.66**. Helps 7/99/123 past BBR; seed 13 leftover is a cwnd
-gap (~0.62), not pace. Official archive decides ACCEPT/REJECT.
+Official archive (`python3 -m experiments.run_starlink`): OpenSlot
+**82.38 / 76.26** vs BBR **82.44 / 76.66**. Terr **79.05**. Helps 7/99/123
+past BBR; seed 13 leftover is a cwnd gap (~0.62), not pace. Short
+**0.06 Mbps**.
+
+**Decision: REJECT vs BBR.** Default stays False. Not Current. Do not merge.
 
 OpenSlot does **not**:
 
