@@ -1380,11 +1380,14 @@ class LeoAwareCCA(BaseCCA):
             # Cap startup overshoot when delay is already elevated
             if delay_ratio > 1.45 and self.bw_est > 0:
                 self.cwnd = min(self.cwnd, bdp * 1.08)
-            if self._pipe_hold_active() and self.bw_est > 0:
-                # 25s probe: uncapped 1.92× grew cwnd to 17 MB by t=2 and
-                # congestive-cut. BBR caps at ~4× BDP; 2.2× is enough to
-                # fill a 1 MB buffer on a ~400 Mbps / 59 ms pipe.
-                self.cwnd = min(self.cwnd, max(bdp * 2.20, 20 * MSS))
+            # Never cap on an immature bw_est — that deadlocked SH at 82 KB
+            # / 7 Mbps. Only trim after the pipe is visible and delay is up.
+            if (
+                self._pipe_hold_active()
+                and self.bw_est > 50e6
+                and delay_ratio > 1.30
+            ):
+                self.cwnd = min(self.cwnd, max(bdp * 2.20, 80 * MSS))
             if self.cwnd >= bdp * 0.88 and self.bw_est > 0:
                 self.mode = "cruise"
                 self.ssthresh = self.cwnd
@@ -1598,8 +1601,12 @@ class LeoAwareCCA(BaseCCA):
             # Hard cap above ~1.08x BDP when delay risk present
             if delay_ratio > 1.35 and self.bw_est > 0:
                 self.cwnd = min(self.cwnd, bdp * 1.08)
-            if self._pipe_hold_active() and self.bw_est > 0:
-                self.cwnd = min(self.cwnd, max(bdp * 2.20, 20 * MSS))
+            if (
+                self._pipe_hold_active()
+                and self.bw_est > 50e6
+                and delay_ratio > 1.30
+            ):
+                self.cwnd = min(self.cwnd, max(bdp * 2.20, 80 * MSS))
             self.cwnd = max(4 * MSS, self.cwnd)
             # v3.6: adopt keel toward healthy cruise min (downward or mild up)
             if self.min_rtt < 1e17 and age > 1.5 and self._keel_rtt > 0:
