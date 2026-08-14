@@ -10,6 +10,7 @@ numbers from different eras in the same Current hero table.**
 | **`starlink_v1` product** | cruise RTT 40–75 ms; HO spike in the 0.4s loss window; cap 40–150 Mbps | **absolute gp≥75 AND p95≤138.8** | **v3.9 product-lock default** (`multi_seed` / `run_suite`). |
 | `starlink_v2` flicker (opt-in) | `starlink_v1` + mid-epoch capacity steps (~2.8s) | research only (not product) | Stress stale max-filter. Spec: `docs/leoaware_v310_starlink_v2.md`. |
 | **`wetlinks_v1` CSV** | 5×90s hold-expanded WetLinks `net_iperf`+`net_ping` slices | same absolute bars unless re-derived | v3.11 measured-CSV era. **Not** product default. Do not mix with `starlink_v1` 82.09/76.26. |
+| `zhao_zenodo23` CSV | 5 calendar-quantile Zhao/Pan IRTT+iperf3 Cubic slices | same bars; cubic-gp oracle is a **lower bound** | v3.12 research ingest. **Not** product default. Geometry only. Do not mix with `wetlinks_v1` or `starlink_v1` Crest. |
 
 ## Defaults
 

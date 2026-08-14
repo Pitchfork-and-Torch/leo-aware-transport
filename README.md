@@ -86,6 +86,7 @@ docs/
   ascent_d_orbcc_hybrid.md
   related_work.md
   cloudflare_starlink_bridge.md
+  leoaware_v312_zhao_zenodo23.md  # research-era ingest; not product lock
 ```
 
 ### Network model
@@ -277,6 +278,7 @@ See `docs/cloudflare_starlink_bridge.md` for a fuller write-up. Short version:
 - Packet-level fidelity is simplified (slot sim, not ns-3 / full QUIC state machine).
 - BBRv3approx is educational, not a production BBR port.
 - First measured-CSV era is `wetlinks_v1` (`traces/wetlinks/`, WetLinks slices). Synthetic `starlink_v1` remains the product lock. See `docs/starlink_csv_ingest.md`.
+- Second research-era ingest is `zhao_zenodo23` (`traces/zhao_zenodo23/`; geometry in `docs/leoaware_v312_zhao_zenodo23.md`). TCP Cubic goodput is a lower bound; SQM unknown. **Not** the product lock. Do not mix with `wetlinks_v1` or `starlink_v1` Crest.
 - Multipath is optional/simplified (ISL delay only).
 - Not production-hardened (no pacing timer fidelity, ECN, or ACK aggregation).
 
