@@ -65,7 +65,6 @@ Replay: `LeoPathConfig(trace_csv=..., duration_s=90, dt_s=0.05)`. Real Starlink 
 Research-era ingest `zhao_zenodo23` (v3.12) vendors five calendar-quantile CSVs from the Zhao/Pan 2023 dump. That era is **not** a product lock and must not be mixed with `starlink_v1` Crest numbers or `wetlinks_v1`. See `docs/leoaware_v312_zhao_zenodo23.md`.
 
 ## v3.9 era switch (done)
-
 1. Product default is `starlink_v1` (`leo_cc/harness.py`).
 2. Re-baseline BBR + LeoAware 5-seed@90s on that path (new era).
 3. CA → DLC → LSG against absolute 75/138.8.
