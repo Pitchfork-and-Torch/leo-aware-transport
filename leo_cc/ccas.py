@@ -668,6 +668,14 @@ class LeoAwareCCA(BaseCCA):
             and self.reconfigs_detected == 0
         )
 
+    def _pipe_hold_fill(self, t: float) -> bool:
+        """First 1.5s of a held pipe: BBR is not pace-bound in this sim."""
+        if not self._pipe_hold_active():
+            return False
+        if self._start_t < 0:
+            return True
+        return (t - self._start_t) < 1.50
+
     def _halo_ref_bw(self) -> float:
         """Soft capacity reference: max(prior, epoch-memory p50)."""
         mem = self._epoch_mem_p50()
@@ -1041,7 +1049,11 @@ class LeoAwareCCA(BaseCCA):
     def can_send(self, t: float) -> int:
         room = max(0.0, self.cwnd - self.bytes_in_flight)
         # Soft pacing: only bind when clearly over-rate (avoid recovery starvation)
-        if self.pacing_rate_bps > 0 and t >= self.reprobe_until:
+        if (
+            self.pacing_rate_bps > 0
+            and t >= self.reprobe_until
+            and not self._pipe_hold_fill(t)
+        ):
             if self._last_pace_t <= 0:
                 self._last_pace_t = t
             dt = max(0.0, t - self._last_pace_t)
@@ -1264,6 +1276,9 @@ class LeoAwareCCA(BaseCCA):
             # Reclaim: pacing can stay a bit optimistic; cwnd is delay-capped below.
             # QSP may discount pace from sojourn excess; never changes BDP/cwnd target.
             pace_gain = self._qsp_pace_gain(t, delay_ratio_early, rtt_s)
+            if self._pipe_hold_fill(t):
+                # BBR startup pacing_gain is 2.77; Crest default is 1.08.
+                pace_gain = max(pace_gain, 2.20)
             self.pacing_rate_bps = self.bw_est * pace_gain
         elif self.prior_bw > 0:
             self.pacing_rate_bps = self.prior_bw * 0.65
@@ -1365,6 +1380,11 @@ class LeoAwareCCA(BaseCCA):
             # Cap startup overshoot when delay is already elevated
             if delay_ratio > 1.45 and self.bw_est > 0:
                 self.cwnd = min(self.cwnd, bdp * 1.08)
+            if self._pipe_hold_active() and self.bw_est > 0:
+                # 25s probe: uncapped 1.92× grew cwnd to 17 MB by t=2 and
+                # congestive-cut. BBR caps at ~4× BDP; 2.2× is enough to
+                # fill a 1 MB buffer on a ~400 Mbps / 59 ms pipe.
+                self.cwnd = min(self.cwnd, max(bdp * 2.20, 20 * MSS))
             if self.cwnd >= bdp * 0.88 and self.bw_est > 0:
                 self.mode = "cruise"
                 self.ssthresh = self.cwnd
@@ -1578,6 +1598,8 @@ class LeoAwareCCA(BaseCCA):
             # Hard cap above ~1.08x BDP when delay risk present
             if delay_ratio > 1.35 and self.bw_est > 0:
                 self.cwnd = min(self.cwnd, bdp * 1.08)
+            if self._pipe_hold_active() and self.bw_est > 0:
+                self.cwnd = min(self.cwnd, max(bdp * 2.20, 20 * MSS))
             self.cwnd = max(4 * MSS, self.cwnd)
             # v3.6: adopt keel toward healthy cruise min (downward or mild up)
             if self.min_rtt < 1e17 and age > 1.5 and self._keel_rtt > 0:
@@ -1608,6 +1630,13 @@ class LeoAwareCCA(BaseCCA):
                     ) >= 2:
                         self._enter_reprobe(t, "ep:loss_burst", confidence=0.7)
                     return
+        # Held pipe: BBR ignores loss; Crest's 0.72 cut is the t=12 recovery
+        # hole on WetLinks (capacity held, spike is ping_worst not a cap hop).
+        if self._pipe_hold_active() and self.min_rtt < 1e17:
+            recent = self.rtt_hist[-1] if self.rtt_hist else 0.0
+            if recent <= 0.0 or recent < 1.55 * self.min_rtt:
+                self.mode = "pipe_hold_loss"
+                return
         # True congestion: slightly milder than CUBIC for multi-flow friendliness
         self.ssthresh = max(4 * MSS, self.cwnd * 0.72)
         self.cwnd = self.ssthresh

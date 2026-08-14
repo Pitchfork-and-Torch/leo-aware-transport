@@ -23,9 +23,13 @@ Two taxes, not one:
 - **Spike-hold:** RTT-jump detect + delivery ≥ 0.90× `bw_est` → skip full
   REPROBE for 0.50 s. Never skip `ep:loss_burst`. Do not update
   `last_reconfig_t`.
-- **Held-pipe fill:** while `reconfigs_detected==0`, startup growth **1.92×**
-  and clean-delay bw blend **0.30·p82 + 0.70·max**. A real SER turns this
-  off. Product Crest never enters.
+- **Held-pipe fill:** while `reconfigs_detected==0`:
+  - startup growth **1.92×**, clean-delay bw **0.30·p82 + 0.70·max**
+  - first 1.5 s: **no pace bind** (BBR is not pace-bound in this sim;
+    Crest's 1.08× `bw_est` starved t=0–1) and pace_gain ≥ 2.20
+  - cwnd cap **2.20× BDP** (uncapped 1.92× hit 17 MB by t=2)
+  - loss ignore while live RTT < 1.55× min_rtt (BBR `loss_ignored`)
+  - a real SER turns this off. Product Crest never enters.
 
 ## Gate
 
