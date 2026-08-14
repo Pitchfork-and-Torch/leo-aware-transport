@@ -11,7 +11,7 @@ numbers from different eras in the same Current hero table.**
 | `starlink_v2` flicker (opt-in) | `starlink_v1` + mid-epoch capacity steps (~2.8s) | research only (not product) | Stress stale max-filter. Spec: `docs/leoaware_v310_starlink_v2.md`. |
 | **`wetlinks_v1` CSV** | 5×90s hold-expanded WetLinks `net_iperf`+`net_ping` slices | same absolute bars unless re-derived | v3.11 measured-CSV era. **Not** product default. Do not mix with `starlink_v1` 82.09/76.26. |
 | `zhao_zenodo23` CSV | 5 calendar-quantile Zhao/Pan IRTT+iperf3 Cubic slices | same bars; cubic-gp oracle is a **lower bound** | v3.12 research ingest (PR #12 merged). **Not** product. Do not use for dual-gate ACCEPT. |
-| **`leocc_v1` CSV** | 5 catalog-quantile LeoCC downlink 90s UDP-sat + ICMP OWD | same absolute bars; RTT = 2×OWD | v3.13 measured-CSV era. **Not** product default. Do not mix with `wetlinks_v1` / `zhao_zenodo23` / Crest 82.09/76.26. |
+| **`leocc_v1` CSV** | 5 catalog-quantile LeoCC downlink 90s UDP-sat + ICMP OWD | same absolute bars; RTT = 2×OWD | v3.13 ingest; v3.14 FarHold **REJECT vs BBR** (377.70 < 379.80). **Not** product default. Do not mix with `wetlinks_v1` / `zhao_zenodo23` / Crest 82.07/76.26. |
 
 ## Defaults
 

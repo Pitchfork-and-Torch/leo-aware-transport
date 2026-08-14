@@ -394,12 +394,19 @@ def write_table(
                 "| q | CUBIC gp/p95 | BBR gp/p95 | Crest gp/p95 |",
                 "|---|-------------:|-----------:|-------------:|",
             ]
-            order = list(geo["window_id"]) if "window_id" in geo.columns else []
-            if not order:
-                order = sorted(cca_df["window_id"].unique())
-            for wid in order:
+            geo_rows = list(geo.itertuples(index=False)) if len(geo) else []
+            if geo_rows and hasattr(geo_rows[0], "window_id"):
+                keys = [
+                    (
+                        r.window_id,
+                        f"{r.quantile} {r.site}/{int(r.trace_no)}",
+                    )
+                    for r in geo_rows
+                ]
+            else:
+                keys = [(w, w) for w in sorted(cca_df["window_id"].unique())]
+            for wid, label in keys:
                 g = cca_df[cca_df["window_id"] == wid]
-                q = wid.split("_")[0] if "_" in wid else wid
                 def gp_p95(name: str) -> str:
                     row = g[g["cca"] == name]
                     if row.empty:
@@ -407,7 +414,7 @@ def write_table(
                     r = row.iloc[0]
                     return f"{r['goodput_mbps']:.2f} / {r['p95_rtt_ms']:.0f}"
                 lines.append(
-                    f"| {q} {wid} | {gp_p95('CUBIC')} | {gp_p95('BBRv3approx')} | {gp_p95('LeoAware')} |"
+                    f"| {label} | {gp_p95('CUBIC')} | {gp_p95('BBRv3approx')} | {gp_p95('LeoAware')} |"
                 )
     (out_dir / "TABLE.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
