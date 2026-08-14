@@ -215,6 +215,47 @@ def test_ca_does_not_fire_during_reprobe():
     print("ok: CA-hard does not abort during REPROBE")
 
 
+def test_openslot_default_false():
+    cca = LeoAwareCCA()
+    assert cca.use_openslot is False
+    print("ok: OpenSlot default False")
+
+
+def test_openslot_does_not_gate_loss_burst():
+    cca = LeoAwareCCA(use_openslot=True)
+    cca.min_rtt = 0.05
+    cca.rtt_hist.extend([0.05, 0.051, 0.049, 0.05])
+    cca.last_reconfig_t = -10.0
+    rec0 = cca.reconfigs_detected
+    t = 5.0
+    cca.on_loss(t, 1200, congestive=False)
+    cca.on_loss(t + 0.05, 1200, congestive=False)
+    assert cca.reconfigs_detected == rec0 + 1, (cca.reconfigs_detected, cca.mode)
+    assert cca.mode == "ser:loss_burst" or str(cca.mode).startswith("ser"), cca.mode
+    print("ok: OpenSlot does not gate ep:loss_burst")
+
+
+def test_openslot_unbinds_only_when_clean():
+    cca = LeoAwareCCA(use_openslot=True)
+    cca.min_rtt = 0.05
+    cca.rtt_hist.extend([0.05] * 8)
+    cca.cwnd = 80 * 1200
+    cca.bytes_in_flight = 10 * 1200
+    cca.pacing_rate_bps = 10e6
+    cca._last_pace_t = 1.0
+    cca._pace_credit = 1200.0
+    clean = cca.can_send(1.02)
+    assert clean >= 60 * 1200, clean
+    assert cca.openslot_releases >= 1
+    cca.rtt_hist.append(0.09)  # delay_ratio 1.8
+    cca._pace_credit = 1200.0
+    cca._last_pace_t = 2.0
+    dirty = cca.can_send(2.001)
+    assert dirty < clean, (dirty, clean)
+    assert dirty <= 8 * 1200, dirty
+    print("ok: OpenSlot unbinds only on delay-clean slots")
+
+
 def run_all() -> None:
     test_soft_qir_frozen()
     test_ope_path_identity()
@@ -226,6 +267,9 @@ def run_all() -> None:
     test_starlink_v1_geometry_allows_absolute_bars()
     test_loss_burst_not_gated()
     test_ca_does_not_fire_during_reprobe()
+    test_openslot_default_false()
+    test_openslot_does_not_gate_loss_burst()
+    test_openslot_unbinds_only_when_clean()
     print("ALL OPE integrity tests passed")
 
 
