@@ -2,8 +2,8 @@
 
 **Date:** 2026-08-12  
 **Branch:** `cursor/v39-starlink-v1-ae43`  
-**Decision:** **ACCEPT** absolute dual-gate on `starlink_v1` (means: gp 82.07 / p95 76.26 / terr 78.62). **Not Current. No paid bump. Do not merge without Jon.**  
-**Scope:** New harness era. Product lock is synthetic `starlink_v1` until CSV ingest.
+**Decision:** **ACCEPT** absolute dual-gate on `starlink_v1` (means: gp 82.07 / p95 76.26 / terr 78.62). **Prior lock — no longer Current.** Current is v3.17 FillGap 82.45 / 76.26 (`docs/leoaware_v317_fillgap.md`).  
+**Scope:** Synthetic `starlink_v1` harness era (still the product path).
 
 ## Decision that created this era
 
