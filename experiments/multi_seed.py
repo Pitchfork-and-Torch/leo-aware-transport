@@ -146,6 +146,16 @@ def main() -> None:
         default=PRODUCT_PATH_PROFILE,
         help="starlink_v1 (product lock, default) or ope_v36 (research)",
     )
+    ap.add_argument(
+        "--openslot",
+        action="store_true",
+        help="opt in v3.16 OpenSlot on LeoAware (default Crest path stays off)",
+    )
+    ap.add_argument(
+        "--fill-gap",
+        action="store_true",
+        help="opt in v3.17 FillGap on LeoAware (default Crest path stays off)",
+    )
     args = ap.parse_args()
     path_profile = resolve_path_profile(args.path_profile)
     seeds = [int(x) for x in args.seeds.split(",") if x.strip()]
@@ -153,14 +163,21 @@ def main() -> None:
     algos = [
         ("CUBIC", lambda: CubicCCA()),
         ("BBRv3approx", lambda: BbrCCA()),
-        ("LeoAware", lambda: LeoAwareCCA()),
+        (
+            "LeoAware",
+            lambda: LeoAwareCCA(
+                use_openslot=bool(args.openslot),
+                use_fill_gap=bool(args.fill_gap),
+            ),
+        ),
     ]
     if "leo_multi" in scenarios:
         algos.append(("LeoAware_fair", lambda: LeoAwareCCA(fair_mode=True)))
 
     print(
         f"multi_seed era={path_profile}  product_lock={PRODUCT_PATH_PROFILE}  "
-        f"soft-QIR α={SOFT_QIR_ALPHA}  bars gp≥{PRODUCT_GP_BAR} p95≤{PRODUCT_P95_BAR}",
+        f"soft-QIR α={SOFT_QIR_ALPHA}  bars gp≥{PRODUCT_GP_BAR} p95≤{PRODUCT_P95_BAR}  "
+        f"openslot={bool(args.openslot)} fill_gap={bool(args.fill_gap)}",
         flush=True,
     )
 
