@@ -5,7 +5,8 @@ Two generative eras exist. Never mix them in a Current hero table.
 - ope_v36: research / relative-BBR lock (v3.6–v3.7). Absolute 75/138.8 is
   geometrically impossible (Step 0). LeoPathConfig.path_profile default stays
   here so research geometry cannot silently drift.
-- starlink_v1: product-lock era (v3.9). Absolute gp≥75 AND p95≤138.8.
+- starlink_v1: product-lock era. Absolute gp≥75 AND p95≤138.8.
+  Current = v3.17 FillGap (82.45 / 76.26). Prior lock = v3.9 Crest.
   multi_seed / run_suite primary objective default to this profile.
 
 Real Starlink CSV replay is the successor product lock (see

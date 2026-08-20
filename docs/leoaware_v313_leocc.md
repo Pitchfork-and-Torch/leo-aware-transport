@@ -7,8 +7,9 @@
 
 This is **not** a mix with `wetlinks_v1` (hold-expanded 15 s iperf), `zhao_zenodo23`
 (PR #12, TCP Cubic goodput, IRTT p95 mean 146.74 FAIL), or synthetic
-`starlink_v1` / v3.9 Crest 82.09/76.26 (PR #9, still open). Product lock stays
-where it is. PR #5 v3.4.1 is leftover WIP — not used here.
+`starlink_v1` Crest 82.07/76.26 (prior lock). Product Current is now v3.17
+FillGap 82.45/76.26. This `leocc_v1` era remains **research-only**.
+PR #5 v3.4.1 is leftover WIP — not used here.
 
 ## Hypothesis
 
@@ -39,7 +40,7 @@ If geometry fails either bar → STOP, no CCA, no quiet rebaseline.
 | Window | first **90 s** of each ~120 s trace |
 | HO flags | **none invented** (`reconfig=0`) |
 | Direction | **downlink only** (stated before looking at gp/p95) |
-| Product lock | unchanged (`starlink_v1` / v3.9 Crest) |
+| Product lock | v3.17 FillGap Current on `starlink_v1` (this era is research-only) |
 
 zhao_zenodo23 is the wrong dump for this cook (Cubic goodput + IRTT p95 FAIL).
 WetLinks is 15 s UDP hold-expanded, not continuous 90 s. LeoCC is the first

@@ -1,10 +1,12 @@
 # Public progress note — 2026-08-14
 
 **Audience:** orbitstack /progress (public-safe)  
-**Harness:** `starlink_v1` product lock · endpoint-only · soft-QIR α=0.20  
+**Harness:** `starlink_v1` · endpoint-only · soft-QIR α=0.20  
 **Scenario:** `leo_fast_ho` · seeds 13,7,42,99,123 · means only  
 **Source archive:** `results/archive/20260812-v39-starlink-v1/`  
-**Integrity:** `python3 -m experiments.test_ascent_d_integrity` — PASS (this run)
+**Integrity:** `python3 -m experiments.test_ascent_d_integrity` — PASS (this run)  
+**Status:** Historical public-means note. **Superseded** as Current by
+`docs/progress/2026-08-20-fillgap-current.md` (v3.17 FillGap 82.45 / 76.26).
 
 ## Means vs BBR (no dish Mbps)
 
@@ -31,7 +33,7 @@ Demo is a shorter scenario than the multi-seed suite; use the table above for pu
 - No VELA write operators enabled
 - No failed-operator names
 - No dish / PHY Mbps claims
-- PATHHINT hybrid remains REJECT (v3.10); product path is endpoint Crest
+- PATHHINT hybrid remains REJECT (v3.10); this note’s table is the then-current Crest means. Current is now FillGap.
 
 ## Reproduce
 

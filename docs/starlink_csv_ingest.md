@@ -2,7 +2,8 @@
 
 **Status:** v3.11 WetLinks CSV lock. Five 90 s windows are vendored under
 `traces/wetlinks/`. Do **not** ship an empty `traces/real/` scaffold.
-`starlink_v1` remains the **synthetic** product path (v3.9 Crest). Measured
+`starlink_v1` remains the **synthetic** product path (Current = v3.17 FillGap;
+prior lock v3.9 Crest). Measured
 CSV replay is a **new era** — never mix with `starlink_v1` 82.09/76.26 or
 `ope_v36` 58/152.
 
@@ -91,7 +92,8 @@ See `docs/leoaware_v311_wetlinks_uncap.md`.
 ## Era rules
 
 - Label: `wetlinks_v1`.
-- Product CCA on synthetic `starlink_v1` stays **v3.9 Crest**.
+- Product CCA / Current on synthetic `starlink_v1` is **v3.17 FillGap**
+  (82.45 / 76.26). v3.9 Crest is the prior lock.
 - `PRODUCT_PATH_PROFILE` stays `starlink_v1`.
 - No Halo / QSP / default-on PATHHINT freeze.
 - No dish/RF Mbps claims. Capacity here is UDP iperf download.

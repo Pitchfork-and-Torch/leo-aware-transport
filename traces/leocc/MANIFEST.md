@@ -2,7 +2,7 @@
 
 Research-era Starlink access traces. **Not** a product lock. **Do not merge**
 into Current / paid copy. **Do not mix** with `wetlinks_v1`, `zhao_zenodo23`,
-or synthetic `starlink_v1` Crest 82.09/76.26.
+or synthetic `starlink_v1` FillGap 82.45/76.26 (prior Crest 82.07/76.26).
 
 ## Citation (required)
 

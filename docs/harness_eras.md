@@ -7,7 +7,7 @@ numbers from different eras in the same Current hero table.**
 |-----|---------|-----------|------|
 | Coupled-RNG (historical) | pre-OPE `path.rng` shared with loss | absolute 75/138.8 on a *different orbit per CCA* | v3.4-p95 / v3.5 Tide. Not comparable to OPE. |
 | `ope_v36` research | frozen v3.6/v3.7 generative path | **relative to BBR** on the same orbit | Science lock. Absolute 75/138.8 **impossible** (oracle gp 60.48, path p95 142.32). |
-| **`starlink_v1` product** | cruise RTT 40–75 ms; HO spike in the 0.4s loss window; cap 40–150 Mbps | **absolute gp≥75 AND p95≤138.8** | **v3.9 product-lock default** (`multi_seed` / `run_suite`). |
+| **`starlink_v1` product** | cruise RTT 40–75 ms; HO spike in the 0.4s loss window; cap 40–150 Mbps | **absolute gp≥75 AND p95≤138.8** | **v3.17 FillGap Current** (product dual-gate lock). Prior lock: v3.9 Crest. |
 | `starlink_v2` flicker (opt-in) | `starlink_v1` + mid-epoch capacity steps (~2.8s) | research only (not product) | Stress stale max-filter. Spec: `docs/leoaware_v310_starlink_v2.md`. |
 | **`wetlinks_v1` CSV** | 5×90s hold-expanded WetLinks `net_iperf`+`net_ping` slices | same absolute bars unless re-derived | v3.11 measured-CSV era. **Not** product default. Do not mix with `starlink_v1` 82.09/76.26. |
 | `zhao_zenodo23` CSV | 5 calendar-quantile Zhao/Pan IRTT+iperf3 Cubic slices | same bars; cubic-gp oracle is a **lower bound** | v3.12 research ingest (PR #12 merged). **Not** product. Do not use for dual-gate ACCEPT. |
@@ -21,7 +21,8 @@ numbers from different eras in the same Current hero table.**
 | `python -m experiments.multi_seed` | **`starlink_v1`** | `--path-profile ope_v36` |
 | `python -m experiments.run_suite` | **`starlink_v1`** | `--path-profile ope_v36` |
 | `python -m experiments.run_ablation` | **`starlink_v1`** | `--path-profile ope_v36` |
-| `python -m experiments.run_wetlinks` | **`wetlinks_v1` CSV** | geometry first; Crest defaults |
+| `python -m experiments.run_wetlinks` | **`wetlinks_v1` CSV** | geometry first; research-only |
+| `python3 -m experiments.run_starlink` | **`starlink_v1` + FillGap/OpenSlot opt-in** | Current scorecard runner |
 
 Constants: `leo_cc/harness.py` (`PRODUCT_PATH_PROFILE`, `RESEARCH_PATH_PROFILE`, bars).
 
@@ -42,10 +43,17 @@ Multi-seed endpoint `leo_fast_ho` seeds **13,7,42,99,123** @ 90s:
 
 ACCEPT only if all gates pass. Else REJECT/WIP honest Pareto — **do not redefine bars**.
 
-v3.9 Crest scorecard (not Current, no paid bump): LeoAware means gp **82.07** /
-p95 **76.26** / terr **78.62** on `starlink_v1`. Geometry 84.03 / 70.79. Archive
-`results/archive/20260812-v39-starlink-v1/`. **Current remains v3.7 OCE** on
-`ope_v36` (58.78 / 152.1) until Jon merges.
+**Current (product dual-gate lock):** LeoAware v3.17 FillGap means gp **82.45** /
+p95 **76.26** / terr **79.05** on `starlink_v1` (seeds 13,7,42,99,123). Beats
+Crest 82.07 / 76.26 on gp, matches p95, edges BBR 82.44 / 76.66. Archive
+`results/archive/20260814-v317-fillgap/`. Reproduce:
+`python3 -m experiments.run_starlink`. Constructor defaults stay
+`use_fill_gap=False` / `use_openslot=False`.
+
+Prior lock: v3.9 Crest gp **82.07** / p95 **76.26** / terr **78.62**. Geometry
+84.03 / 70.79. Archive `results/archive/20260812-v39-starlink-v1/`.
+
+`ope_v36` v3.7 OCE (58.78 / 152.1) is **research-only**. Do not mix eras.
 
 ## Why two generative defaults
 

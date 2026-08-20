@@ -2,8 +2,8 @@
 
 **Date:** 2026-08-13  
 **Branch:** `cursor/v310-halo-84b8`  
-**Decision:** **REJECT** hybrid. Product CCA remains **v3.9 Crest** endpoint-only.  
-**Not Current. No paid bump. Do not merge.**
+**Decision:** **REJECT** hybrid. This cook left product CCA on Crest endpoint-only.  
+**Current is now v3.17 FillGap.** This cook is not Current.
 
 ## Bet
 

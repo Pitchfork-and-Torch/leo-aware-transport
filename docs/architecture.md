@@ -53,7 +53,8 @@ LeoAware defaults to **endpoint-only** detection (`use_path_hints=False`). Basel
 
 v3.6+ **OPE:** mobility loss uses a dedicated `loss_rng`, so a CCA cannot rewrite the HO/RTT/cap timeline. v3.8 Step 0 **freezes** soft-QIR α=0.20. ACK logs include path-base RTT so `p95(rtt − path_base)` is a secondary diagnostic — it does not replace absolute ACK p95.
 
-v3.9 **eras:** `ope_v36` is the research relative-BBR path (**Current = v3.7 OCE**);
-**`starlink_v1` is the product-lock default** for `multi_seed` / `run_suite`
-(v3.9 scorecard 82.07 / 76.26 — not a Current bump). Never mix eras in a
-Current hero table (`docs/harness_eras.md`).
+v3.9+ **eras:** `ope_v36` is the research relative-BBR path (v3.7 OCE,
+**research-only**). **`starlink_v1` is the product-lock default** for
+`multi_seed` / `run_suite`. **Current = v3.17 FillGap** (82.45 / 76.26).
+v3.9 Crest 82.07 / 76.26 is the prior lock. Never mix eras in a Current
+hero table (`docs/harness_eras.md`).

@@ -2,8 +2,9 @@
 
 **Date:** 2026-08-13  
 **Branch:** `cursor/v310-halo-84b8`  
-**Decision:** **REJECT** for product CCA. **v3.9 Crest remains the starlink_v1 Accept.**  
-**Not Current. No paid bump.**
+**Decision:** **REJECT** for product CCA. v3.9 Crest stayed the starlink_v1 Accept
+of that cook. **Current is now v3.17 FillGap** (82.45 / 76.26); Crest is the prior lock.  
+**This cook is not Current.**
 
 ## Goal
 
