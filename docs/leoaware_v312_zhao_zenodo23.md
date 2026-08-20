@@ -5,7 +5,7 @@
 **Base:** `main` @ `55b3fc45`  
 **Decision:** geometry **landed**. Dual-gate on this era: **INCONCLUSIVE** on gp (TCP Cubic goodput is a lower bound, mean 30.37 < 75) and **FAIL** on IRTT p95 (mean 146.74 > 138.8). **No CCA on this cook.** **Do not merge.** **Ping Optimizer.**
 
-This is **not** a Current-tab bump, **not** paid copy, **not** a mix with `wetlinks_v1` (PR #11) or synthetic `starlink_v1` / v3.9 Crest (PR #9, 82.09/76.26). Product lock stays where it is.
+This is **not** a Current-tab bump, **not** paid copy, **not** a mix with `wetlinks_v1` (PR #11) or synthetic `starlink_v1` (Current = v3.17 FillGap 82.45/76.26; prior Crest 82.07/76.26). This era remains research-only.
 
 ## Citation
 
@@ -131,6 +131,6 @@ python -m experiments.zhao_zenodo23_ingest --extract-dir /tmp/zhao_zenodo23/extr
 
 ## Ask for Optimizer
 
-Geometry landed on a real Starlink access era. Cubic-goodput oracle ~30 Mbps mean does **not** unlock gp≥75 as a conservative PASS; IRTT p95 mean fails 138.8 because one calendar session is a 395 ms tail. Product lock stays synthetic `starlink_v1` / v3.9 Crest until Optimizer says otherwise.
+Geometry landed on a real Starlink access era. Cubic-goodput oracle ~30 Mbps mean does **not** unlock gp≥75 as a conservative PASS; IRTT p95 mean fails 138.8 because one calendar session is a 395 ms tail. This era remains research-only. Product Current is v3.17 FillGap on synthetic `starlink_v1`.
 
 **Ping Optimizer. Do not start Crest/BBR on this era.**

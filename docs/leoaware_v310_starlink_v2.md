@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-13  
 **Status:** opt-in research profile. **Not the product lock.** Product remains
-`starlink_v1` (v3.9 Crest ACCEPT).
+`starlink_v1` (Current = v3.17 FillGap; prior lock v3.9 Crest ACCEPT).
 
 ## Motivation
 

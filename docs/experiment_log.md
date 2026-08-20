@@ -1104,6 +1104,44 @@ Archive: `results/archive/20260814-v317-fillgap/`
 
 ---
 
+## 2026-08-20 — Promote v3.17 FillGap to Current / product dual-gate lock
+
+**Date:** 2026-08-20  
+**Change:** Product-lock promotion only. PR #22 squash-merged to `main` as
+`781bd77`. FillGap / OpenSlot constructor defaults stay **False**. No new
+CCA numbers.
+
+Jon’s prior published lock was v3.9 Crest on synthetic `starlink_v1`
+(82.07 gp / 76.26 p95, seeds 13,7,42,99,123). PR #22 archive (same path,
+same seeds) is the new Current:
+
+| CCA | Goodput mean | p95 mean | Notes |
+|-----|-------------:|---------:|-------|
+| CUBIC | 8.57 | 71.63 | Collapses under mobility |
+| BBRv3approx | 82.44 | 76.66 | same orbit as LeoAware |
+| **LeoAware v3.17 FillGap** | **82.45** | **76.26** | **new product dual-gate lock** |
+| LeoAware v3.9 Crest (prior lock) | 82.07 | 76.26 | prior product lock |
+
+Cited from PR #22 body and `results/archive/20260814-v317-fillgap/scorecard.json`
+(`LeoAware_gp_mean` 82.44544 → 82.45; `LeoAware_p95_mean` 76.26408 → 76.26;
+BBR 82.43904 / 76.66408 → 82.44 / 76.66). No CI check runs existed on #22;
+no figure disagreed.
+
+Beats Crest on gp, matches p95, edges BBR. Absolute bars still PASS
+(gp ≥ 75, p95 ≤ 138.8, terr 79.05 ≥ 77).
+
+Reproduce Current: `python3 -m experiments.run_starlink` (opts in FillGap +
+OpenSlot; OpenSlot 0.80 not retuned). Default `LeoAwareCCA()` /
+`multi_seed` remain Crest-constructor.
+
+`ope_v36` / v3.7 OCE, WetLinks, `zhao_zenodo23`, and `leocc_v1` stay
+**research-only**. Do not mix eras. Other open draft PRs untouched.
+
+Design: `docs/leoaware_v317_fillgap.md`  
+Eras: `docs/harness_eras.md`
+
+---
+
 ## Open ideas (next loops)
 
 1. Denser real Starlink CSVs (continuous 90s RTT+capacity, not hold-expanded 15s iperf). `leocc_v1` is the first such ingest; still not product lock.
