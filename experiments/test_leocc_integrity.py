@@ -98,6 +98,8 @@ def test_crest_defaults_stay_off():
     assert cca.use_cfr is False
     assert cca.use_qsp is False
     assert cca.hint_freeze_only is False
+    assert cca.use_openslot is False
+    assert cca.use_fill_gap is False
     assert PRODUCT_PATH_PROFILE == "starlink_v1"
     print("ok: Crest defaults off; product profile still starlink_v1")
 
