@@ -87,6 +87,7 @@ docs/
   starlink_csv_ingest.md
   leoaware_v311_wetlinks.md
   leoaware_v313_leocc.md      # research-era ingest; not product lock
+  leoaware_v317_fillgap.md    # Current product dual-gate lock
   ascent_d_orbcc_hybrid.md
   related_work.md
   cloudflare_starlink_bridge.md
@@ -155,7 +156,7 @@ On detected change:
 
 This is the core distinction classic CUBIC lacks on LEO.
 
-### v3.9 Crest (product lock on `starlink_v1`)
+### v3.9 Crest (prior lock on `starlink_v1`)
 
 On cruise/reclaim only (never during REPROBE; never gates `ep:loss_burst`):
 
@@ -163,6 +164,12 @@ On cruise/reclaim only (never during REPROBE; never gates `ep:loss_burst`):
 2. **Dual-Ledger Cruise** — `cwnd_safe` vs `cwnd_tide` (tide ≤1.42× BDP, delay-clean)
 3. **Local Surplus Guard** — stretch only if delivery EWMA ≥ ~0.85× prior_bw
 4. **Freeze-only anticipator** — ACK-IA growth hold ~120 ms; never detect-suppress
+
+### v3.17 FillGap (Current product lock on `starlink_v1`)
+
+Opt-in lever (`use_fill_gap`, constructor default **False**). Current numbers are from `python3 -m experiments.run_starlink` (FillGap + OpenSlot on; OpenSlot 0.80 not retuned). Never gates `ep:loss_burst`.
+
+When delay-clean and delivery ≥ 0.95×`bw_est` and cwnd < 0.85× delivery BDP: add **1 MSS**, capped at the 0.85× ceiling. See `docs/leoaware_v317_fillgap.md`.
 
 ---
 
@@ -187,20 +194,35 @@ Means only - do not market peaks.
 | Era | Path | Dual-gate |
 |-----|------|-----------|
 | Research (v3.6–v3.7) | `ope_v36` | relative vs BBR on the same orbit |
-| **Product (v3.9)** | **`starlink_v1`** | **absolute gp≥75 AND p95≤138.8** |
+| **Product (v3.17 FillGap)** | **`starlink_v1`** | **absolute gp≥75 AND p95≤138.8** |
 | Historical | coupled-RNG | v3.4/v3.5 numbers; different orbit per CCA |
 
-`python -m experiments.multi_seed` defaults to **`starlink_v1`**. Research: `--path-profile ope_v36`.
+`python -m experiments.multi_seed` defaults to **`starlink_v1`**. Research: `--path-profile ope_v36`. Current FillGap numbers are from `python3 -m experiments.run_starlink` (same seeds; FillGap + OpenSlot opted in). Constructor defaults stay `use_fill_gap=False` / `use_openslot=False`.
 
-#### Current: LeoAware v3.7 OCE on `ope_v36`
+#### Current: LeoAware v3.17 FillGap on `starlink_v1`
 
-OPE-fair timeline (path identity identical across CCAs).
+Product dual-gate lock. Same path for CUBIC + BBRv3approx + LeoAware. Soft-QIR α=0.20. Means, not peaks. Seeds **13, 7, 42, 99, 123**. Source: PR #22 archive `results/archive/20260814-v317-fillgap/`.
+
+| CCA | Goodput mean | p95 mean | Notes |
+|-----|-------------:|---------:|-------|
+| CUBIC | 8.57 | 71.63 | Collapses under mobility |
+| BBRv3approx | 82.44 | 76.66 | same orbit as LeoAware |
+| **LeoAware v3.17 FillGap** | **82.45** | **76.26** | **new product dual-gate lock** |
+| LeoAware v3.9 Crest (prior lock) | 82.07 | 76.26 | prior product lock |
+
+Beats Crest on gp, matches p95, edges BBR 82.44 / 76.66. Absolute bars: gp **82.45 ≥ 75**, p95 **76.26 ≤ 138.8**, terr **79.05 ≥ 77** (p95 46 ms = path 40 + QIR). Geometry oracle 84.03 / path p95 70.79. Do not mix with `ope_v36` ~58/152.
+
+Reproduce Current: `python3 -m experiments.run_starlink`. Design: `docs/leoaware_v317_fillgap.md`.
+
+#### Research-only: LeoAware v3.7 OCE on `ope_v36`
+
+OPE-fair timeline (path identity identical across CCAs). **Not Current.**
 
 | CCA | Goodput mean | p95 mean | Notes |
 |-----|-------------:|---------:|-------|
 | CUBIC | 5.56 | 130.4 | Collapses under mobility |
 | BBRv3approx | 58.21 | 152.9 | OPE+soft-QIR reference |
-| **LeoAware v3.7 OCE** | **58.78** | **152.1** | **widened dual-gate vs BBR** |
+| **LeoAware v3.7 OCE** | **58.78** | **152.1** | widened dual-gate vs BBR (research) |
 | LeoAware v3.6 Keel | 58.27 | 152.1 | first OPE-fair dual-gate pass |
 | LeoAware v3.5 Tide | 76.27 | 147.39 | coupled-RNG era (historical) |
 
@@ -208,23 +230,21 @@ v3.7 dual gate is **relative to BBR on the OPE-fair path** (research-only). Coup
 
 **v3.8 Step 0:** on `ope_v36` those absolute bars are **geometrically impossible** (oracle gp mean 60.48; path-base p95 mean 142.32). LeoAware is already ~97% of oracle. See `docs/leoaware_v38_step0_feasibility.md`. Do not market +0.5 vs BBR as a paid Optimizer breakthrough.
 
-#### v3.9 WIP scorecard on `starlink_v1` (not Current)
+#### Prior lock: v3.9 Crest on `starlink_v1`
 
-OPE-fair, same path for CUBIC + BBRv3approx + LeoAware. Soft-QIR α=0.20. Means, not peaks. **Not a Current bump. No paid landing copy.**
+OPE-fair, same path. Soft-QIR α=0.20. Means, not peaks. **No longer Current.**
 
 | CCA | Goodput mean | p95 mean | Notes |
 |-----|-------------:|---------:|-------|
 | CUBIC | 8.57 | 71.63 | Collapses under mobility |
 | BBRv3approx | 82.44 | 76.66 | same orbit as LeoAware |
-| **LeoAware v3.9 Crest** | **82.07** | **76.26** | absolute dual-gate on synthetic path |
-
-Gates (this PR, pending Jon): gp **82.07 ≥ 75**, p95 **76.26 ≤ 138.8**, terr **78.62 ≥ 77** (p95 46 ms = path 40 + QIR). Geometry oracle 84.03 / path p95 70.79. Do not mix with `ope_v36` ~58/152.
+| LeoAware v3.9 Crest | 82.07 | 76.26 | prior absolute dual-gate lock |
 
 Crest ablation (same path, `leo_fast_ho`): v37-style LeoAware already dual-gates (82.28 / 76.66). Crest flags are optional here; the era switch is load-bearing. See `docs/leoaware_v39_starlink_v1.md`.
 
 Design: `docs/leoaware_v39_starlink_v1.md`. Archive: `results/archive/20260812-v39-starlink-v1/`. Measured CSV era: `docs/starlink_csv_ingest.md`.
 
-### Hybrid fuse ablation (fast, seeds 13+7; not the v3.9 product lock)
+### Hybrid fuse ablation (fast, seeds 13+7; not the v3.17 product lock)
 
 | Variant | leo_fast_ho gp | p95 | Note |
 |---------|---------------:|----:|------|
@@ -243,11 +263,12 @@ Integrity: `python -m experiments.test_ascent_d_integrity` (green).
 | leo_single | LeoAware | 71.88 | 111.9 |
 | terrestrial | LeoAware | 77.86 | 40.0 |
 
-v3.7 OCE Current: Orbit Capacity Echo + SER-lite on `ope_v36`.  
-v3.9 Crest is **WIP / not Current** until Jon merges: `docs/leoaware_v39_starlink_v1.md`.  
+v3.17 FillGap is **Current** (product dual-gate lock) on `starlink_v1`: `docs/leoaware_v317_fillgap.md`.  
+v3.9 Crest is the prior lock: `docs/leoaware_v39_starlink_v1.md`.  
+v3.7 OCE is **research-only** on `ope_v36`.  
 v3.3-A rails retained: hybrid fuse, ASCENT-D erase-on-fail.  
-Log: `docs/experiment_log.md`. Design: `docs/leoaware_v37_oce.md`.  
-Archive: `results/archive/20260812-v37-oce/`.  
+Log: `docs/experiment_log.md`.  
+Archive: `results/archive/20260814-v317-fillgap/`.  
 v3.8 Step 0: `docs/leoaware_v38_step0_feasibility.md`.  
 Eras: `docs/harness_eras.md`. Measured CSV: `docs/starlink_csv_ingest.md`.
 
@@ -255,6 +276,8 @@ Reproduce:
 
 ```bash
 python -m experiments.test_ascent_d_integrity
+python -m experiments.test_ope_integrity
+python3 -m experiments.run_starlink
 python -m experiments.ope_feasibility --profiles starlink_v1 --seeds 13,7,42,99,123
 python -m experiments.run_suite
 python -m experiments.multi_seed --path-profile starlink_v1 --seeds 13,7,42,99,123 --tag 20260812-v39-starlink-v1
@@ -284,9 +307,9 @@ See `docs/cloudflare_starlink_bridge.md` for a fuller write-up. Short version:
 
 - Packet-level fidelity is simplified (slot sim, not ns-3 / full QUIC state machine).
 - BBRv3approx is educational, not a production BBR port.
-- First measured-CSV era is `wetlinks_v1` (`traces/wetlinks/`, WetLinks slices). Synthetic `starlink_v1` remains the product lock. See `docs/starlink_csv_ingest.md`.
+- First measured-CSV era is `wetlinks_v1` (`traces/wetlinks/`, WetLinks slices). Synthetic `starlink_v1` remains the product path (Current = v3.17 FillGap). See `docs/starlink_csv_ingest.md`.
 - Research-era ingest `zhao_zenodo23` (`traces/zhao_zenodo23/`; geometry in `docs/leoaware_v312_zhao_zenodo23.md`). TCP Cubic goodput is a lower bound; SQM unknown. **Not** the product lock. Do not use for dual-gate ACCEPT.
-- Research-era ingest `leocc_v1` (`traces/leocc/`; LeoCC downlink UDP-sat + ICMP OWD). **Not** the product lock. Do not mix with `wetlinks_v1`, `zhao_zenodo23`, or Crest 82.09/76.26.
+- Research-era ingest `leocc_v1` (`traces/leocc/`; LeoCC downlink UDP-sat + ICMP OWD). **Not** the product lock. Do not mix with `wetlinks_v1`, `zhao_zenodo23`, or FillGap 82.45/76.26.
 - Multipath is optional/simplified (ISL delay only).
 - Not production-hardened (no pacing timer fidelity, ECN, or ACK aggregation).
 

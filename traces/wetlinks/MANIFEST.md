@@ -90,4 +90,5 @@ Uncap (1 MB / 800 Mbps, same windows): Crest 239.72/70.38 vs BBR
 ## Era
 
 `wetlinks_v1`. Do **not** mix with synthetic `starlink_v1` 82.09/76.26 or
-`ope_v36` 58/152. Product CCA on synthetic `starlink_v1` remains v3.9 Crest.
+`ope_v36` 58/152. Product Current on synthetic `starlink_v1` is v3.17 FillGap
+(82.45 / 76.26). v3.9 Crest is the prior lock. This era remains research-only.
