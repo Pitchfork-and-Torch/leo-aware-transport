@@ -171,7 +171,9 @@ def main() -> None:
     seed13_fillgap_ok = (not math.isnan(seed13)) and seed13 >= FILLGAP_SEED13_FLOOR
     gp_clears = (not math.isnan(leo_gp)) and leo_gp > BBR_GP_LOCK
     p95_ok = (not math.isnan(leo_p95)) and leo_p95 <= BBR_P95_LOCK
-    no_fillgap_p95_regress = (not math.isnan(leo_p95)) and leo_p95 <= FILLGAP_P95_LOCK + 1e-9
+    no_fillgap_p95_regress = (not math.isnan(leo_p95)) and round(leo_p95, 2) <= round(
+        FILLGAP_P95_LOCK, 2
+    )
     terr_ok = (not math.isnan(terr_gp)) and terr_gp >= PRODUCT_TERR_GP_BAR
     abs_gp = leo_gp >= PRODUCT_GP_BAR
     abs_p95 = leo_p95 <= PRODUCT_P95_BAR

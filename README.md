@@ -90,7 +90,7 @@ docs/
   leoaware_v311_wetlinks.md
   leoaware_v313_leocc.md      # research-era ingest; not product lock
   leoaware_v317_fillgap.md    # Current product dual-gate lock
-  leoaware_v318_softceil.md   # leftover cook after FillGap (research-on-product-era)
+  leoaware_v318_softceil.md   # leftover cook after FillGap — REJECT vs BBR
   ascent_d_orbcc_hybrid.md
   related_work.md
   cloudflare_starlink_bridge.md
@@ -174,11 +174,9 @@ Opt-in lever (`use_fill_gap`, constructor default **False**). Current numbers ar
 
 When delay-clean and delivery ≥ 0.95×`bw_est` and cwnd < 0.85× delivery BDP: add **1 MSS**, capped at the 0.85× ceiling. See `docs/leoaware_v317_fillgap.md`.
 
-### v3.18 SoftCeil (leftover cook after FillGap; not Current)
+### v3.18 SoftCeil (REJECT vs BBR; not Current)
 
-Opt-in lever (`use_soft_ceil`, constructor default **False**). Does not retune FillGap 0.85 or OpenSlot 0.80. Never gates `ep:loss_burst`.
-
-When delay-clean and delivery ≥ 0.95×`bw_est` and cwnd is in **[0.85×, 0.90×)** delivery BDP: add **1 MSS**, capped at 0.90×. Fill-family: at most one MSS per ACK. See `docs/leoaware_v318_softceil.md`. Current stays v3.17 FillGap until the SoftCeil archive clearly widens the BBR margin.
+Opt-in leftover cook after FillGap (`use_soft_ceil`, constructor default **False**). Official archive **82.35 / 76.26** vs FillGap Current **82.45 / 76.26** vs BBR **82.44 / 76.66**. Seed 13 fell 96.80 → 96.31. p95 unchanged. Do not raise the FillGap 0.85 ceiling. See `docs/leoaware_v318_softceil.md`.
 
 ---
 
