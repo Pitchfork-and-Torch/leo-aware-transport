@@ -1,0 +1,144 @@
+{
+  "era": "starlink_v1",
+  "product_lock_era": "starlink_v1",
+  "synthetic": true,
+  "soft_qir_alpha": 0.2,
+  "lever": "SoftCeil",
+  "use_soft_ceil": true,
+  "use_fill_gap": true,
+  "use_openslot": true,
+  "openslot_threshold_untouched": 0.8,
+  "fill_gap_ceiling_untouched": 0.85,
+  "soft_ceil_ceiling": 0.9,
+  "soft_ceil_committed_default": false,
+  "fill_gap_committed_default": false,
+  "openslot_committed_default": false,
+  "seeds": [
+    13,
+    7,
+    42,
+    99,
+    123
+  ],
+  "dropped_seeds": [],
+  "bars": {
+    "gp_mean": 75.0,
+    "p95_mean": 138.8,
+    "terr_gp": 77.0,
+    "bbr_gp_clear": 82.44,
+    "bbr_p95_cap": 76.66,
+    "crest_seed13_floor": 96.65,
+    "openslot_seed13_floor": 96.69,
+    "fillgap_seed13_floor": 96.8
+  },
+  "leo_fast_ho": {
+    "CUBIC_gp_mean": 8.568704,
+    "CUBIC_p95_mean": 71.62643106822587,
+    "BBR_gp_mean": 82.43904,
+    "BBR_p95_mean": 76.66408239312553,
+    "LeoAware_gp_mean": 82.34852266666667,
+    "LeoAware_p95_mean": 76.2640823931256,
+    "per_seed": [
+      {
+        "seed": 13,
+        "gp": 96.31168,
+        "p95": 72.21163933117715,
+        "p95_path": 68.2116393311751,
+        "p95_excess": 7.999999999998411
+      },
+      {
+        "seed": 7,
+        "gp": 75.36384,
+        "p95": 67.81399906136456,
+        "p95_path": 63.81399906136251,
+        "p95_excess": 10.000000000001563
+      },
+      {
+        "seed": 42,
+        "gp": 81.26336,
+        "p95": 97.55511216494665,
+        "p95_path": 87.55511216494864,
+        "p95_excess": 9.999999999998003
+      },
+      {
+        "seed": 99,
+        "gp": 73.18698666666667,
+        "p95": 64.09179554502283,
+        "p95_path": 58.70085099956821,
+        "p95_excess": 10.000000000005116
+      },
+      {
+        "seed": 123,
+        "gp": 85.61674666666667,
+        "p95": 79.6478658631168,
+        "p95_path": 75.64786586311762,
+        "p95_excess": 9.99999999999801
+      }
+    ],
+    "bbr_per_seed": [
+      {
+        "seed": 13,
+        "gp": 97.31434666666667,
+        "p95": 72.21163933117715,
+        "p95_path": 68.2116393311751,
+        "p95_excess": 7.999999999998411
+      },
+      {
+        "seed": 7,
+        "gp": 75.08416,
+        "p95": 67.81399906136456,
+        "p95_path": 63.81399906136251,
+        "p95_excess": 10.000000000001563
+      },
+      {
+        "seed": 42,
+        "gp": 81.2496,
+        "p95": 97.55511216494665,
+        "p95_path": 87.55511216494864,
+        "p95_excess": 9.99999999999801
+      },
+      {
+        "seed": 99,
+        "gp": 72.98186666666668,
+        "p95": 64.09179554502283,
+        "p95_path": 58.70085099956821,
+        "p95_excess": 10.000000000005116
+      },
+      {
+        "seed": 123,
+        "gp": 85.56522666666667,
+        "p95": 81.64786586311642,
+        "p95_path": 75.64786586311762,
+        "p95_excess": 9.99999999999801
+      }
+    ],
+    "seed13_gp": 96.31168
+  },
+  "leo_single": {
+    "LeoAware_gp_mean": 83.55630933333333,
+    "LeoAware_p95_mean": 74.94621707074798,
+    "BBR_gp_mean": 83.316992,
+    "BBR_p95_mean": 74.94621707074798
+  },
+  "terrestrial": {
+    "LeoAware_gp_mean": 79.047744,
+    "LeoAware_p95_mean": 46.000000000000945,
+    "note": "soft-QIR p95 (path 40 ms + sojourn); not the old path-only 40 ms floor"
+  },
+  "gates": {
+    "gp_clears_bbr_82_44": false,
+    "p95_le_bbr_76_66": true,
+    "gp_ge_75": true,
+    "p95_le_138_8": true,
+    "terr_ge_77": true,
+    "seed13_ge_crest_96_65": false,
+    "seed13_ge_openslot_96_69": false,
+    "seed13_ge_fillgap_96_80": false,
+            "p95_le_fillgap_76_26": true,
+    "no_seed_dropped": true,
+    "product_era": true
+  },
+  "decision": "REJECT",
+  "current_paid": false,
+  "note": "Research-on-product-era only. Synthetic starlink_v1 harness. Not dish PHY. No leocc numbers. Current stays v3.17 FillGap unless this cook clearly widens the BBR margin without a p95 regress. No paid bump."
+}

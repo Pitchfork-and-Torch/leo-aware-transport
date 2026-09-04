@@ -373,6 +373,13 @@ class LeoAwareCCA(BaseCCA):
       - Never gates ep:loss_burst. Does not retune OpenSlot 0.80.
       - Default OFF. Official run_starlink may opt in for the archive only.
 
+    v3.18 SoftCeil (starlink_v1 product-era leftover after FillGap):
+      - Delay-clean + delivery ≥ 0.95×bw_est + cwnd in the leftover
+        band [0.85×, 0.90×) delivery BDP: add 1 MSS, capped at 0.90×.
+      - Never gates ep:loss_burst. Does not retune FillGap 0.85 or
+        OpenSlot 0.80. At most one fill-family MSS per ACK.
+      - Default OFF. Official run_starlink may opt in for the archive only.
+
     Related: LeoCC response-interval outliers; SaTCP freeze; OrbCC pathID/U;
     BBR delivery-rate without stale min-RTT across epochs.
     """
@@ -396,6 +403,7 @@ class LeoAwareCCA(BaseCCA):
         hint_freeze_only: bool = False,
         use_openslot: bool = False,
         use_fill_gap: bool = False,
+        use_soft_ceil: bool = False,
         **kw,
     ):
         super().__init__(**kw)
@@ -422,6 +430,8 @@ class LeoAwareCCA(BaseCCA):
         self.use_openslot = bool(use_openslot)
         # v3.17 FillGap: small cwnd fill toward delivery BDP. Default OFF.
         self.use_fill_gap = bool(use_fill_gap)
+        # v3.18 SoftCeil: leftover fill 0.85→0.90× delivery BDP. Default OFF.
+        self.use_soft_ceil = bool(use_soft_ceil)
         self.rtt_hist: Deque[float] = deque(maxlen=48)
         self.ack_times: Deque[float] = deque(maxlen=40)
         self.bw_samples: Deque[tuple[float, float]] = deque(maxlen=48)
@@ -500,6 +510,7 @@ class LeoAwareCCA(BaseCCA):
         self.skypulse_freezes = 0
         self.openslot_releases = 0
         self.fillgap_fills = 0
+        self.softceil_fills = 0
 
     @staticmethod
     def _median(xs: list[float]) -> float:
@@ -1028,9 +1039,9 @@ class LeoAwareCCA(BaseCCA):
         """Full pace unbind: delay-clean AND underfilled."""
         return self._openslot_delay_clean(t) and self._openslot_underfilled()
 
-    def _fillgap_delay_clean(self, t: float, rtt_s: float) -> bool:
-        """Delay-clean cruise (no detect veto). Independent of OpenSlot."""
-        if not self.use_fill_gap or self.fair_mode:
+    def _cruise_delay_clean(self, t: float, rtt_s: float) -> bool:
+        """Delay-clean cruise (no detect veto). Shared by FillGap / SoftCeil."""
+        if self.fair_mode:
             return False
         if t < self.reprobe_until or t < self._ca_hold_until:
             return False
@@ -1038,6 +1049,12 @@ class LeoAwareCCA(BaseCCA):
             return False
         delay = rtt_s / self.min_rtt
         return delay < 1.12 and self.high_delay_streak == 0
+
+    def _fillgap_delay_clean(self, t: float, rtt_s: float) -> bool:
+        """Delay-clean cruise (no detect veto). Independent of OpenSlot."""
+        if not self.use_fill_gap:
+            return False
+        return self._cruise_delay_clean(t, rtt_s)
 
     def _fillgap_delivery_bdp(self, t: float) -> float:
         """Live delivery × min_rtt. Zero if delivery has not caught bw_est."""
@@ -1049,21 +1066,48 @@ class LeoAwareCCA(BaseCCA):
             return 0.0
         return rate * rtt_ref / 8.0
 
-    def _apply_fill_gap(self, t: float, rtt_s: float) -> None:
+    def _apply_fill_gap(self, t: float, rtt_s: float) -> bool:
         """Small cwnd fill toward 0.85× delivery BDP. Not a pace unbind."""
         if not self._fillgap_delay_clean(t, rtt_s):
-            return
+            return False
         del_bdp = self._fillgap_delivery_bdp(t)
         if del_bdp <= 0:
-            return
+            return False
         ceiling = 0.85 * del_bdp
         if self.cwnd >= ceiling:
-            return
+            return False
         fill = min(1.0 * MSS, ceiling - self.cwnd)
         if fill <= 0:
-            return
+            return False
         self.cwnd += fill
         self.fillgap_fills += 1
+        return True
+
+    def _apply_soft_ceil(self, t: float, rtt_s: float) -> bool:
+        """Leftover fill in [0.85×, 0.90×) delivery BDP. One MSS. Not a burst."""
+        if not self.use_soft_ceil or self.fair_mode:
+            return False
+        if not self._cruise_delay_clean(t, rtt_s):
+            return False
+        del_bdp = self._fillgap_delivery_bdp(t)
+        if del_bdp <= 0:
+            return False
+        floor = 0.85 * del_bdp
+        ceiling = 0.90 * del_bdp
+        if self.cwnd < floor or self.cwnd >= ceiling:
+            return False
+        fill = min(1.0 * MSS, ceiling - self.cwnd)
+        if fill <= 0:
+            return False
+        self.cwnd += fill
+        self.softceil_fills += 1
+        return True
+
+    def _apply_fill_family(self, t: float, rtt_s: float) -> None:
+        """At most one fill-family MSS per ACK. FillGap first; SoftCeil leftover."""
+        if self._apply_fill_gap(t, rtt_s):
+            return
+        self._apply_soft_ceil(t, rtt_s)
 
     def _qsp_pace_gain(self, t: float, delay_ratio_early: float, rtt_s: float) -> float:
         """Map visible soft-QIR excess to a pace discount. Does not touch BDP.
@@ -1608,7 +1652,7 @@ class LeoAwareCCA(BaseCCA):
                     self._keel_rtt = 0.88 * self._keel_rtt + 0.12 * self.min_rtt
 
         self._prev_delay_ratio = delay_ratio
-        self._apply_fill_gap(t, rtt_s)
+        self._apply_fill_family(t, rtt_s)
 
     def on_loss(self, t: float, bytes_lost: int, congestive: bool) -> None:
         self.on_delivered(bytes_lost)

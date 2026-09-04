@@ -1142,6 +1142,73 @@ Eras: `docs/harness_eras.md`
 
 ---
 
+## v3.18 SoftCeil — starlink_v1 leftover after FillGap — REJECT
+
+**Date:** 2026-09-04  
+**Branch:** `cursor/v318-softceil-bee0`  
+**Hypothesis:** After FillGap, seed 13 leftover (96.80 vs BBR 97.31) is
+cwnd sitting in the 0.85–0.90 delivery-BDP band on a delay-clean,
+delivery-caught path. A 1 MSS leftover fill (not a FillGap retune, not a
+burst) closes more of the 0.51 gap without a p95 regress.
+
+### Diagnosis (FillGap + OpenSlot on; SoftCeil off)
+
+`python3 -m experiments.diag_v318_softceil`
+
+| seed | FillGap gp | BBR gp | Δ | softceil elig | cwnd/delBDP |
+|-----:|-----------:|-------:|--:|--------------:|------------:|
+| 13 | 96.80 | 97.31 | −0.52 | **0.201** | 0.93 |
+| 7 | 75.36 | 75.08 | +0.28 | 0.184 | 0.95 |
+| 42 | 81.25 | 81.25 | +0.00 | 0.148 | 0.99 |
+| 99 | 73.19 | 72.98 | +0.21 | 0.196 | 0.96 |
+| 123 | 85.61 | 85.57 | +0.05 | 0.182 | 0.97 |
+
+H1 eligibility **CONFIRMED**. H2 winners do not need it **CONFIRMED**.
+Mean leftover-band frac 0.185. Still-below-0.85 frac 0.285.
+
+### Lever
+
+**SoftCeil** (`use_soft_ceil`, default **False**). Delay-clean
+(`rtt/min_rtt < 1.12`) and delivery ≥ 0.95×`bw_est` and cwnd in
+**[0.85×, 0.90×)** delivery BDP → add **1 MSS**, capped at 0.90×.
+Fill-family: at most one MSS per ACK (FillGap first). Never gates
+`ep:loss_burst`. Does not retune FillGap 0.85 or OpenSlot 0.80.
+
+### Official archive (synthetic `starlink_v1`, 90s, seeds 13,7,42,99,123)
+
+`python3 -m experiments.run_starlink`
+
+| CCA | gp mean | p95 mean |
+|-----|--------:|---------:|
+| CUBIC | 8.57 | 71.63 |
+| BBRv3approx | **82.44** | 76.66 |
+| LeoAware v3.17 FillGap (Current) | **82.45** | **76.26** |
+| **LeoAware + SoftCeil** | **82.35** | **76.26** |
+
+Per-seed SoftCeil: 13→**96.31**/72.21 · 7→75.36/67.81 · 42→81.26/97.56 ·
+99→73.19/64.09 · 123→85.62/79.65. Terr **79.05**.
+
+Seed 13 is the whole drop (−0.49 vs FillGap 96.80). Other seeds flat.
+p95 unchanged. Absolute 75 / 138.8 still PASS. Integrity: default False.
+
+### Gates
+
+| Check | Bar | Result |
+|-------|-----|--------|
+| gp mean clears BBR | > 82.44 | **82.35 FAIL** |
+| seed 13 vs FillGap | ≥ 96.80 | **96.31 FAIL** |
+| p95 vs FillGap | ≤ 76.26 | PASS (same) |
+| terrestrial | ≥ 77 | **79.05 PASS** |
+
+**Decision: REJECT vs BBR.** H1 was eligibility only; filling the band
+**falsified it as a closer**. Do not raise the FillGap ceiling next.
+Current stays v3.17 FillGap 82.45 / 76.26. Not paid.
+
+Design: `docs/leoaware_v318_softceil.md`  
+Archive: `results/archive/20260904-v318-softceil/`
+
+---
+
 ## Open ideas (next loops)
 
 1. Denser real Starlink CSVs (continuous 90s RTT+capacity, not hold-expanded 15s iperf). `leocc_v1` is the first such ingest; still not product lock.
@@ -1151,6 +1218,7 @@ Eras: `docs/harness_eras.md`
 5. Per-RTT fairness clock for multi-flow (fair_mode still coarse).
 6. QUEUE-mode store-and-forward coupling with ASCENT-D.
 7. Full 5-seed ablation with ascent_d vs hybrid under suite durations (90s).
+8. **Do not retry a FillGap ceiling raise** (0.85→0.90 SoftCeil REJECT: seed 13 96.80→96.31). Seed 13 leftover after FillGap is not the 0.85–0.90 band.
 
 ---
 
