@@ -276,6 +276,66 @@ def test_fill_gap_fills_only_when_eligible():
     print("ok: FillGap fills only on delay-clean delivery-caught under-BDP")
 
 
+def test_soft_ceil_default_false():
+    cca = LeoAwareCCA()
+    assert cca.use_soft_ceil is False
+    assert cca.use_fill_gap is False
+    assert cca.use_openslot is False
+    print("ok: SoftCeil default False")
+
+
+def test_soft_ceil_does_not_gate_loss_burst():
+    cca = LeoAwareCCA(use_soft_ceil=True, use_fill_gap=True)
+    cca.min_rtt = 0.05
+    cca.rtt_hist.extend([0.05, 0.051, 0.049, 0.05])
+    cca.last_reconfig_t = -10.0
+    rec0 = cca.reconfigs_detected
+    t = 5.0
+    cca.on_loss(t, 1200, congestive=False)
+    cca.on_loss(t + 0.05, 1200, congestive=False)
+    assert cca.reconfigs_detected == rec0 + 1, (cca.reconfigs_detected, cca.mode)
+    assert cca.mode == "ser:loss_burst" or str(cca.mode).startswith("ser"), cca.mode
+    print("ok: SoftCeil does not gate ep:loss_burst")
+
+
+def test_soft_ceil_fills_only_leftover_band():
+    cca = LeoAwareCCA(use_soft_ceil=True, use_fill_gap=True)
+    cca.min_rtt = 0.05
+    cca.bw_est = 80e6
+    cca.high_delay_streak = 0
+    cca.delivered_marks.append((1.0, 0.0))
+    cca.delivered_marks.append((1.2, 80e6 * 0.2 / 8.0))
+    del_bdp = cca._fillgap_delivery_bdp(2.0)
+    assert del_bdp > 0
+    # Below FillGap ceiling: SoftCeil must not steal the 0.85 band.
+    cca.cwnd = 0.70 * del_bdp
+    assert cca._apply_soft_ceil(2.0, 0.05) is False
+    assert cca.softceil_fills == 0
+    # In leftover band: one MSS, capped at 0.90×.
+    cca.cwnd = 0.86 * del_bdp
+    before = cca.cwnd
+    assert cca._apply_soft_ceil(2.0, 0.05) is True
+    assert cca.cwnd > before
+    assert cca.cwnd <= 0.90 * del_bdp + 1e-6
+    assert cca.softceil_fills == 1
+    # At ceiling: no fill.
+    cca.cwnd = 0.90 * del_bdp
+    assert cca._apply_soft_ceil(2.0, 0.05) is False
+    # Dirty delay: no fill.
+    cca.cwnd = 0.86 * del_bdp
+    fills = cca.softceil_fills
+    assert cca._apply_soft_ceil(2.1, 0.09) is False
+    assert cca.softceil_fills == fills
+    # Fill-family: at most one MSS. FillGap wins when both eligible.
+    cca.cwnd = 0.70 * del_bdp
+    cca.fillgap_fills = 0
+    cca.softceil_fills = 0
+    cca._apply_fill_family(2.0, 0.05)
+    assert cca.fillgap_fills == 1
+    assert cca.softceil_fills == 0
+    print("ok: SoftCeil fills only the leftover 0.85-0.90 band")
+
+
 def test_openslot_unbinds_only_when_clean():
     cca = LeoAwareCCA(use_openslot=True)
     cca.min_rtt = 0.05
@@ -314,6 +374,9 @@ def run_all() -> None:
     test_fill_gap_default_false()
     test_fill_gap_does_not_gate_loss_burst()
     test_fill_gap_fills_only_when_eligible()
+    test_soft_ceil_default_false()
+    test_soft_ceil_does_not_gate_loss_burst()
+    test_soft_ceil_fills_only_leftover_band()
     print("ALL OPE integrity tests passed")
 
 
