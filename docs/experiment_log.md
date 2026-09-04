@@ -1142,6 +1142,35 @@ Eras: `docs/harness_eras.md`
 
 ---
 
+## v3.18 SoftCeil — starlink_v1 leftover after FillGap
+
+**Date:** 2026-09-04  
+**Branch:** `cursor/v318-softceil-bee0`  
+**Hypothesis:** After FillGap, seed 13 leftover (96.80 vs BBR 97.31) is
+cwnd sitting in the 0.85–0.90 delivery-BDP band on a delay-clean,
+delivery-caught path. A 1 MSS leftover fill (not a FillGap retune, not a
+burst) closes more of the 0.51 gap without a p95 regress.
+
+### Lever
+
+**SoftCeil** (`use_soft_ceil`, default **False**). Delay-clean
+(`rtt/min_rtt < 1.12`) and delivery ≥ 0.95×`bw_est` and cwnd in
+**[0.85×, 0.90×)** delivery BDP → add **1 MSS**, capped at 0.90×.
+Fill-family: at most one MSS per ACK (FillGap first). Never gates
+`ep:loss_burst`. Does not retune FillGap 0.85 or OpenSlot 0.80.
+
+### Official archive
+
+`python3 -m experiments.run_starlink` → `results/archive/20260904-v318-softceil/`
+
+Numbers and gate table are filled from that archive after the run. Current
+stays v3.17 FillGap 82.45 / 76.26 unless this cook clearly widens the BBR
+margin with no p95 regress. Not paid. Synthetic `starlink_v1` only.
+
+Design: `docs/leoaware_v318_softceil.md`
+
+---
+
 ## Open ideas (next loops)
 
 1. Denser real Starlink CSVs (continuous 90s RTT+capacity, not hold-expanded 15s iperf). `leocc_v1` is the first such ingest; still not product lock.

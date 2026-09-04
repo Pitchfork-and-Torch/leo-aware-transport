@@ -156,6 +156,11 @@ def main() -> None:
         action="store_true",
         help="opt in v3.17 FillGap on LeoAware (default Crest path stays off)",
     )
+    ap.add_argument(
+        "--soft-ceil",
+        action="store_true",
+        help="opt in v3.18 SoftCeil on LeoAware (default Crest path stays off)",
+    )
     args = ap.parse_args()
     path_profile = resolve_path_profile(args.path_profile)
     seeds = [int(x) for x in args.seeds.split(",") if x.strip()]
@@ -168,6 +173,7 @@ def main() -> None:
             lambda: LeoAwareCCA(
                 use_openslot=bool(args.openslot),
                 use_fill_gap=bool(args.fill_gap),
+                use_soft_ceil=bool(args.soft_ceil),
             ),
         ),
     ]
@@ -177,7 +183,8 @@ def main() -> None:
     print(
         f"multi_seed era={path_profile}  product_lock={PRODUCT_PATH_PROFILE}  "
         f"soft-QIR α={SOFT_QIR_ALPHA}  bars gp≥{PRODUCT_GP_BAR} p95≤{PRODUCT_P95_BAR}  "
-        f"openslot={bool(args.openslot)} fill_gap={bool(args.fill_gap)}",
+        f"openslot={bool(args.openslot)} fill_gap={bool(args.fill_gap)} "
+        f"soft_ceil={bool(args.soft_ceil)}",
         flush=True,
     )
 
