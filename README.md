@@ -78,6 +78,8 @@ experiments/
   run_leocc.py              # leocc_v1 geometry + 5-window CCA
   run_starlink.py           # product-era scorecard (FillGap / SoftCeil opt-in)
   diag_v318_softceil.py     # leftover diagnosis after FillGap
+  diag_v319_leftover.py     # leftover split after SoftCeil REJECT (not a cook)
+  test_starlink_observability.py
   test_ascent_d_integrity.py
   test_wetlinks_integrity.py
   test_leocc_integrity.py
@@ -91,6 +93,7 @@ docs/
   leoaware_v313_leocc.md      # research-era ingest; not product lock
   leoaware_v317_fillgap.md    # Current product dual-gate lock
   leoaware_v318_softceil.md   # leftover cook after FillGap — REJECT vs BBR
+  leoaware_v319_starlink_obs.md  # leftover scorecard hooks; not Current
   ascent_d_orbcc_hybrid.md
   related_work.md
   cloudflare_starlink_bridge.md
@@ -177,6 +180,10 @@ When delay-clean and delivery ≥ 0.95×`bw_est` and cwnd < 0.85× delivery BDP:
 ### v3.18 SoftCeil (REJECT vs BBR; not Current)
 
 Opt-in leftover cook after FillGap (`use_soft_ceil`, constructor default **False**). Official archive **82.35 / 76.26** vs FillGap Current **82.45 / 76.26** vs BBR **82.44 / 76.66**. Seed 13 fell 96.80 → 96.31. p95 unchanged. Do not raise the FillGap 0.85 ceiling. See `docs/leoaware_v318_softceil.md`.
+
+### v3.19 leftover observability (research; not Current)
+
+Always-on leftover counters split cruise / post-detect / REPROBE and detect vs path HO. Scorecard hook only. No new lever. Current stays FillGap. See `docs/leoaware_v319_starlink_obs.md`.
 
 ---
 

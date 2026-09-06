@@ -13,6 +13,7 @@ from leo_cc.ccas import BbrCCA, CubicCCA, LeoAwareCCA
 from leo_cc.metrics import summarize_result
 from leo_cc.network import LeoPath, LeoPathConfig, walk_path_geometry
 from leo_cc.sim import SOFT_QIR_ALPHA, SOFT_QIR_CAP_S, run_sim
+from experiments.test_starlink_observability import run_all as run_starlink_obs_tests
 
 
 def test_soft_qir_frozen():
@@ -377,6 +378,7 @@ def run_all() -> None:
     test_soft_ceil_default_false()
     test_soft_ceil_does_not_gate_loss_burst()
     test_soft_ceil_fills_only_leftover_band()
+    run_starlink_obs_tests()
     print("ALL OPE integrity tests passed")
 
 
