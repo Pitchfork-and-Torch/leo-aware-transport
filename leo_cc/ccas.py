@@ -552,6 +552,8 @@ class LeoAwareCCA(BaseCCA):
         self.obs_leftover_band_reprobe = 0
         self.obs_leftover_band_post_detect = 0
         self.obs_leftover_band_cruise = 0
+        self.obs_below_085_post_path_ho = 0
+        self.obs_leftover_band_post_path_ho = 0
         self.obs_lsg_clamps_reprobe = 0
         self.obs_lsg_clamps_post_detect = 0
         self.obs_lsg_clamps_cruise = 0
@@ -1182,7 +1184,8 @@ class LeoAwareCCA(BaseCCA):
             self.obs_post_detect_acks += 1
         else:
             self.obs_cruise_acks += 1
-        if (t - self._obs_last_path_ho_t) < 1.4:
+        in_path_ho = (t - self._obs_last_path_ho_t) < 1.4
+        if in_path_ho:
             self.obs_post_path_ho_acks += 1
         delay_clean = self._cruise_delay_clean(t, rtt_s)
         rate = self._delivery_rate_sample(t)
@@ -1203,6 +1206,8 @@ class LeoAwareCCA(BaseCCA):
                     self.obs_below_085_post_detect += 1
                 else:
                     self.obs_below_085_cruise += 1
+                if in_path_ho:
+                    self.obs_below_085_post_path_ho += 1
             elif ratio < 0.90:
                 self.obs_leftover_band += 1
                 if region == "reprobe":
@@ -1211,6 +1216,8 @@ class LeoAwareCCA(BaseCCA):
                     self.obs_leftover_band_post_detect += 1
                 else:
                     self.obs_leftover_band_cruise += 1
+                if in_path_ho:
+                    self.obs_leftover_band_post_path_ho += 1
             else:
                 self.obs_at_or_above_090 += 1
             if delay_clean and caught and ratio < 0.85:
@@ -1262,6 +1269,8 @@ class LeoAwareCCA(BaseCCA):
                 "leftover_band_reprobe_frac": self.obs_leftover_band_reprobe / n,
                 "leftover_band_post_detect_frac": self.obs_leftover_band_post_detect / n,
                 "leftover_band_cruise_frac": self.obs_leftover_band_cruise / n,
+                "below_085_post_path_ho_frac": self.obs_below_085_post_path_ho / n,
+                "leftover_band_post_path_ho_frac": self.obs_leftover_band_post_path_ho / n,
                 "lsg_clamps_reprobe": int(self.obs_lsg_clamps_reprobe),
                 "lsg_clamps_post_detect": int(self.obs_lsg_clamps_post_detect),
                 "lsg_clamps_cruise": int(self.obs_lsg_clamps_cruise),

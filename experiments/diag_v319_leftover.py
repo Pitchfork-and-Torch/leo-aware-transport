@@ -89,8 +89,10 @@ def main() -> None:
             f"detect={row['reconfigs_detected']}  "
             f"cruise_band={row['leftover_band_cruise_frac']:.3f} "
             f"post_band={row['leftover_band_post_detect_frac']:.3f} "
+            f"ho_band={row['leftover_band_post_path_ho_frac']:.3f} "
             f"below_cruise={row['below_085_cruise_frac']:.3f} "
-            f"below_post={row['below_085_post_detect_frac']:.3f}",
+            f"below_post={row['below_085_post_detect_frac']:.3f} "
+            f"below_ho={row['below_085_post_path_ho_frac']:.3f}",
             flush=True,
         )
 
@@ -116,9 +118,42 @@ def main() -> None:
         "leftover_observability": hook,
     }
     (OUT / "diagnosis.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    means = hook["means"]
+    table = f"""# v3.19 leftover observability — synthetic starlink_v1
+
+FillGap + OpenSlot on. SoftCeil off. Duration {args.duration:.0f}s.
+Current stays v3.17 FillGap. Not paid.
+
+| seed | FG gp | BBR gp | path HO | detect | cruise band | post-detect band | real-HO band |
+|-----:|------:|-------:|--------:|-------:|------------:|-----------------:|-------------:|
+"""
+    for r in rows:
+        table += (
+            f"| {r['seed']} | {r['fillgap_gp']:.2f} | {r['bbr_gp']:.2f} | "
+            f"{r['path_handovers']} | {r['reconfigs_detected']} | "
+            f"{r['leftover_band_cruise_frac']:.3f} | "
+            f"{r['leftover_band_post_detect_frac']:.3f} | "
+            f"{r['leftover_band_post_path_ho_frac']:.3f} |\n"
+        )
+    table += f"""
+Means: leftover band cruise {means.get('leftover_band_cruise_frac'):.3f} ·
+post-detect {means.get('leftover_band_post_detect_frac'):.3f} ·
+real path HO {means.get('leftover_band_post_path_ho_frac'):.3f}.
+Detect / path HO {hook.get('detect_over_path_ho')}.
+Post-detect ACK share {means.get('post_detect_ack_frac'):.3f}
+(inflated if detect over-fires). Real path-HO ACK share
+{means.get('post_path_ho_ack_frac'):.3f}.
+
+H1 post-detect vs cruise: {hook['hypotheses']['H1_leftover_is_post_detect_not_cruise_band']}
+H2 detect over-fire: {hook['hypotheses']['H2_detect_overfires_vs_path_ho']}
+H3 leftover band in real HO: {hook['hypotheses']['H3_leftover_band_concentrated_in_real_ho']}
+H3b below-0.85 in real HO: {hook['hypotheses']['H3b_below_085_concentrated_in_real_ho']}
+"""
+    (OUT / "TABLE.md").write_text(table, encoding="utf-8")
     print("\n=== leftover hook ===")
     print(json.dumps(hook["hypotheses"], indent=2))
     print(json.dumps(hook["means"], indent=2))
+    print(table)
     print(f"wrote {OUT / 'diagnosis.json'}")
     print("Current stays v3.17 FillGap. Not paid.")
 
