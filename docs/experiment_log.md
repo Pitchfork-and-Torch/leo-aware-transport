@@ -1254,17 +1254,32 @@ changing send control.
 
 ### What changed
 
-- `LeoAwareCCA._observe_detect` event log (read-only)
+- `LeoAwareCCA._observe_detect` event log (read-only), including `on_loss`
 - `leo_cc/observability.py` `classify_detect_overfire` + `detect_overfire_hook`
 - Official dual-gate bars stay gp ≥ 75 / p95 ≤ 138.8
 - `python3 -m experiments.diag_v320_detect` on the FillGap lock path
 - No send-control lever. SoftCeil stays REJECT. Current stays FillGap.
 
-Seed table and H4/H5/H6 land in `results/archive/20260906-v320-detect/diag/`
-after `diag_v320_detect`. Do not bump Current unless that table clearly
-beats FillGap 82.45 / 76.26.
+### 5-seed 90s (FillGap + OpenSlot, SoftCeil off)
 
-Design: `docs/leoaware_v320_detect_overfire.md`
+| seed | FG gp | BBR gp | p95 | path HO | detect | on_loss | fusion | near | far |
+|-----:|------:|-------:|----:|--------:|-------:|--------:|-------:|-----:|----:|
+| 13 | 96.80 | 97.31 | 72.21 | 7 | 56 | 53 | 3 | 11 | 45 |
+| 7 | 75.36 | 75.08 | 67.81 | 8 | 56 | 51 | 5 | 15 | 41 |
+| 42 | 81.25 | 81.25 | 97.56 | 7 | 56 | 50 | 6 | 14 | 42 |
+| 99 | 73.19 | 72.98 | 64.09 | 7 | 56 | 50 | 6 | 13 | 43 |
+| 123 | 85.61 | 85.57 | 79.65 | 8 | 57 | 54 | 3 | 12 | 45 |
+
+Means **82.45 / 76.26** (FillGap lock). Official 75 / 138.8 **PASS**.
+H4 far-from-HO **CONFIRMED** (0.77). H5 tighter fusion gate **WEAK**
+(cuts 0 far fires). H6 **CONFIRMED** (far = `on_loss` `loss_burst`).
+Fusion (23 events) is already on real HOs. Do not bump Current.
+
+**Decision: observe-only.** Do not cook a fusion-threshold raise. Do
+not gate `ep:loss_burst`. Do not retry SoftCeil.
+
+Design: `docs/leoaware_v320_detect_overfire.md`  
+Archive: `results/archive/20260906-v320-detect/`
 
 ---
 
@@ -1278,7 +1293,7 @@ Design: `docs/leoaware_v320_detect_overfire.md`
 6. QUEUE-mode store-and-forward coupling with ASCENT-D.
 7. Full 5-seed ablation with ascent_d vs hybrid under suite durations (90s).
 8. **Do not retry a FillGap ceiling raise** (0.85→0.90 SoftCeil REJECT: seed 13 96.80→96.31). Seed 13 leftover after FillGap is not the 0.85–0.90 band. Use v3.19 leftover hooks (cruise vs post-detect vs REPROBE) before the next cook.
-9. **Measure detect over-fire before any tighter gate** (v3.19 H2 ~8× path HOs). v2.1 already rejected a blunt score raise. Do not gate `ep:loss_burst`. Do not retune detect cooldown. See `docs/leoaware_v320_detect_overfire.md`.
+9. **Do not cook a fusion-threshold raise for leftover H2.** v3.20 measured the ~8× over-fire: 258/281 events are `on_loss` `loss_burst`; all 23 fusion fires sit on real path HOs. Legal shadow gates cut 0 far fires. Do not gate `ep:loss_burst`. Do not retune detect cooldown. Do not retry SoftCeil. See `docs/leoaware_v320_detect_overfire.md`.
 
 ---
 
