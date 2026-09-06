@@ -177,6 +177,7 @@ H5 tighter gate keeps HO / cuts far: {detect['hypotheses']['H5_tighter_gate_keep
 H6 one primary owns half of far: {detect['hypotheses']['H6_one_primary_owns_half_far']}
 Promising shadow gates: {detect.get('promising_gates')}
 Reason counts: {detect.get('reason_counts_sum')}
+Source counts: {detect.get('source_counts_sum')}
 
 {detect.get('recommendation')}
 """

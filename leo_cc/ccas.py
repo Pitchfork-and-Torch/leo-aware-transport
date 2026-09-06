@@ -1179,9 +1179,14 @@ class LeoAwareCCA(BaseCCA):
         self._obs_last_path_ho_t = t
         self.obs_path_handovers += 1
 
-    def _observe_detect(self, t: float, reason: str, score: float) -> None:
+    def _observe_detect(
+        self, t: float, reason: str, score: float, source: str = "fusion"
+    ) -> None:
         """Log an endpoint detect. Observe only — does not change the hit."""
-        reasons = [r for r in str(reason).split("+") if r]
+        raw = str(reason)
+        if raw.startswith("ep:"):
+            raw = raw[3:]
+        reasons = [r for r in raw.split("+") if r]
         n_reasons = len(set(reasons))
         dt_last = None
         near_last = False
@@ -1190,8 +1195,9 @@ class LeoAwareCCA(BaseCCA):
             near_last = 0.0 <= dt_last < 1.4
         ev = {
             "t": float(t),
-            "reason": str(reason),
+            "reason": raw,
             "score": float(score),
+            "source": str(source),
             "n_reasons": int(n_reasons),
             "primary": reasons[0] if reasons else "",
             "reasons": reasons,
@@ -1899,6 +1905,7 @@ class LeoAwareCCA(BaseCCA):
                     if t - self.last_reconfig_t > self.detect_cooldown and len(
                         [x for x in self.loss_burst if t - x < 0.28]
                     ) >= 2:
+                        self._observe_detect(t, "loss_burst", 1.4, source="on_loss")
                         self._enter_reprobe(t, "ep:loss_burst", confidence=0.7)
                     return
         # True congestion: slightly milder than CUBIC for multi-flow friendliness
