@@ -80,6 +80,7 @@ class SimResult:
     orb_samples: int = 0
     soft_qir_alpha: float = SOFT_QIR_ALPHA
     soft_qir_cap_s: float = SOFT_QIR_CAP_S
+    cca_snapshots: list = field(default_factory=list)
 
 
 class Flow:
@@ -161,6 +162,12 @@ def run_sim(
         freeze_now = bool(
             st.freeze_active or (st.freeze_remaining_s and st.freeze_remaining_s > 0)
         )
+        # Observe-only path HO mark. Must not change send control.
+        if st.reconfigured:
+            for fl in flows:
+                observe = getattr(fl.cca, "on_path_epoch_observe", None)
+                if callable(observe):
+                    observe(t, True)
 
         # ---- Control plane: path hints / ASCENT-D ----
         if mode == "none":
@@ -302,6 +309,10 @@ def run_sim(
                 fl.log.goodput_bps.append(gp)
                 fl.bytes_since_mark = 0
 
+    snapshots = []
+    for fl in flows:
+        snap_fn = getattr(fl.cca, "observability_snapshot", None)
+        snapshots.append(snap_fn() if callable(snap_fn) else None)
     return SimResult(
         handovers=list(path.handover_times),
         flows=[fl.log for fl in flows],
@@ -311,4 +322,5 @@ def run_sim(
         orb_samples=orb_samples,
         soft_qir_alpha=SOFT_QIR_ALPHA,
         soft_qir_cap_s=SOFT_QIR_CAP_S,
+        cca_snapshots=snapshots,
     )

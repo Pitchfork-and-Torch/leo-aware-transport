@@ -1209,6 +1209,32 @@ Archive: `results/archive/20260904-v318-softceil/`
 
 ---
 
+## v3.19 leftover observability — research hooks, not a cook
+
+**Date:** 2026-09-06  
+**Branch:** `cursor/starlink-leftover-obs-1989`  
+**Hypothesis:** After SoftCeil REJECT, the leftover is not the 0.85–0.90
+cruise band. Always-on leftover counters split cruise / post-detect /
+REPROBE and detect vs path HO, so the next cook has a scorecard hook
+instead of another one-off diag.
+
+### What changed
+
+- `LeoAwareCCA._observe_leftover` + `observability_snapshot` (read-only)
+- `on_path_epoch_observe` records real path HOs; never REPROBE / detect
+- `leo_cc/observability.py` leftover scorecard hook (`current_paid=False`)
+- `run_sim` attaches `cca_snapshots`
+- `run_starlink` writes `leftover_observability` without changing gates
+- Tests: `python3 -m experiments.test_starlink_observability`
+
+No send-control lever. Defaults stay False. Current stays FillGap
+82.45 / 76.26. SoftCeil stays REJECT.
+
+Design: `docs/leoaware_v319_starlink_obs.md`  
+Archive: `results/archive/20260906-v319-leftover/`
+
+---
+
 ## Open ideas (next loops)
 
 1. Denser real Starlink CSVs (continuous 90s RTT+capacity, not hold-expanded 15s iperf). `leocc_v1` is the first such ingest; still not product lock.
@@ -1218,7 +1244,7 @@ Archive: `results/archive/20260904-v318-softceil/`
 5. Per-RTT fairness clock for multi-flow (fair_mode still coarse).
 6. QUEUE-mode store-and-forward coupling with ASCENT-D.
 7. Full 5-seed ablation with ascent_d vs hybrid under suite durations (90s).
-8. **Do not retry a FillGap ceiling raise** (0.85→0.90 SoftCeil REJECT: seed 13 96.80→96.31). Seed 13 leftover after FillGap is not the 0.85–0.90 band.
+8. **Do not retry a FillGap ceiling raise** (0.85→0.90 SoftCeil REJECT: seed 13 96.80→96.31). Seed 13 leftover after FillGap is not the 0.85–0.90 band. Use v3.19 leftover hooks (cruise vs post-detect vs REPROBE) before the next cook.
 
 ---
 

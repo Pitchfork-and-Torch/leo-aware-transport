@@ -79,6 +79,20 @@ class BaseCCA:
         """Optional ECN Congestion Experienced marks (production hook)."""
         pass
 
+    def on_path_epoch_observe(self, t: float, reconfigured: bool) -> None:
+        """Observe-only path epoch mark. Must never change send control."""
+        return None
+
+    def observability_snapshot(self) -> dict:
+        """Read-only CCA counters for scorecard leftover hooks."""
+        return {
+            "cca": self.name,
+            "cwnd": float(self.cwnd),
+            "bw_est": float(self.bw_est),
+            "bytes_in_flight": float(self.bytes_in_flight),
+            "min_rtt": float(self.min_rtt) if self.min_rtt < 1e17 else float("nan"),
+        }
+
     def on_orb_signal(self, t: float, sig: "OrbSignal") -> None:
         """Optional OrbCC-style in-network telemetry (no-op by default)."""
         pass
@@ -380,6 +394,12 @@ class LeoAwareCCA(BaseCCA):
         OpenSlot 0.80. At most one fill-family MSS per ACK.
       - Default OFF. Official run_starlink may opt in for the archive only.
 
+    v3.19 leftover observability (research; not a cook, not Current):
+      - Always-on ACK leftover counters split cruise / post-detect / REPROBE.
+      - Path-HO observe is fail-closed: records last path HO only, never
+        REPROBE / detect / fill. SoftCeil REJECT said the leftover is not
+        the 0.85-0.90 cruise band; these hooks measure the next split.
+
     Related: LeoCC response-interval outliers; SaTCP freeze; OrbCC pathID/U;
     BBR delivery-rate without stale min-RTT across epochs.
     """
@@ -511,6 +531,35 @@ class LeoAwareCCA(BaseCCA):
         self.openslot_releases = 0
         self.fillgap_fills = 0
         self.softceil_fills = 0
+        # v3.19 leftover observe (counters only; never change cwnd / detect)
+        self._obs_last_path_ho_t = -1e9
+        self.obs_path_handovers = 0
+        self.obs_acks = 0
+        self.obs_delay_clean = 0
+        self.obs_delivery_caught = 0
+        self.obs_below_085 = 0
+        self.obs_leftover_band = 0
+        self.obs_at_or_above_090 = 0
+        self.obs_softceil_eligible = 0
+        self.obs_fillgap_eligible = 0
+        self.obs_reprobe_acks = 0
+        self.obs_post_detect_acks = 0
+        self.obs_cruise_acks = 0
+        self.obs_post_path_ho_acks = 0
+        self.obs_below_085_reprobe = 0
+        self.obs_below_085_post_detect = 0
+        self.obs_below_085_cruise = 0
+        self.obs_leftover_band_reprobe = 0
+        self.obs_leftover_band_post_detect = 0
+        self.obs_leftover_band_cruise = 0
+        self.obs_lsg_clamps_reprobe = 0
+        self.obs_lsg_clamps_post_detect = 0
+        self.obs_lsg_clamps_cruise = 0
+        self.obs_cwnd_sum = 0.0
+        self.obs_del_bdp_sum = 0.0
+        self.obs_del_sum = 0.0
+        self.obs_bw_sum = 0.0
+        self.obs_n_rate = 0
 
     @staticmethod
     def _median(xs: list[float]) -> float:
@@ -1109,6 +1158,122 @@ class LeoAwareCCA(BaseCCA):
             return
         self._apply_soft_ceil(t, rtt_s)
 
+    def on_path_epoch_observe(self, t: float, reconfigured: bool) -> None:
+        """Record a real path HO for leftover split. Never changes control."""
+        if not reconfigured:
+            return
+        self._obs_last_path_ho_t = t
+        self.obs_path_handovers += 1
+
+    def _leftover_region(self, t: float) -> str:
+        if t < self.reprobe_until:
+            return "reprobe"
+        if (t - self.last_reconfig_t) < 1.4:
+            return "post_detect"
+        return "cruise"
+
+    def _observe_leftover(self, t: float, rtt_s: float) -> None:
+        """ACK leftover counters. Observe only — does not fill or detect."""
+        self.obs_acks += 1
+        region = self._leftover_region(t)
+        if region == "reprobe":
+            self.obs_reprobe_acks += 1
+        elif region == "post_detect":
+            self.obs_post_detect_acks += 1
+        else:
+            self.obs_cruise_acks += 1
+        if (t - self._obs_last_path_ho_t) < 1.4:
+            self.obs_post_path_ho_acks += 1
+        delay_clean = self._cruise_delay_clean(t, rtt_s)
+        rate = self._delivery_rate_sample(t)
+        caught = rate > 0 and self.bw_est > 1e6 and rate >= 0.95 * self.bw_est
+        rtt_ref = self.min_rtt if self.min_rtt < 1e17 else 0.0
+        del_bdp = rate * rtt_ref / 8.0 if rate > 0 and rtt_ref > 0 else 0.0
+        if delay_clean:
+            self.obs_delay_clean += 1
+        if caught:
+            self.obs_delivery_caught += 1
+        if del_bdp > 0:
+            ratio = self.cwnd / del_bdp
+            if ratio < 0.85:
+                self.obs_below_085 += 1
+                if region == "reprobe":
+                    self.obs_below_085_reprobe += 1
+                elif region == "post_detect":
+                    self.obs_below_085_post_detect += 1
+                else:
+                    self.obs_below_085_cruise += 1
+            elif ratio < 0.90:
+                self.obs_leftover_band += 1
+                if region == "reprobe":
+                    self.obs_leftover_band_reprobe += 1
+                elif region == "post_detect":
+                    self.obs_leftover_band_post_detect += 1
+                else:
+                    self.obs_leftover_band_cruise += 1
+            else:
+                self.obs_at_or_above_090 += 1
+            if delay_clean and caught and ratio < 0.85:
+                self.obs_fillgap_eligible += 1
+            if delay_clean and caught and 0.85 <= ratio < 0.90:
+                self.obs_softceil_eligible += 1
+        if rate > 0 and self.bw_est > 0:
+            self.obs_del_sum += rate
+            self.obs_bw_sum += self.bw_est
+            self.obs_cwnd_sum += self.cwnd
+            self.obs_del_bdp_sum += del_bdp
+            self.obs_n_rate += 1
+
+    def observability_snapshot(self) -> dict:
+        n = max(1, self.obs_acks)
+        nr = max(1, self.obs_n_rate)
+        mean_cwnd = self.obs_cwnd_sum / nr
+        mean_del_bdp = self.obs_del_bdp_sum / nr
+        snap = super().observability_snapshot()
+        snap.update(
+            {
+                "reconfigs_detected": int(self.reconfigs_detected),
+                "obs_path_handovers": int(self.obs_path_handovers),
+                "fillgap_fills": int(self.fillgap_fills),
+                "softceil_fills": int(self.softceil_fills),
+                "openslot_releases": int(self.openslot_releases),
+                "lsg_clamps": int(self.lsg_clamps),
+                "ca_aborts": int(self.ca_aborts),
+                "dlc_tide_flights": int(self.dlc_tide_flights),
+                "anticipator_holds": int(self.anticipator_holds),
+                "use_fill_gap": bool(self.use_fill_gap),
+                "use_soft_ceil": bool(self.use_soft_ceil),
+                "use_openslot": bool(self.use_openslot),
+                "obs_acks": int(self.obs_acks),
+                "delay_clean_frac": self.obs_delay_clean / n,
+                "delivery_caught_frac": self.obs_delivery_caught / n,
+                "below_085_frac": self.obs_below_085 / n,
+                "leftover_band_frac": self.obs_leftover_band / n,
+                "at_or_above_090_frac": self.obs_at_or_above_090 / n,
+                "softceil_eligible_frac": self.obs_softceil_eligible / n,
+                "fillgap_eligible_frac": self.obs_fillgap_eligible / n,
+                "reprobe_ack_frac": self.obs_reprobe_acks / n,
+                "post_detect_ack_frac": self.obs_post_detect_acks / n,
+                "cruise_ack_frac": self.obs_cruise_acks / n,
+                "post_path_ho_ack_frac": self.obs_post_path_ho_acks / n,
+                "below_085_reprobe_frac": self.obs_below_085_reprobe / n,
+                "below_085_post_detect_frac": self.obs_below_085_post_detect / n,
+                "below_085_cruise_frac": self.obs_below_085_cruise / n,
+                "leftover_band_reprobe_frac": self.obs_leftover_band_reprobe / n,
+                "leftover_band_post_detect_frac": self.obs_leftover_band_post_detect / n,
+                "leftover_band_cruise_frac": self.obs_leftover_band_cruise / n,
+                "lsg_clamps_reprobe": int(self.obs_lsg_clamps_reprobe),
+                "lsg_clamps_post_detect": int(self.obs_lsg_clamps_post_detect),
+                "lsg_clamps_cruise": int(self.obs_lsg_clamps_cruise),
+                "mean_cwnd": mean_cwnd,
+                "mean_del_bdp": mean_del_bdp,
+                "cwnd_over_del_bdp": mean_cwnd / max(1.0, mean_del_bdp),
+                "mean_delivery_mbps": self.obs_del_sum / nr / 1e6,
+                "mean_bw_est_mbps": self.obs_bw_sum / nr / 1e6,
+            }
+        )
+        return snap
+
     def _qsp_pace_gain(self, t: float, delay_ratio_early: float, rtt_s: float) -> float:
         """Map visible soft-QIR excess to a pace discount. Does not touch BDP.
 
@@ -1538,6 +1703,13 @@ class LeoAwareCCA(BaseCCA):
                 would_tide = delay_clean
                 if would_tide and not lsg_ok:
                     self.lsg_clamps += 1
+                    lsg_region = self._leftover_region(t)
+                    if lsg_region == "reprobe":
+                        self.obs_lsg_clamps_reprobe += 1
+                    elif lsg_region == "post_detect":
+                        self.obs_lsg_clamps_post_detect += 1
+                    else:
+                        self.obs_lsg_clamps_cruise += 1
                 fly_tide = would_tide and lsg_ok and t >= self._ca_hold_until
                 if fly_tide:
                     target = cwnd_tide
@@ -1653,6 +1825,7 @@ class LeoAwareCCA(BaseCCA):
 
         self._prev_delay_ratio = delay_ratio
         self._apply_fill_family(t, rtt_s)
+        self._observe_leftover(t, rtt_s)
 
     def on_loss(self, t: float, bytes_lost: int, congestive: bool) -> None:
         self.on_delivered(bytes_lost)
