@@ -1230,6 +1230,14 @@ instead of another one-off diag.
 No send-control lever. Defaults stay False. Current stays FillGap
 82.45 / 76.26. SoftCeil stays REJECT.
 
+### 5-seed leftover probe (FillGap + OpenSlot, SoftCeil off)
+
+H2 detect over-fire **CONFIRMED** (~56 detects vs 7–8 path HOs). H1
+post-detect vs cruise is **weak** (post-detect is 86% of ACKs because
+of H2). H3 leftover band in real HO **DISCARDED**. H3b below-0.85 in
+real HO **PARTIAL**. Next cook should measure detect over-fire, not
+retry a cruise-band fill.
+
 Design: `docs/leoaware_v319_starlink_obs.md`  
 Archive: `results/archive/20260906-v319-leftover/`
 

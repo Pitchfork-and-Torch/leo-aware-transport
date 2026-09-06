@@ -129,6 +129,8 @@ def test_short_starlink_v1_leftover_split():
     )
     assert hook["current_paid"] is False
     assert hook["path_handovers_mean"] == len(res.handovers)
+    assert "H3_leftover_band_concentrated_in_real_ho" in hook["hypotheses"]
+    assert "leftover_band_post_path_ho_frac" in snap
     print(
         "ok: short starlink_v1 leftover split "
         f"ho={len(res.handovers)} detect={snap['reconfigs_detected']} "

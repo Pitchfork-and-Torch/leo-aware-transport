@@ -36,6 +36,8 @@ SNAPSHOT_FRAC_KEYS = (
     "leftover_band_reprobe_frac",
     "leftover_band_post_detect_frac",
     "leftover_band_cruise_frac",
+    "below_085_post_path_ho_frac",
+    "leftover_band_post_path_ho_frac",
 )
 
 
@@ -122,6 +124,25 @@ def leftover_scorecard_hook(
             )
         )
     )
+    ho_ack = means.get("post_path_ho_ack_frac")
+    ho_band = means.get("leftover_band_post_path_ho_frac")
+    ho_below = means.get("below_085_post_path_ho_frac")
+    leftover_band = means.get("leftover_band_frac")
+    below_all = means.get("below_085_frac")
+    leftover_is_real_ho = bool(
+        ho_ack
+        and leftover_band
+        and ho_band is not None
+        and leftover_band > 0
+        and (ho_band / leftover_band) > (1.5 * ho_ack)
+    )
+    below_is_real_ho = bool(
+        ho_ack
+        and below_all
+        and ho_below is not None
+        and below_all > 0
+        and (ho_below / below_all) > (1.5 * ho_ack)
+    )
     return {
         "era": "starlink_v1",
         "synthetic": True,
@@ -143,9 +164,12 @@ def leftover_scorecard_hook(
                 "leftover_band_frac": s.get("leftover_band_frac"),
                 "leftover_band_cruise_frac": s.get("leftover_band_cruise_frac"),
                 "leftover_band_post_detect_frac": s.get("leftover_band_post_detect_frac"),
+                "leftover_band_post_path_ho_frac": s.get("leftover_band_post_path_ho_frac"),
                 "below_085_frac": s.get("below_085_frac"),
                 "below_085_cruise_frac": s.get("below_085_cruise_frac"),
                 "below_085_post_detect_frac": s.get("below_085_post_detect_frac"),
+                "below_085_post_path_ho_frac": s.get("below_085_post_path_ho_frac"),
+                "post_path_ho_ack_frac": s.get("post_path_ho_ack_frac"),
                 "cwnd_over_del_bdp": s.get("cwnd_over_del_bdp"),
             }
             for s in leo_snaps
@@ -154,9 +178,12 @@ def leftover_scorecard_hook(
         "hypotheses": {
             "H1_leftover_is_post_detect_not_cruise_band": leftover_is_post_detect,
             "H2_detect_overfires_vs_path_ho": bool(n_ho and detects > 2.0 * n_ho),
+            "H3_leftover_band_concentrated_in_real_ho": leftover_is_real_ho,
+            "H3b_below_085_concentrated_in_real_ho": below_is_real_ho,
             "note": (
                 "Measured leftover split after SoftCeil REJECT. "
-                "Not a cook. Do not bump Current."
+                "Post-detect can be inflated by detect over-fire; "
+                "H3 uses real path-HO windows. Not a cook. Do not bump Current."
             ),
         },
         "measured_gp": leo_gp,
