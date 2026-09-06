@@ -400,6 +400,13 @@ class LeoAwareCCA(BaseCCA):
         REPROBE / detect / fill. SoftCeil REJECT said the leftover is not
         the 0.85-0.90 cruise band; these hooks measure the next split.
 
+    v3.20 detect over-fire observe (research; not Current):
+      - Always-on endpoint-detect event log (t / reason / score).
+      - Classifies fires vs real path HO after the fact. Never changes the
+        hit, never gates ep:loss_burst, never uses path HO for control.
+      - Shadow tighter-gate scorecard is observe-only. Default detect
+        thresholds stay FillGap lock (score 1.65 / cooldown 0.42).
+
     Related: LeoCC response-interval outliers; SaTCP freeze; OrbCC pathID/U;
     BBR delivery-rate without stale min-RTT across epochs.
     """
@@ -562,6 +569,11 @@ class LeoAwareCCA(BaseCCA):
         self.obs_del_sum = 0.0
         self.obs_bw_sum = 0.0
         self.obs_n_rate = 0
+        # v3.20 detect over-fire observe (event log only; never changes hit)
+        self.obs_detect_events: list[dict] = []
+        self.obs_detect_near_path_ho = 0
+        self.obs_detect_far_path_ho = 0
+        self.obs_detect_reason_counts: dict[str, int] = {}
 
     @staticmethod
     def _median(xs: list[float]) -> float:
@@ -1167,6 +1179,34 @@ class LeoAwareCCA(BaseCCA):
         self._obs_last_path_ho_t = t
         self.obs_path_handovers += 1
 
+    def _observe_detect(self, t: float, reason: str, score: float) -> None:
+        """Log an endpoint detect. Observe only — does not change the hit."""
+        reasons = [r for r in str(reason).split("+") if r]
+        n_reasons = len(set(reasons))
+        dt_last = None
+        near_last = False
+        if self._obs_last_path_ho_t > -1e8:
+            dt_last = float(t - self._obs_last_path_ho_t)
+            near_last = 0.0 <= dt_last < 1.4
+        ev = {
+            "t": float(t),
+            "reason": str(reason),
+            "score": float(score),
+            "n_reasons": int(n_reasons),
+            "primary": reasons[0] if reasons else "",
+            "reasons": reasons,
+            "dt_last_path_ho": dt_last,
+            "near_last_path_ho": bool(near_last),
+        }
+        if len(self.obs_detect_events) < 256:
+            self.obs_detect_events.append(ev)
+        if near_last:
+            self.obs_detect_near_path_ho += 1
+        else:
+            self.obs_detect_far_path_ho += 1
+        for r in set(reasons):
+            self.obs_detect_reason_counts[r] = self.obs_detect_reason_counts.get(r, 0) + 1
+
     def _leftover_region(self, t: float) -> str:
         if t < self.reprobe_until:
             return "reprobe"
@@ -1252,6 +1292,10 @@ class LeoAwareCCA(BaseCCA):
                 "use_soft_ceil": bool(self.use_soft_ceil),
                 "use_openslot": bool(self.use_openslot),
                 "obs_acks": int(self.obs_acks),
+                "obs_detect_events": list(self.obs_detect_events),
+                "obs_detect_near_path_ho": int(self.obs_detect_near_path_ho),
+                "obs_detect_far_path_ho": int(self.obs_detect_far_path_ho),
+                "obs_detect_reason_counts": dict(self.obs_detect_reason_counts),
                 "delay_clean_frac": self.obs_delay_clean / n,
                 "delivery_caught_frac": self.obs_delivery_caught / n,
                 "below_085_frac": self.obs_below_085 / n,
@@ -1368,6 +1412,7 @@ class LeoAwareCCA(BaseCCA):
         if hit and t - self.last_reconfig_t > self.detect_cooldown * 0.85:
             # Endpoint confidence from fusion score (capped below assist paths)
             ep_conf = min(0.85, 0.45 + 0.12 * max(0.0, score))
+            self._observe_detect(t, reason, score)
             self._enter_reprobe(t, f"ep:{reason}", confidence=ep_conf)
             self._anticipator_until = -1.0  # REPROBE owns the hop; never suppress detect
         elif (

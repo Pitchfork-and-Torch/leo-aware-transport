@@ -1243,6 +1243,31 @@ Archive: `results/archive/20260906-v319-leftover/`
 
 ---
 
+## v3.20 detect over-fire — observe + shadow gates, not a cook
+
+**Date:** 2026-09-06  
+**Branch:** `cursor/detect-overfire-2daf`  
+**Hypothesis:** After leftover H2 (~8× detects vs path HO), a per-fire
+reason/score log plus shadow tighter gates (score 1.85 / 2.0, multi-reason,
+RTT-anchor) can prove whether a tighter detect gate is safe without
+changing send control.
+
+### What changed
+
+- `LeoAwareCCA._observe_detect` event log (read-only)
+- `leo_cc/observability.py` `classify_detect_overfire` + `detect_overfire_hook`
+- Official dual-gate bars stay gp ≥ 75 / p95 ≤ 138.8
+- `python3 -m experiments.diag_v320_detect` on the FillGap lock path
+- No send-control lever. SoftCeil stays REJECT. Current stays FillGap.
+
+Seed table and H4/H5/H6 land in `results/archive/20260906-v320-detect/diag/`
+after `diag_v320_detect`. Do not bump Current unless that table clearly
+beats FillGap 82.45 / 76.26.
+
+Design: `docs/leoaware_v320_detect_overfire.md`
+
+---
+
 ## Open ideas (next loops)
 
 1. Denser real Starlink CSVs (continuous 90s RTT+capacity, not hold-expanded 15s iperf). `leocc_v1` is the first such ingest; still not product lock.
@@ -1253,6 +1278,7 @@ Archive: `results/archive/20260906-v319-leftover/`
 6. QUEUE-mode store-and-forward coupling with ASCENT-D.
 7. Full 5-seed ablation with ascent_d vs hybrid under suite durations (90s).
 8. **Do not retry a FillGap ceiling raise** (0.85→0.90 SoftCeil REJECT: seed 13 96.80→96.31). Seed 13 leftover after FillGap is not the 0.85–0.90 band. Use v3.19 leftover hooks (cruise vs post-detect vs REPROBE) before the next cook.
+9. **Measure detect over-fire before any tighter gate** (v3.19 H2 ~8× path HOs). v2.1 already rejected a blunt score raise. Do not gate `ep:loss_burst`. Do not retune detect cooldown. See `docs/leoaware_v320_detect_overfire.md`.
 
 ---
 

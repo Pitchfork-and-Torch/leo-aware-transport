@@ -33,7 +33,7 @@ from leo_cc.harness import (
     PRODUCT_TERR_GP_BAR,
 )
 from leo_cc.metrics import jain_fairness, summarize_result
-from leo_cc.observability import leftover_scorecard_hook
+from leo_cc.observability import detect_overfire_hook, leftover_scorecard_hook
 from leo_cc.sim import SOFT_QIR_ALPHA, run_sim
 
 BBR_GP_LOCK = 82.44
@@ -80,7 +80,9 @@ def _rows(openslot: bool, fill_gap: bool, soft_ceil: bool) -> tuple[list[dict], 
                 fair = jain_fairness(thr) if n_flows > 1 else 1.0
                 snap = res.cca_snapshots[0] if res.cca_snapshots else None
                 if scen == "leo_fast_ho" and name == "LeoAware" and snap:
-                    leftover_snaps.append({"seed": seed, **snap})
+                    leftover_snaps.append(
+                        {"seed": seed, "handovers": list(res.handovers), **snap}
+                    )
                 for m in metrics:
                     rows.append(
                         {
@@ -257,6 +259,16 @@ def main() -> None:
         },
         "leftover_observability": leftover_scorecard_hook(
             leo_snaps=leftover_snaps,
+            leo_gp=leo_gp,
+            leo_p95=leo_p95,
+            bbr_gp=bbr_gp,
+            bbr_p95=bbr_p95,
+        ),
+        "detect_overfire": detect_overfire_hook(
+            leo_snaps=leftover_snaps,
+            handovers_by_seed={
+                int(s["seed"]): list(s.get("handovers") or []) for s in leftover_snaps
+            },
             leo_gp=leo_gp,
             leo_p95=leo_p95,
             bbr_gp=bbr_gp,
