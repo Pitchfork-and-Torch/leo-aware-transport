@@ -192,6 +192,30 @@ def test_shadow_gates_never_drop_loss_burst():
     print("ok: shadow gates never drop loss_burst; hook never marks Current")
 
 
+def test_h5_is_weak_when_far_fires_are_loss_burst():
+    """Fusion-tighter gates are a no-op if over-fire is ungatable loss_burst."""
+    events = [
+        {"t": 12.05, "reason": "rtt_mad+ack_ia+loss_rtt", "score": 2.4, "n_reasons": 3, "source": "fusion"},
+        {"t": 20.0, "reason": "loss_burst", "score": 1.4, "n_reasons": 1, "source": "on_loss"},
+        {"t": 40.0, "reason": "loss_burst", "score": 1.4, "n_reasons": 1, "source": "on_loss"},
+        {"t": 60.0, "reason": "loss_burst", "score": 1.4, "n_reasons": 1, "source": "on_loss"},
+    ]
+    hos = [12.0]
+    clf = classify_detect_overfire(events, hos)
+    assert clf["h5_tighter_gate"] == "WEAK"
+    assert clf["far_n"] == 3
+    assert all(g["far_cut"] == 0 for g in clf["shadow_gates"].values())
+    hook = detect_overfire_hook(
+        leo_snaps=[{"seed": 13, "obs_detect_events": events, "handovers": hos}],
+        handovers_by_seed={13: hos},
+        leo_gp=82.45,
+        leo_p95=76.26,
+    )
+    assert hook["hypotheses"]["H5_tighter_gate_keeps_ho_cuts_far"] == "WEAK"
+    assert hook["gates"]["bump_current"] is False
+    print("ok: H5 WEAK when far fires are loss_burst (fusion gate is a no-op)")
+
+
 def test_short_starlink_v1_detect_events():
     cfg = LeoPathConfig(
         duration_s=8.0,
@@ -235,6 +259,7 @@ def run_all() -> None:
     test_short_starlink_v1_leftover_split()
     test_detect_observe_is_read_only()
     test_shadow_gates_never_drop_loss_burst()
+    test_h5_is_weak_when_far_fires_are_loss_burst()
     test_short_starlink_v1_detect_events()
     print("ALL Starlink leftover observability tests passed")
 

@@ -75,31 +75,42 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--seeds", default=",".join(str(s) for s in PRODUCT_SEEDS))
     ap.add_argument("--duration", type=float, default=90.0)
+    ap.add_argument(
+        "--replay",
+        action="store_true",
+        help="Rebuild hooks/TABLE from diagnosis.json (no resim)",
+    )
     args = ap.parse_args()
     seeds = tuple(int(x) for x in args.seeds.split(",") if x.strip())
     assert PRODUCT_PATH_PROFILE == "starlink_v1"
     assert SOFT_QIR_ALPHA == 0.20
     OUT.mkdir(parents=True, exist_ok=True)
     rows = []
-    print(
-        f"diag v3.20 detect-overfire starlink_v1 seeds={seeds} "
-        f"dur={args.duration} α={SOFT_QIR_ALPHA} FillGap+OpenSlot on SoftCeil off",
-        flush=True,
-    )
-    for seed in seeds:
-        print(f"seed {seed} ...", flush=True)
-        row = run_seed(seed, args.duration)
-        rows.append(row)
+    if args.replay:
+        prev = json.loads((OUT / "diagnosis.json").read_text(encoding="utf-8"))
+        rows = list(prev["per_seed"])
+        args.duration = float(prev.get("duration_s") or args.duration)
+        print(f"replay v3.20 detect-overfire from {OUT / 'diagnosis.json'}", flush=True)
+    else:
         print(
-            f"  FG {row['fillgap_gp']:.2f} vs BBR {row['bbr_gp']:.2f} "
-            f"Δ={row['delta_gp']:+.2f}  ho={row['path_handovers']} "
-            f"detect={row['reconfigs_detected']}  "
-            f"events={len(row.get('obs_detect_events') or [])}  "
-            f"near_last={row.get('obs_detect_near_path_ho')} "
-            f"far_last={row.get('obs_detect_far_path_ho')}  "
-            f"reasons={row.get('obs_detect_reason_counts')}",
+            f"diag v3.20 detect-overfire starlink_v1 seeds={seeds} "
+            f"dur={args.duration} α={SOFT_QIR_ALPHA} FillGap+OpenSlot on SoftCeil off",
             flush=True,
         )
+        for seed in seeds:
+            print(f"seed {seed} ...", flush=True)
+            row = run_seed(seed, args.duration)
+            rows.append(row)
+            print(
+                f"  FG {row['fillgap_gp']:.2f} vs BBR {row['bbr_gp']:.2f} "
+                f"Δ={row['delta_gp']:+.2f}  ho={row['path_handovers']} "
+                f"detect={row['reconfigs_detected']}  "
+                f"events={len(row.get('obs_detect_events') or [])}  "
+                f"near_last={row.get('obs_detect_near_path_ho')} "
+                f"far_last={row.get('obs_detect_far_path_ho')}  "
+                f"reasons={row.get('obs_detect_reason_counts')}",
+                flush=True,
+            )
 
     leo_gp = sum(r["fillgap_gp"] for r in rows) / len(rows)
     leo_p95 = sum(r["fillgap_p95"] for r in rows) / len(rows)
@@ -147,17 +158,19 @@ FillGap + OpenSlot on. SoftCeil off. Duration {args.duration:.0f}s.
 Official dual-gate: gp ≥ {PRODUCT_GP_BAR:.0f} / p95 ≤ {PRODUCT_P95_BAR:.1f}.
 Current stays v3.17 FillGap. SoftCeil stays REJECT. Not paid.
 
-| seed | FG gp | BBR gp | p95 | path HO | detect | near HO | far HO | far frac | HO recall |
-|-----:|------:|-------:|----:|--------:|-------:|--------:|-------:|---------:|----------:|
+| seed | FG gp | BBR gp | p95 | path HO | detect | on_loss | fusion | near HO | far HO | far frac | HO recall |
+|-----:|------:|-------:|----:|--------:|-------:|--------:|-------:|--------:|-------:|---------:|----------:|
 """
     for p in detect["per_seed"]:
         seed = p["seed"]
         src = next(r for r in rows if r["seed"] == seed)
         far_frac = p["far_frac"] if p["far_frac"] is not None else float("nan")
         recall = p["ho_recall"] if p["ho_recall"] is not None else float("nan")
+        src_ct = p.get("source_counts") or {}
         table += (
             f"| {seed} | {src['fillgap_gp']:.2f} | {src['bbr_gp']:.2f} | "
             f"{src['fillgap_p95']:.2f} | {p['path_handovers']} | {p['detects']} | "
+            f"{src_ct.get('on_loss', 0)} | {src_ct.get('fusion', 0)} | "
             f"{p['near_n']} | {p['far_n']} | {far_frac:.3f} | {recall:.3f} |\n"
         )
     means = detect["means"]

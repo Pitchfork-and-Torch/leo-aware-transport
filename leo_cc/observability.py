@@ -313,10 +313,10 @@ def classify_detect_overfire(
         }
 
     promising = [n for n, g in shadows.items() if g["promising"]]
-    reckless_all = bool(shadows) and all(g["reckless"] or not g["cuts_half_far"] for g in shadows.values())
+    reckless_any = any(g["reckless"] and g["far_cut"] > 0 for g in shadows.values())
     if promising:
         h5 = "PROMISING"
-    elif reckless_all:
+    elif reckless_any:
         h5 = "RECKLESS"
     else:
         h5 = "WEAK"
@@ -431,10 +431,10 @@ def detect_overfire_hook(
     h4 = bool(far_mean is not None and far_mean >= 0.60)
     if promising_any:
         h5 = "PROMISING"
-    elif h5_votes and all(v == "RECKLESS" for v in h5_votes):
-        h5 = "RECKLESS"
-    elif h5_votes and any(v == "PROMISING" for v in h5_votes):
-        h5 = "MIXED"
+    elif h5_votes and any(v == "RECKLESS" for v in h5_votes) and not all(
+        v == "WEAK" for v in h5_votes
+    ):
+        h5 = "RECKLESS" if all(v == "RECKLESS" for v in h5_votes) else "MIXED"
     else:
         h5 = "WEAK"
     h6 = bool(h6_votes) and all(h6_votes)
@@ -446,6 +446,8 @@ def detect_overfire_hook(
         and leo_gp > bars["fillgap_gp_lock"]
         and leo_p95 <= bars["fillgap_p95_lock"]
     )
+    on_loss_n = source_sum.get("on_loss", 0)
+    fusion_n = source_sum.get("fusion", 0)
     if h5 == "PROMISING":
         rec = (
             f"Shadow gate(s) {promising_any} keep current HO recall and cut "
@@ -455,15 +457,20 @@ def detect_overfire_hook(
         )
     elif h5 == "RECKLESS":
         rec = (
-            "Every shadow tighter gate that cuts far fires also drops a "
+            "A legal shadow tighter gate that cuts far fires also drops a "
             "path HO the current detector already covered. Observe-only: "
-            "do not cook a score/multi/RTT-anchor fill. Next is a different "
-            "cut (cooldown is also off-limits) or live-path traces."
+            "do not cook a score/multi/RTT-anchor fill. Do not gate "
+            "ep:loss_burst. Do not retune detect cooldown."
         )
     else:
         rec = (
-            "No shadow tighter gate is clearly safe and load-bearing. "
-            "Stay observe-only. Do not bump Current. Do not retry SoftCeil."
+            "Legal shadow gates (score 1.85/2.0, multi-reason, RTT-anchor) "
+            f"do not cut the over-fire. on_loss loss_burst is {on_loss_n} "
+            f"events vs fusion {fusion_n}; far fires are loss_burst, and "
+            "ep:loss_burst stays ungated. Fusion already sits on real path "
+            "HOs. Observe-only: do not cook a fusion-threshold raise, do "
+            "not retry SoftCeil, do not bump Current. Next cook, if any, "
+            "needs a new mobility-loss taxonomy — or leave detect alone."
         )
     return {
         "era": "starlink_v1",
