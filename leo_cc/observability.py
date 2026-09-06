@@ -209,8 +209,11 @@ def _event_reasons(ev: dict) -> list[str]:
 
 
 def _shadow_pass(name: str, ev: dict) -> bool:
-    score = float(ev.get("score") or 0.0)
     reasons = _event_reasons(ev)
+    # Integrity: never drop ep:loss_burst, even in a shadow scorecard.
+    if "loss_burst" in reasons:
+        return True
+    score = float(ev.get("score") or 0.0)
     n = int(ev.get("n_reasons") or len(set(reasons)))
     if name == "score_ge_1_85":
         return score >= 1.85
@@ -243,6 +246,7 @@ def classify_detect_overfire(
     hos = [float(h) for h in handovers]
     classified = []
     reason_counts: dict[str, int] = {}
+    source_counts: dict[str, int] = {}
     near_n = 0
     far_n = 0
     for ev in events:
@@ -250,10 +254,12 @@ def classify_detect_overfire(
         dt = nearest_path_ho_dt(t, hos)
         near = dt is not None and dt <= window_s
         reasons = _event_reasons(ev)
+        source = str(ev.get("source") or ("on_loss" if reasons == ["loss_burst"] else "fusion"))
         row = {
             "t": t,
             "reason": ev.get("reason"),
             "score": _json_num(float(ev.get("score") or 0.0)),
+            "source": source,
             "n_reasons": int(ev.get("n_reasons") or len(set(reasons))),
             "primary": ev.get("primary") or (reasons[0] if reasons else ""),
             "reasons": reasons,
@@ -267,6 +273,7 @@ def classify_detect_overfire(
             far_n += 1
         for r in set(reasons):
             reason_counts[r] = reason_counts.get(r, 0) + 1
+        source_counts[source] = source_counts.get(source, 0) + 1
 
     ho_covered = 0
     for h in hos:
@@ -337,6 +344,7 @@ def classify_detect_overfire(
         "ho_covered": ho_covered,
         "ho_recall": ho_recall,
         "reason_counts": reason_counts,
+        "source_counts": source_counts,
         "far_primary_counts": primary_far,
         "shadow_gates": shadows,
         "promising_gates": promising,
@@ -371,6 +379,7 @@ def detect_overfire_hook(
     h5_votes: list[str] = []
     h6_votes: list[bool] = []
     reason_sum: dict[str, int] = {}
+    source_sum: dict[str, int] = {}
     for snap in leo_snaps:
         if not snap:
             continue
@@ -384,6 +393,8 @@ def detect_overfire_hook(
         clf = classify_detect_overfire(events, hos)
         for r, n in clf["reason_counts"].items():
             reason_sum[r] = reason_sum.get(r, 0) + int(n)
+        for r, n in clf.get("source_counts", {}).items():
+            source_sum[r] = source_sum.get(r, 0) + int(n)
         if clf["far_frac"] is not None:
             all_far_frac.append(clf["far_frac"])
         if clf["detect_over_path_ho"] is not None:
@@ -405,6 +416,7 @@ def detect_overfire_hook(
                 "detect_over_path_ho": clf["detect_over_path_ho"],
                 "ho_recall": clf["ho_recall"],
                 "reason_counts": clf["reason_counts"],
+                "source_counts": clf.get("source_counts"),
                 "far_primary_counts": clf["far_primary_counts"],
                 "h5_tighter_gate": clf["h5_tighter_gate"],
                 "promising_gates": clf["promising_gates"],
@@ -468,6 +480,7 @@ def detect_overfire_hook(
             "ho_recall": _json_num(recall_mean),
         },
         "reason_counts_sum": reason_sum,
+        "source_counts_sum": source_sum,
         "promising_gates": promising_any,
         "per_seed": per_seed,
         "hypotheses": {

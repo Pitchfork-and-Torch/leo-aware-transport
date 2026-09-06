@@ -207,9 +207,10 @@ def test_short_starlink_v1_detect_events():
     )
     snap = res.cca_snapshots[0]
     assert "obs_detect_events" in snap
-    assert snap["reconfigs_detected"] == len(snap["obs_detect_events"]) or snap[
-        "reconfigs_detected"
-    ] >= len(snap["obs_detect_events"])
+    assert len(snap["obs_detect_events"]) == snap["reconfigs_detected"], (
+        snap["reconfigs_detected"],
+        len(snap["obs_detect_events"]),
+    )
     hook = detect_overfire_hook(
         leo_snaps=[{"seed": 13, **snap, "handovers": list(res.handovers)}],
         handovers_by_seed={13: list(res.handovers)},
