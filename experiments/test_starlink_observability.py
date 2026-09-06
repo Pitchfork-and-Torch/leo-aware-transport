@@ -24,8 +24,12 @@ from leo_cc.observability import (
     BBR_GP_LOCK,
     FILLGAP_GP_LOCK,
     FILLGAP_P95_LOCK,
+    NEAR_HO_WINDOW_S,
+    SHADOW_GATE_NAMES,
     SNAPSHOT_FRAC_KEYS,
     SOFTCEIL_GP_REJECT,
+    classify_detect_overfire,
+    detect_overfire_hook,
     dual_gate_bars,
     leftover_scorecard_hook,
 )
@@ -139,12 +143,98 @@ def test_short_starlink_v1_leftover_split():
     )
 
 
+def test_detect_observe_is_read_only():
+    cca = LeoAwareCCA()
+    assert cca.use_fill_gap is False
+    assert cca.use_soft_ceil is False
+    before = (cca.cwnd, cca.mode, cca.reconfigs_detected, cca.score_threshold, cca.detect_cooldown)
+    cca._observe_detect(5.0, "rtt_mad+rate_drop", 2.4)
+    after = (cca.cwnd, cca.mode, cca.reconfigs_detected, cca.score_threshold, cca.detect_cooldown)
+    assert after == before, (before, after)
+    assert len(cca.obs_detect_events) == 1
+    assert cca.obs_detect_events[0]["n_reasons"] == 2
+    assert cca.obs_detect_far_path_ho == 1
+    snap = cca.observability_snapshot()
+    assert snap["obs_detect_far_path_ho"] == 1
+    assert snap["obs_detect_events"][0]["primary"] == "rtt_mad"
+    print("ok: detect observe is read-only (no cwnd / detect / threshold change)")
+
+
+def test_shadow_gates_never_drop_loss_burst():
+    assert "loss_burst" not in " ".join(SHADOW_GATE_NAMES)
+    assert NEAR_HO_WINDOW_S == 1.4
+    events = [
+        {"t": 12.0, "reason": "loss_burst", "score": 1.4, "n_reasons": 1, "primary": "loss_burst"},
+        {"t": 30.0, "reason": "rate_drop", "score": 1.35, "n_reasons": 1, "primary": "rate_drop"},
+        {"t": 12.05, "reason": "rtt_mad+loss_burst", "score": 2.2, "n_reasons": 2, "primary": "rtt_mad"},
+    ]
+    hos = [12.0, 24.0]
+    clf = classify_detect_overfire(events, hos)
+    assert clf["near_n"] == 2
+    assert clf["far_n"] == 1
+    assert clf["ho_covered"] == 1
+    # loss_burst-only still counts as a current detect; no shadow gate may
+    # be defined as "drop loss_burst".
+    assert clf["reason_counts"]["loss_burst"] == 2
+    assert clf["shadow_gates"]["score_ge_2_0"]["reckless"] in (True, False)
+    hook = detect_overfire_hook(
+        leo_snaps=[{"seed": 13, "obs_detect_events": events, "handovers": hos}],
+        handovers_by_seed={13: hos},
+        leo_gp=82.45,
+        leo_p95=76.26,
+    )
+    assert hook["current_paid"] is False
+    assert hook["current_stays"] == "v3.17 FillGap"
+    assert hook["softceil_decision"] == "REJECT"
+    assert hook["gates"]["bump_current"] is False
+    assert hook["bars"]["gp_mean"] == 75.0
+    assert hook["bars"]["p95_mean"] == 138.8
+    print("ok: shadow gates never drop loss_burst; hook never marks Current")
+
+
+def test_short_starlink_v1_detect_events():
+    cfg = LeoPathConfig(
+        duration_s=8.0,
+        handover_interval_s=4.0,
+        handover_jitter_s=1.0,
+        seed=13,
+        path_profile="starlink_v1",
+    )
+    res = run_sim(
+        lambda: LeoAwareCCA(use_openslot=True, use_fill_gap=True, use_soft_ceil=False),
+        cfg=cfg,
+        n_flows=1,
+    )
+    snap = res.cca_snapshots[0]
+    assert "obs_detect_events" in snap
+    assert snap["reconfigs_detected"] == len(snap["obs_detect_events"]) or snap[
+        "reconfigs_detected"
+    ] >= len(snap["obs_detect_events"])
+    hook = detect_overfire_hook(
+        leo_snaps=[{"seed": 13, **snap, "handovers": list(res.handovers)}],
+        handovers_by_seed={13: list(res.handovers)},
+        leo_gp=80.0,
+        leo_p95=70.0,
+    )
+    assert hook["gates"]["gp_ge_75"] is True
+    assert hook["gates"]["p95_le_138_8"] is True
+    assert hook["gates"]["bump_current"] is False
+    print(
+        "ok: short starlink_v1 detect events "
+        f"ho={len(res.handovers)} detect={snap['reconfigs_detected']} "
+        f"events={len(snap['obs_detect_events'])}"
+    )
+
+
 def run_all() -> None:
     test_dual_gate_bars_frozen()
     test_scorecard_hook_never_marks_current()
     test_snapshot_is_read_only()
     test_path_ho_observe_does_not_reprobe()
     test_short_starlink_v1_leftover_split()
+    test_detect_observe_is_read_only()
+    test_shadow_gates_never_drop_loss_burst()
+    test_short_starlink_v1_detect_events()
     print("ALL Starlink leftover observability tests passed")
 
 

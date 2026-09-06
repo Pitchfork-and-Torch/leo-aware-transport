@@ -79,6 +79,7 @@ experiments/
   run_starlink.py           # product-era scorecard (FillGap / SoftCeil opt-in)
   diag_v318_softceil.py     # leftover diagnosis after FillGap
   diag_v319_leftover.py     # leftover split after SoftCeil REJECT (not a cook)
+  diag_v320_detect.py       # detect over-fire measure (observe + shadow gates)
   test_starlink_observability.py
   test_ascent_d_integrity.py
   test_wetlinks_integrity.py
@@ -94,6 +95,7 @@ docs/
   leoaware_v317_fillgap.md    # Current product dual-gate lock
   leoaware_v318_softceil.md   # leftover cook after FillGap — REJECT vs BBR
   leoaware_v319_starlink_obs.md  # leftover scorecard hooks; not Current
+  leoaware_v320_detect_overfire.md  # detect over-fire measure; not Current
   ascent_d_orbcc_hybrid.md
   related_work.md
   cloudflare_starlink_bridge.md
