@@ -33,6 +33,7 @@ from leo_cc.harness import (
     PRODUCT_TERR_GP_BAR,
 )
 from leo_cc.metrics import jain_fairness, summarize_result
+from leo_cc.observability import detect_overfire_hook, leftover_scorecard_hook
 from leo_cc.sim import SOFT_QIR_ALPHA, run_sim
 
 BBR_GP_LOCK = 82.44
@@ -49,7 +50,7 @@ TAG = "20260904-v318-softceil"
 SCENARIOS = ("leo_fast_ho", "leo_single", "terrestrial")
 
 
-def _rows(openslot: bool, fill_gap: bool, soft_ceil: bool) -> list[dict]:
+def _rows(openslot: bool, fill_gap: bool, soft_ceil: bool) -> tuple[list[dict], list[dict]]:
     algos = [
         ("CUBIC", lambda: CubicCCA()),
         ("BBRv3approx", lambda: BbrCCA()),
@@ -63,6 +64,7 @@ def _rows(openslot: bool, fill_gap: bool, soft_ceil: bool) -> list[dict]:
         ),
     ]
     rows: list[dict] = []
+    leftover_snaps: list[dict] = []
     for scen in SCENARIOS:
         for seed in PRODUCT_SEEDS:
             cfg, n_flows = scenario_cfg(scen, seed, PRODUCT_PATH_PROFILE)
@@ -76,6 +78,11 @@ def _rows(openslot: bool, fill_gap: bool, soft_ceil: bool) -> list[dict]:
                 metrics = summarize_result(res)
                 thr = [m.goodput_bps for m in metrics]
                 fair = jain_fairness(thr) if n_flows > 1 else 1.0
+                snap = res.cca_snapshots[0] if res.cca_snapshots else None
+                if scen == "leo_fast_ho" and name == "LeoAware" and snap:
+                    leftover_snaps.append(
+                        {"seed": seed, "handovers": list(res.handovers), **snap}
+                    )
                 for m in metrics:
                     rows.append(
                         {
@@ -98,7 +105,7 @@ def _rows(openslot: bool, fill_gap: bool, soft_ceil: bool) -> list[dict]:
                             "handovers": len(res.handovers),
                         }
                     )
-    return rows
+    return rows, leftover_snaps
 
 
 def _mean(rows: list[dict], scen: str, cca: str, key: str) -> float:
@@ -139,7 +146,7 @@ def main() -> None:
     assert SOFT_QIR_ALPHA == 0.20
     assert list(PRODUCT_SEEDS) == [13, 7, 42, 99, 123]
 
-    rows = _rows(openslot, fill_gap, soft_ceil)
+    rows, leftover_snaps = _rows(openslot, fill_gap, soft_ceil)
     out = ROOT / "results" / "archive" / args.tag
     out.mkdir(parents=True, exist_ok=True)
 
@@ -250,6 +257,23 @@ def main() -> None:
             "no_seed_dropped": not dropped,
             "product_era": True,
         },
+        "leftover_observability": leftover_scorecard_hook(
+            leo_snaps=leftover_snaps,
+            leo_gp=leo_gp,
+            leo_p95=leo_p95,
+            bbr_gp=bbr_gp,
+            bbr_p95=bbr_p95,
+        ),
+        "detect_overfire": detect_overfire_hook(
+            leo_snaps=leftover_snaps,
+            handovers_by_seed={
+                int(s["seed"]): list(s.get("handovers") or []) for s in leftover_snaps
+            },
+            leo_gp=leo_gp,
+            leo_p95=leo_p95,
+            bbr_gp=bbr_gp,
+            bbr_p95=bbr_p95,
+        ),
         "decision": decision,
         "current_paid": False,
         "note": (
