@@ -1,0 +1,35 @@
+{
+  "era": "starlink_v1",
+  "synthetic": true,
+  "lever": "none (observe + taxonomy shadows)",
+  "current_paid": false,
+  "current_stays": "v3.17 FillGap",
+  "softceil_decision": "REJECT",
+  "decision": "REJECT_LIVE_GATE",
+  "official_bars": {"gp_mean": 75.0, "p95_mean": 138.8},
+  "leo_fast_ho": {
+    "LeoAware_gp_mean": 82.45,
+    "LeoAware_p95_mean": 76.26,
+    "BBR_gp_mean": 82.44,
+    "BBR_p95_mean": 76.66,
+    "per_seed": [
+      {"seed": 13, "gp": 96.80, "p95": 72.21, "path_ho": 7, "on_loss_only_ho": 4, "far_on_loss": 45, "far_cluster2": 3, "far_pace": 37},
+      {"seed": 7, "gp": 75.36, "p95": 67.81, "path_ho": 8, "on_loss_only_ho": 3, "far_on_loss": 41, "far_cluster2": 4, "far_pace": 30},
+      {"seed": 42, "gp": 81.25, "p95": 97.56, "path_ho": 7, "on_loss_only_ho": 1, "far_on_loss": 42, "far_cluster2": 12, "far_pace": 31},
+      {"seed": 99, "gp": 73.19, "p95": 64.09, "path_ho": 7, "on_loss_only_ho": 1, "far_on_loss": 43, "far_cluster2": 5, "far_pace": 33},
+      {"seed": 123, "gp": 85.61, "p95": 79.65, "path_ho": 8, "on_loss_only_ho": 5, "far_on_loss": 45, "far_cluster2": 4, "far_pace": 40}
+    ]
+  },
+  "gates": {
+    "gp_ge_75": true,
+    "p95_le_138_8": true,
+    "beats_fillgap_lock": false,
+    "bump_current": false
+  },
+  "hypotheses": {
+    "H7_far_on_loss_is_pacemaker": true,
+    "H8_taxonomy_keeps_ho_cuts_far": "RECKLESS",
+    "H9_some_ho_on_loss_only": true
+  },
+  "note": "FillGap lock path reproduced 82.45 / 76.26. Far on_loss is the 1.4s pacemaker. 14 path HOs are on_loss-only. No legal taxonomy keeps HO recall and cuts the leftover. Do not bump Current."
+}

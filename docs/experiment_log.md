@@ -1283,6 +1283,45 @@ Archive: `results/archive/20260906-v320-detect/`
 
 ---
 
+## v3.21 on_loss / ep:loss_burst taxonomy — REJECT live gate
+
+**Date:** 2026-09-07  
+**Branch:** `cursor/loss-burst-taxonomy-1a2f`  
+**Hypothesis:** After v3.20 (fusion clean; leftover is `on_loss`
+`loss_burst`), an endpoint taxonomy can tell hop-covering `on_loss`
+from cruise flicker without using path HO as a live input.
+
+### What changed
+
+- Detect events carry `cluster_n` / `rtt_ratio` / `dt_last_detect`
+- Quiet-window 2-loss clusters logged as suppressed candidates
+- Taxonomy shadows may classify `loss_burst`: cluster floor, first-after
+  gap, RTT ratio. Fusion stays kept. No send-control lever.
+
+### 5-seed taxonomy (FillGap + OpenSlot, SoftCeil off, 90s)
+
+`python3 -m experiments.diag_v321_loss_tax`
+
+| seed | FG gp | BBR gp | p95 | path HO | on_loss-only HO | far on_loss | far pace |
+|-----:|------:|-------:|----:|--------:|----------------:|------------:|---------:|
+| 13 | 96.80 | 97.31 | 72.21 | 7 | 4 | 45 | 37 |
+| 7 | 75.36 | 75.08 | 67.81 | 8 | 3 | 41 | 30 |
+| 42 | 81.25 | 81.25 | 97.56 | 7 | 1 | 42 | 31 |
+| 99 | 73.19 | 72.98 | 64.09 | 7 | 1 | 43 | 33 |
+| 123 | 85.61 | 85.57 | 79.65 | 8 | 5 | 45 | 40 |
+
+Means **82.45 / 76.26** (FillGap lock). Official 75 / 138.8 **PASS**.
+H7 pacemaker **CONFIRMED** (171/216 far). H8 taxonomy **RECKLESS**.
+H9 on_loss-only HO **CONFIRMED** (14). Do not bump Current.
+
+**Decision: REJECT a live loss-burst gate.** Hop-covering `on_loss`
+looks like the 1.4s pacemaker. Leave detect alone.
+
+Design: `docs/leoaware_v321_loss_tax.md`  
+Archive: `results/archive/20260907-v321-loss-tax/`
+
+---
+
 ## Open ideas (next loops)
 
 1. Denser real Starlink CSVs (continuous 90s RTT+capacity, not hold-expanded 15s iperf). `leocc_v1` is the first such ingest; still not product lock.
@@ -1294,6 +1333,7 @@ Archive: `results/archive/20260906-v320-detect/`
 7. Full 5-seed ablation with ascent_d vs hybrid under suite durations (90s).
 8. **Do not retry a FillGap ceiling raise** (0.85→0.90 SoftCeil REJECT: seed 13 96.80→96.31). Seed 13 leftover after FillGap is not the 0.85–0.90 band. Use v3.19 leftover hooks (cruise vs post-detect vs REPROBE) before the next cook.
 9. **Do not cook a fusion-threshold raise for leftover H2.** v3.20 measured the ~8× over-fire: 258/281 events are `on_loss` `loss_burst`; all 23 fusion fires sit on real path HOs. Legal shadow gates cut 0 far fires. Do not gate `ep:loss_burst`. Do not retune detect cooldown. Do not retry SoftCeil. See `docs/leoaware_v320_detect_overfire.md`.
+10. **Do not cook an on_loss taxonomy gate.** v3.21: far leftover is the 1.4s pacemaker; 14 path HOs are on_loss-only and look the same. `first_after_*` / `rtt_ge_1_12` are reckless. `cluster_ge_3` cuts 28 far and drops hops on seeds 99/123. Leave detect alone. See `docs/leoaware_v321_loss_tax.md`.
 
 ---
 

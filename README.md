@@ -191,7 +191,7 @@ Always-on leftover counters split cruise / post-detect / REPROBE and detect vs p
 
 ### v3.21 loss-burst taxonomy (research; not Current)
 
-Follow-on to PR #27 leftover (`on_loss` / `ep:loss_burst`). Observe + taxonomy shadows only. SoftCeil stays REJECT. Current stays FillGap. See `docs/leoaware_v321_loss_tax.md`.
+Follow-on to PR #27 leftover (`on_loss` / `ep:loss_burst`). Observe + taxonomy shadows. **REJECT a live loss-burst gate** — hop-covering `on_loss` looks like the 1.4s pacemaker. SoftCeil stays REJECT. Current stays FillGap. See `docs/leoaware_v321_loss_tax.md`.
 
 ---
 
