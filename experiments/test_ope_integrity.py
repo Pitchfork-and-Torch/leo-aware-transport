@@ -13,6 +13,7 @@ from leo_cc.ccas import BbrCCA, CubicCCA, LeoAwareCCA
 from leo_cc.metrics import summarize_result
 from leo_cc.network import LeoPath, LeoPathConfig, walk_path_geometry
 from leo_cc.sim import SOFT_QIR_ALPHA, SOFT_QIR_CAP_S, run_sim
+from experiments.test_starlink_observability import run_all as run_starlink_obs_tests
 
 
 def test_soft_qir_frozen():
@@ -295,7 +296,26 @@ def test_soft_ceil_does_not_gate_loss_burst():
     cca.on_loss(t + 0.05, 1200, congestive=False)
     assert cca.reconfigs_detected == rec0 + 1, (cca.reconfigs_detected, cca.mode)
     assert cca.mode == "ser:loss_burst" or str(cca.mode).startswith("ser"), cca.mode
+    ev = cca.obs_detect_events[-1]
+    assert ev["source"] == "on_loss"
+    assert ev["cluster_n"] >= 2
     print("ok: SoftCeil does not gate ep:loss_burst")
+
+
+def test_loss_tax_does_not_gate_loss_burst():
+    """v3.21 taxonomy observe must not become a silent live gate."""
+    cca = LeoAwareCCA()
+    assert not hasattr(cca, "use_loss_tax") or cca.use_loss_tax is False
+    cca.min_rtt = 0.05
+    cca.rtt_hist.extend([0.05, 0.051, 0.049, 0.05])
+    cca.last_reconfig_t = -10.0
+    rec0 = cca.reconfigs_detected
+    t = 5.0
+    cca.on_loss(t, 1200, congestive=False)
+    cca.on_loss(t + 0.05, 1200, congestive=False)
+    assert cca.reconfigs_detected == rec0 + 1, (cca.reconfigs_detected, cca.mode)
+    assert cca.mode == "ser:loss_burst" or str(cca.mode).startswith("ser"), cca.mode
+    print("ok: loss-tax observe does not gate ep:loss_burst")
 
 
 def test_soft_ceil_fills_only_leftover_band():
@@ -376,7 +396,9 @@ def run_all() -> None:
     test_fill_gap_fills_only_when_eligible()
     test_soft_ceil_default_false()
     test_soft_ceil_does_not_gate_loss_burst()
+    test_loss_tax_does_not_gate_loss_burst()
     test_soft_ceil_fills_only_leftover_band()
+    run_starlink_obs_tests()
     print("ALL OPE integrity tests passed")
 
 

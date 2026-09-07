@@ -1,0 +1,35 @@
+{
+  "era": "starlink_v1",
+  "synthetic": true,
+  "lever": "none (observe + shadow gates)",
+  "current_paid": false,
+  "current_stays": "v3.17 FillGap",
+  "softceil_decision": "REJECT",
+  "decision": "OBSERVE_ONLY",
+  "official_bars": {"gp_mean": 75.0, "p95_mean": 138.8},
+  "leo_fast_ho": {
+    "LeoAware_gp_mean": 82.45,
+    "LeoAware_p95_mean": 76.26,
+    "BBR_gp_mean": 82.44,
+    "BBR_p95_mean": 76.66,
+    "per_seed": [
+      {"seed": 13, "gp": 96.80, "p95": 72.21, "path_ho": 7, "detect": 56, "on_loss": 53, "fusion": 3, "near_ho": 11, "far_ho": 45},
+      {"seed": 7, "gp": 75.36, "p95": 67.81, "path_ho": 8, "detect": 56, "on_loss": 51, "fusion": 5, "near_ho": 15, "far_ho": 41},
+      {"seed": 42, "gp": 81.25, "p95": 97.56, "path_ho": 7, "detect": 56, "on_loss": 50, "fusion": 6, "near_ho": 14, "far_ho": 42},
+      {"seed": 99, "gp": 73.19, "p95": 64.09, "path_ho": 7, "detect": 56, "on_loss": 50, "fusion": 6, "near_ho": 13, "far_ho": 43},
+      {"seed": 123, "gp": 85.61, "p95": 79.65, "path_ho": 8, "detect": 57, "on_loss": 54, "fusion": 3, "near_ho": 12, "far_ho": 45}
+    ]
+  },
+  "gates": {
+    "gp_ge_75": true,
+    "p95_le_138_8": true,
+    "beats_fillgap_lock": false,
+    "bump_current": false
+  },
+  "hypotheses": {
+    "H4_most_detects_far_from_path_ho": true,
+    "H5_tighter_gate_keeps_ho_cuts_far": "WEAK",
+    "H6_one_primary_owns_half_far": true
+  },
+  "note": "FillGap lock path reproduced 82.45 / 76.26. Over-fire is on_loss loss_burst. Do not bump Current."
+}
