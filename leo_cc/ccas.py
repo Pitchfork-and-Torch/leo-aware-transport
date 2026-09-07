@@ -407,6 +407,13 @@ class LeoAwareCCA(BaseCCA):
       - Shadow tighter-gate scorecard is observe-only. Default detect
         thresholds stay FillGap lock (score 1.65 / cooldown 0.42).
 
+    v3.21 loss-burst taxonomy observe (research; not Current):
+      - Enrich on_loss / ep:loss_burst fires with endpoint features
+        (cluster_n, rtt_ratio, dt_last_detect). Observe only.
+      - Shadow taxonomy gates may classify loss_burst (this is the leftover
+        PR #27 named). They are not a live send lever. Default False.
+      - Path HO stays fail-closed. SoftCeil / FillGap / OpenSlot stay False.
+
     Related: LeoCC response-interval outliers; SaTCP freeze; OrbCC pathID/U;
     BBR delivery-rate without stale min-RTT across epochs.
     """
@@ -574,6 +581,9 @@ class LeoAwareCCA(BaseCCA):
         self.obs_detect_near_path_ho = 0
         self.obs_detect_far_path_ho = 0
         self.obs_detect_reason_counts: dict[str, int] = {}
+        # v3.21 loss-burst taxonomy (observe only; never changes hit)
+        self.obs_loss_candidates: list[dict] = []
+        self.obs_loss_suppressed = 0
 
     @staticmethod
     def _median(xs: list[float]) -> float:
@@ -1179,8 +1189,34 @@ class LeoAwareCCA(BaseCCA):
         self._obs_last_path_ho_t = t
         self.obs_path_handovers += 1
 
+    def _loss_tax_fields(self, t: float) -> dict:
+        """Endpoint features at a loss-burst decision. Observe only."""
+        cluster_n = len([x for x in self.loss_burst if t - x < 0.28])
+        rtt_ratio = None
+        if self.min_rtt < 1e17 and self.min_rtt > 0 and self.rtt_hist:
+            rtt_ratio = float(self.rtt_hist[-1] / self.min_rtt)
+        dt_last = None
+        if self.last_reconfig_t > -1e8:
+            dt_last = float(t - self.last_reconfig_t)
+        return {
+            "cluster_n": int(cluster_n),
+            "rtt_ratio": rtt_ratio,
+            "dt_last_detect": dt_last,
+            "in_reprobe": bool(t < self.reprobe_until),
+            "region": self._leftover_region(t),
+        }
+
+    def _observe_loss_candidate(self, t: float, why: str, fields: dict) -> None:
+        """Log a 2+ loss cluster that did not enter REPROBE. Observe only."""
+        self.obs_loss_suppressed += 1
+        if len(self.obs_loss_candidates) >= 512:
+            return
+        ev = {"t": float(t), "suppressed": str(why)}
+        ev.update(fields)
+        self.obs_loss_candidates.append(ev)
+
     def _observe_detect(
-        self, t: float, reason: str, score: float, source: str = "fusion"
+        self, t: float, reason: str, score: float, source: str = "fusion", extra: dict | None = None
     ) -> None:
         """Log an endpoint detect. Observe only — does not change the hit."""
         raw = str(reason)
@@ -1204,6 +1240,8 @@ class LeoAwareCCA(BaseCCA):
             "dt_last_path_ho": dt_last,
             "near_last_path_ho": bool(near_last),
         }
+        if extra:
+            ev.update(extra)
         if len(self.obs_detect_events) < 256:
             self.obs_detect_events.append(ev)
         if near_last:
@@ -1302,6 +1340,8 @@ class LeoAwareCCA(BaseCCA):
                 "obs_detect_near_path_ho": int(self.obs_detect_near_path_ho),
                 "obs_detect_far_path_ho": int(self.obs_detect_far_path_ho),
                 "obs_detect_reason_counts": dict(self.obs_detect_reason_counts),
+                "obs_loss_candidates": list(self.obs_loss_candidates),
+                "obs_loss_suppressed": int(self.obs_loss_suppressed),
                 "delay_clean_frac": self.obs_delay_clean / n,
                 "delivery_caught_frac": self.obs_delivery_caught / n,
                 "below_085_frac": self.obs_below_085 / n,
@@ -1418,7 +1458,7 @@ class LeoAwareCCA(BaseCCA):
         if hit and t - self.last_reconfig_t > self.detect_cooldown * 0.85:
             # Endpoint confidence from fusion score (capped below assist paths)
             ep_conf = min(0.85, 0.45 + 0.12 * max(0.0, score))
-            self._observe_detect(t, reason, score)
+            self._observe_detect(t, reason, score, extra=self._loss_tax_fields(t))
             self._enter_reprobe(t, f"ep:{reason}", confidence=ep_conf)
             self._anticipator_until = -1.0  # REPROBE owns the hop; never suppress detect
         elif (
@@ -1895,17 +1935,20 @@ class LeoAwareCCA(BaseCCA):
             congestive = False
         # Non-congestive (mobility) loss: do not collapse cwnd
         if not congestive:
+            fields = self._loss_tax_fields(t)
             if t - self.last_reconfig_t < 1.4:
+                if fields["cluster_n"] >= 2:
+                    self._observe_loss_candidate(t, "post_detect_quiet", fields)
                 self.mode = "mobility_loss"
                 return
             if self.min_rtt < 1e17 and len(self.rtt_hist) >= 2:
                 recent_rtt = self.rtt_hist[-1]
                 if recent_rtt < 1.45 * self.min_rtt:
                     self.mode = "mobility_loss"
-                    if t - self.last_reconfig_t > self.detect_cooldown and len(
-                        [x for x in self.loss_burst if t - x < 0.28]
-                    ) >= 2:
-                        self._observe_detect(t, "loss_burst", 1.4, source="on_loss")
+                    if t - self.last_reconfig_t > self.detect_cooldown and fields["cluster_n"] >= 2:
+                        self._observe_detect(
+                            t, "loss_burst", 1.4, source="on_loss", extra=fields
+                        )
                         self._enter_reprobe(t, "ep:loss_burst", confidence=0.7)
                     return
         # True congestion: slightly milder than CUBIC for multi-flow friendliness

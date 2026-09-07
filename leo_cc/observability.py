@@ -511,3 +511,331 @@ def detect_overfire_hook(
         "bbr_p95": bbr_p95,
         "recommendation": rec,
     }
+
+
+# v3.21 on_loss / ep:loss_burst taxonomy. These shadows MAY classify
+# loss_burst — that is the leftover PR #27 named. Fusion stays kept.
+# Path HO is still never a live detect input.
+PACEMAKER_GAP_LO_S = 1.4
+PACEMAKER_GAP_HI_S = 1.8
+TAXONOMY_GATE_NAMES = (
+    "cluster_ge_3",
+    "cluster_ge_4",
+    "first_after_3s",
+    "first_after_5s",
+    "rtt_ge_1_12",
+)
+
+
+def _taxonomy_pass(name: str, ev: dict) -> bool:
+    """Endpoint-legal taxonomy. Fusion always kept. May drop loss_burst."""
+    source = str(ev.get("source") or "")
+    reasons = _event_reasons(ev)
+    if source == "fusion" or (reasons and "loss_burst" not in reasons):
+        return True
+    cluster_n = int(ev.get("cluster_n") or 0)
+    dt_last = ev.get("dt_last_detect")
+    rtt_ratio = ev.get("rtt_ratio")
+    if name == "cluster_ge_3":
+        return cluster_n >= 3
+    if name == "cluster_ge_4":
+        return cluster_n >= 4
+    if name == "first_after_3s":
+        return dt_last is not None and float(dt_last) >= 3.0
+    if name == "first_after_5s":
+        return dt_last is not None and float(dt_last) >= 5.0
+    if name == "rtt_ge_1_12":
+        return rtt_ratio is not None and float(rtt_ratio) >= 1.12
+    return True
+
+
+def classify_loss_taxonomy(
+    events: list[dict],
+    handovers: list[float],
+    window_s: float = NEAR_HO_WINDOW_S,
+) -> dict:
+    """When is on_loss a hop vs cruise flicker? Observe only.
+
+    Taxonomy shadows may drop ep:loss_burst. A gate is reckless if it
+    drops a path HO the current detector already covered.
+    """
+    base = classify_detect_overfire(events, handovers, window_s=window_s)
+    classified = base["events"]
+    # classify_detect_overfire keeps event order — zip taxonomy fields back on.
+    for row, raw in zip(classified, events):
+        row["cluster_n"] = int(raw.get("cluster_n") or 0)
+        row["rtt_ratio"] = (
+            _json_num(raw.get("rtt_ratio")) if raw.get("rtt_ratio") is not None else None
+        )
+        row["dt_last_detect"] = (
+            _json_num(raw.get("dt_last_detect"))
+            if raw.get("dt_last_detect") is not None
+            else None
+        )
+        row["in_reprobe"] = bool(raw.get("in_reprobe"))
+        row["region"] = raw.get("region")
+        row["source"] = str(raw.get("source") or row.get("source") or "")
+
+    hos = [float(h) for h in handovers]
+    on_loss_only_ho = 0
+    fusion_covered_ho = 0
+    for h in hos:
+        near = [ev for ev in classified if abs(float(ev["t"]) - h) <= window_s]
+        if not near:
+            continue
+        if any(ev.get("source") == "fusion" for ev in near):
+            fusion_covered_ho += 1
+        elif all(ev.get("source") == "on_loss" for ev in near):
+            on_loss_only_ho += 1
+
+    far_on_loss = [
+        ev
+        for ev in classified
+        if not ev.get("near_path_ho") and ev.get("source") == "on_loss"
+    ]
+    far_cluster2 = sum(1 for ev in far_on_loss if int(ev.get("cluster_n") or 0) == 2)
+    far_pace = sum(
+        1
+        for ev in far_on_loss
+        if ev.get("dt_last_detect") is not None
+        and PACEMAKER_GAP_LO_S - 1e-9 <= float(ev["dt_last_detect"]) <= PACEMAKER_GAP_HI_S
+    )
+    near_on_loss = [
+        ev
+        for ev in classified
+        if ev.get("near_path_ho") and ev.get("source") == "on_loss"
+    ]
+    near_cluster2 = sum(1 for ev in near_on_loss if int(ev.get("cluster_n") or 0) == 2)
+
+    shadows = {}
+    ho_recall = base["ho_recall"]
+    far_n = base["far_n"]
+    for name in TAXONOMY_GATE_NAMES:
+        kept = [ev for ev in classified if _taxonomy_pass(name, ev)]
+        far_cut = sum(
+            1 for ev in classified if not ev["near_path_ho"] and not _taxonomy_pass(name, ev)
+        )
+        near_cut = sum(
+            1 for ev in classified if ev["near_path_ho"] and not _taxonomy_pass(name, ev)
+        )
+        covered = 0
+        for h in hos:
+            if any(abs(float(ev["t"]) - h) <= window_s for ev in kept):
+                covered += 1
+        recall = _frac(float(covered), float(len(hos))) if hos else None
+        far_cut_frac = _frac(float(far_cut), float(far_n)) if far_n else None
+        ho_recall_ok = recall is not None and ho_recall is not None and recall + 1e-12 >= ho_recall
+        cuts_far = bool(far_cut_frac is not None and far_cut_frac >= 0.50)
+        shadows[name] = {
+            "kept": len(kept),
+            "near_cut": near_cut,
+            "far_cut": far_cut,
+            "far_cut_frac": far_cut_frac,
+            "ho_covered": covered,
+            "ho_recall": recall,
+            "keeps_current_ho_recall": ho_recall_ok,
+            "cuts_half_far": cuts_far,
+            "reckless": bool(hos and not ho_recall_ok),
+            "promising": bool(ho_recall_ok and cuts_far),
+        }
+
+    promising = [n for n, g in shadows.items() if g["promising"]]
+    reckless_any = any(g["reckless"] and g["far_cut"] > 0 for g in shadows.values())
+    if promising:
+        h8 = "PROMISING"
+    elif reckless_any:
+        h8 = "RECKLESS"
+    else:
+        h8 = "WEAK"
+
+    # H7: leftover far on_loss is the 1.4s pacemaker / cluster-2 cruise.
+    h7 = bool(
+        far_on_loss
+        and (
+            far_cluster2 >= 0.60 * len(far_on_loss)
+            or far_pace >= 0.60 * len(far_on_loss)
+        )
+    )
+    # H9: some path HOs are covered only by on_loss (fusion miss).
+    h9 = bool(on_loss_only_ho > 0)
+
+    return {
+        **base,
+        "on_loss_only_ho": on_loss_only_ho,
+        "fusion_covered_ho": fusion_covered_ho,
+        "far_on_loss_n": len(far_on_loss),
+        "far_cluster2_n": far_cluster2,
+        "far_pacemaker_n": far_pace,
+        "near_on_loss_n": len(near_on_loss),
+        "near_cluster2_n": near_cluster2,
+        "taxonomy_gates": shadows,
+        "promising_taxonomy": promising,
+        "h7_far_is_pacemaker": h7,
+        "h8_taxonomy_keeps_ho_cuts_far": h8,
+        "h9_some_ho_on_loss_only": h9,
+        "taxonomy_note": (
+            "Taxonomy shadows may drop ep:loss_burst. Path HO is never a "
+            "live detect input. Do not bump Current."
+        ),
+    }
+
+
+def loss_taxonomy_hook(
+    *,
+    leo_snaps: list[dict],
+    handovers_by_seed: dict[int, list[float]] | None = None,
+    leo_gp: float | None = None,
+    leo_p95: float | None = None,
+    bbr_gp: float | None = None,
+    bbr_p95: float | None = None,
+) -> dict:
+    """Official leftover follow-on: on_loss / ep:loss_burst taxonomy."""
+    bars = dual_gate_bars()
+    per_seed = []
+    h7_votes: list[bool] = []
+    h8_votes: list[str] = []
+    h9_votes: list[bool] = []
+    shadow_votes: dict[str, list[bool]] = {n: [] for n in TAXONOMY_GATE_NAMES}
+    far_cluster2 = 0
+    far_pace = 0
+    far_on_loss = 0
+    on_loss_only_ho = 0
+    fusion_covered_ho = 0
+    suppressed = 0
+    all_far_frac = []
+    all_over = []
+    all_recall = []
+    for snap in leo_snaps:
+        if not snap:
+            continue
+        seed = snap.get("seed")
+        hos = []
+        if handovers_by_seed is not None and seed in handovers_by_seed:
+            hos = list(handovers_by_seed[seed])
+        elif snap.get("handovers"):
+            hos = list(snap.get("handovers") or [])
+        events = list(snap.get("obs_detect_events") or [])
+        clf = classify_loss_taxonomy(events, hos)
+        h7_votes.append(bool(clf["h7_far_is_pacemaker"]))
+        h8_votes.append(str(clf["h8_taxonomy_keeps_ho_cuts_far"]))
+        h9_votes.append(bool(clf["h9_some_ho_on_loss_only"]))
+        for name, g in clf["taxonomy_gates"].items():
+            shadow_votes[name].append(bool(g["promising"]))
+        far_cluster2 += int(clf["far_cluster2_n"])
+        far_pace += int(clf["far_pacemaker_n"])
+        far_on_loss += int(clf["far_on_loss_n"])
+        on_loss_only_ho += int(clf["on_loss_only_ho"])
+        fusion_covered_ho += int(clf["fusion_covered_ho"])
+        suppressed += int(snap.get("obs_loss_suppressed") or 0)
+        if clf["far_frac"] is not None:
+            all_far_frac.append(clf["far_frac"])
+        if clf["detect_over_path_ho"] is not None:
+            all_over.append(clf["detect_over_path_ho"])
+        if clf["ho_recall"] is not None:
+            all_recall.append(clf["ho_recall"])
+        per_seed.append(
+            {
+                "seed": seed,
+                "path_handovers": clf["n_path_ho"],
+                "detects": clf["n_events"],
+                "near_n": clf["near_n"],
+                "far_n": clf["far_n"],
+                "far_frac": clf["far_frac"],
+                "ho_recall": clf["ho_recall"],
+                "on_loss_only_ho": clf["on_loss_only_ho"],
+                "fusion_covered_ho": clf["fusion_covered_ho"],
+                "far_on_loss_n": clf["far_on_loss_n"],
+                "far_cluster2_n": clf["far_cluster2_n"],
+                "far_pacemaker_n": clf["far_pacemaker_n"],
+                "near_on_loss_n": clf["near_on_loss_n"],
+                "near_cluster2_n": clf["near_cluster2_n"],
+                "obs_loss_suppressed": int(snap.get("obs_loss_suppressed") or 0),
+                "h7_far_is_pacemaker": clf["h7_far_is_pacemaker"],
+                "h8_taxonomy_keeps_ho_cuts_far": clf["h8_taxonomy_keeps_ho_cuts_far"],
+                "h9_some_ho_on_loss_only": clf["h9_some_ho_on_loss_only"],
+                "promising_taxonomy": clf["promising_taxonomy"],
+                "taxonomy_gates": clf["taxonomy_gates"],
+                "source_counts": clf.get("source_counts"),
+            }
+        )
+    promising_any = [n for n, votes in shadow_votes.items() if votes and all(votes)]
+    h7 = bool(h7_votes) and all(h7_votes)
+    h9 = bool(h9_votes) and all(h9_votes)
+    if promising_any:
+        h8 = "PROMISING"
+    elif h8_votes and any(v == "RECKLESS" for v in h8_votes):
+        h8 = "RECKLESS" if all(v == "RECKLESS" for v in h8_votes) else "MIXED"
+    else:
+        h8 = "WEAK"
+    abs_gp_ok = leo_gp is not None and leo_gp >= bars["gp_mean"]
+    abs_p95_ok = leo_p95 is not None and leo_p95 <= bars["p95_mean"]
+    beats_fillgap = (
+        leo_gp is not None
+        and leo_p95 is not None
+        and leo_gp > bars["fillgap_gp_lock"]
+        and leo_p95 <= bars["fillgap_p95_lock"]
+    )
+    if h8 == "PROMISING":
+        rec = (
+            f"Taxonomy gate(s) {promising_any} keep current HO recall and "
+            "cut ≥ half of far on_loss fires. Next cook may try that as an "
+            "opt-in endpoint lever (default False). Do not retry SoftCeil. "
+            "Do not bump Current without a 5-seed table that beats FillGap."
+        )
+    elif h9:
+        rec = (
+            "Far on_loss is the 1.4s pacemaker, but some path HOs are "
+            "covered only by on_loss (fusion miss). Legal taxonomy shadows "
+            "that cut the leftover also drop those hops. REJECT a live "
+            "loss-burst gate. Leave detect alone. Do not bump Current."
+        )
+    else:
+        rec = (
+            "No legal on_loss taxonomy keeps HO recall and cuts ≥ half of "
+            "far fires. Stay observe-only. Do not gate ep:loss_burst. Do "
+            "not retry SoftCeil. Do not bump Current."
+        )
+    return {
+        "era": "starlink_v1",
+        "synthetic": True,
+        "current_paid": False,
+        "current_stays": "v3.17 FillGap",
+        "softceil_decision": "REJECT",
+        "lever": "none (observe + taxonomy shadows)",
+        "bars": bars,
+        "window_s": NEAR_HO_WINDOW_S,
+        "means": {
+            "detect_over_path_ho": _json_num(sum(all_over) / len(all_over) if all_over else None),
+            "far_frac": _json_num(sum(all_far_frac) / len(all_far_frac) if all_far_frac else None),
+            "ho_recall": _json_num(sum(all_recall) / len(all_recall) if all_recall else None),
+        },
+        "far_on_loss_n": far_on_loss,
+        "far_cluster2_n": far_cluster2,
+        "far_pacemaker_n": far_pace,
+        "on_loss_only_ho": on_loss_only_ho,
+        "fusion_covered_ho": fusion_covered_ho,
+        "obs_loss_suppressed": suppressed,
+        "promising_taxonomy": promising_any,
+        "per_seed": per_seed,
+        "hypotheses": {
+            "H7_far_on_loss_is_pacemaker": h7,
+            "H8_taxonomy_keeps_ho_cuts_far": h8,
+            "H9_some_ho_on_loss_only": h9,
+            "note": (
+                "Follow-on to v3.20 leftover (fusion clean; on_loss leftover). "
+                "Taxonomy shadows may classify loss_burst. Not a cook. "
+                "Do not bump Current."
+            ),
+        },
+        "gates": {
+            "gp_ge_75": abs_gp_ok,
+            "p95_le_138_8": abs_p95_ok,
+            "beats_fillgap_lock": beats_fillgap,
+            "bump_current": False,
+        },
+        "measured_gp": leo_gp,
+        "measured_p95": leo_p95,
+        "bbr_gp": bbr_gp,
+        "bbr_p95": bbr_p95,
+        "recommendation": rec,
+    }
