@@ -110,7 +110,7 @@ See `docs/leoaware_v311_wetlinks_uncap.md`.
 2025, MIT) publishes concurrent **heavy UDP saturation + ICMP OWD** traces
 (~120 s, 4.8K). That is the first public dump that is actually continuous
 ≥90 s UDP-sat + delay — WetLinks is 15 s hold-expand; zhao_zenodo23 is TCP
-Cubic (PR #12, p95 FAIL, not for dual-gate ACCEPT).
+Cubic (p95 FAIL, not for dual-gate ACCEPT).
 
 Vendored slices: `traces/leocc/`. Design: `docs/leoaware_v313_leocc.md`.
 **Not** a product-lock replacement. Do not mix with `wetlinks_v1` 239.72/70.38

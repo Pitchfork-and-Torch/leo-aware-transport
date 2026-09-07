@@ -411,7 +411,7 @@ class LeoAwareCCA(BaseCCA):
       - Enrich on_loss / ep:loss_burst fires with endpoint features
         (cluster_n, rtt_ratio, dt_last_detect). Observe only.
       - Shadow taxonomy gates may classify loss_burst (this is the leftover
-        PR #27 named). They are not a live send lever. Default False.
+        v3.20 leftover named). They are not a live send lever. Default False.
       - Path HO stays fail-closed. SoftCeil / FillGap / OpenSlot stay False.
 
     Related: LeoCC response-interval outliers; SaTCP freeze; OrbCC pathID/U;

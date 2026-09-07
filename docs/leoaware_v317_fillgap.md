@@ -6,7 +6,7 @@
 **Lever:** **FillGap** (`use_fill_gap`, default **False**)  
 **Decision:** **ACCEPT vs BBR** (82.45 > 82.44; p95 76.26 ≤ 76.66; terr 79.05;
 seed 13 96.80). **Promoted 2026-08-20 to Current / product dual-gate lock**
-(PR #22 landed; constructor defaults stay False).
+(constructor defaults stay False).
 
 ## Lock we are chasing
 
@@ -17,7 +17,7 @@ v3.9 Crest lock (`results/archive/20260812-v39-starlink-v1/`):
 | BBRv3approx | **82.44** | **76.66** |
 | LeoAware v3.9 Crest | 82.07 | 76.26 |
 
-v3.16 OpenSlot (PR #21, draft, SHA `7a222fb1`, do not merge):
+v3.16 OpenSlot (draft; do not merge as Current):
 
 | CCA | gp mean | p95 mean |
 |-----|--------:|---------:|

@@ -59,4 +59,4 @@ bars still PASS; research reject vs Crest/BBR).
 2. Opt-in `starlink_v2` mid-epoch flicker research (`docs/leoaware_v310_starlink_v2.md`)
    — not a product lock; first probe still has Leo behind BBR.
 3. Do not bump Current / paid copy without a clear multi-seed Pareto or a new
-   Jon-gated path era.
+   product-gated path era.

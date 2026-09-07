@@ -7,8 +7,8 @@
 
 ## Decision that created this era
 
-PR #8 / Step 0 proved absolute **gp≥75 AND p95≤138.8** is geometrically
-impossible on `ope_v36` (oracle ~60.5, path p95 ~142). Jon/Steward: **keep the
+Step 0 proved absolute **gp>=75 AND p95<=138.8** is geometrically
+impossible on `ope_v36` (oracle ~60.5, path p95 ~142). Product lock: **keep the
 absolute bars**, change the **default product-lock path** to documented
 `starlink_v1`, then re-lock CCA. Real Starlink CSVs are the north star next
 (`docs/starlink_csv_ingest.md`).

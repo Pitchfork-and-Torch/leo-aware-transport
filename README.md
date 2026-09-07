@@ -2,8 +2,11 @@
 
 **LEO-aware congestion control research prototype** for Starlink-class satellite paths.
 
+**Package:** 0.3.21 (see `CHANGELOG.md`)  
+**Current product lock:** LeoAware v3.17 FillGap on `starlink_v1` (82.45 / 76.26)
+
 **Product brief:** [orbitstack.jonbailey.xyz](https://orbitstack.jonbailey.xyz/)  
-**Org:** [Pitchfork-and-Torch](https://github.com/Pitchfork-and-Torch) | **License:** MIT
+**Org:** Pitchfork-and-Torch | **License:** MIT
 
 Traditional congestion control assumes a **stable path and stable RTT**. LEO (Starlink-class) has neither. Bandwidth alone is insufficient; the transport stack needs LEO-aware innovation.
 
@@ -74,7 +77,7 @@ experiments/
   run_ablation.py           # endpoint / ASCENT-D / Orb / hybrid matrix
   run_wetlinks.py           # wetlinks_v1 geometry + 5-window CCA
   slice_wetlinks.py         # re-fetch / cut WetLinks 90s windows
-  slice_leocc.py            # LeoCC 4.8K.zip → 5 downlink 90s windows
+  slice_leocc.py            # LeoCC 4.8K.zip -> 5 downlink 90s windows
   run_leocc.py              # leocc_v1 geometry + 5-window CCA
   run_starlink.py           # product-era scorecard (FillGap / SoftCeil opt-in)
   diag_v318_softceil.py     # leftover diagnosis after FillGap
@@ -94,10 +97,10 @@ docs/
   leoaware_v311_wetlinks.md
   leoaware_v313_leocc.md      # research-era ingest; not product lock
   leoaware_v317_fillgap.md    # Current product dual-gate lock
-  leoaware_v318_softceil.md   # leftover cook after FillGap — REJECT vs BBR
+  leoaware_v318_softceil.md   # leftover cook after FillGap - REJECT vs BBR
   leoaware_v319_starlink_obs.md  # leftover scorecard hooks; not Current
   leoaware_v320_detect_overfire.md  # detect over-fire measure; not Current
-  leoaware_v321_loss_tax.md # on_loss taxonomy after PR #27; not Current
+  leoaware_v321_loss_tax.md # on_loss taxonomy after v3.20 leftover; not Current
   ascent_d_orbcc_hybrid.md
   related_work.md
   cloudflare_starlink_bridge.md
@@ -170,20 +173,20 @@ This is the core distinction classic CUBIC lacks on LEO.
 
 On cruise/reclaim only (never during REPROBE; never gates `ep:loss_burst`):
 
-1. **Crest Abort** — abort TBPR/OCE when RTT > ~1.35× recent median
-2. **Dual-Ledger Cruise** — `cwnd_safe` vs `cwnd_tide` (tide ≤1.42× BDP, delay-clean)
-3. **Local Surplus Guard** — stretch only if delivery EWMA ≥ ~0.85× prior_bw
-4. **Freeze-only anticipator** — ACK-IA growth hold ~120 ms; never detect-suppress
+1. **Crest Abort** - abort TBPR/OCE when RTT > ~1.35x recent median
+2. **Dual-Ledger Cruise** - `cwnd_safe` vs `cwnd_tide` (tide <=1.42x BDP, delay-clean)
+3. **Local Surplus Guard** - stretch only if delivery EWMA >= ~0.85x prior_bw
+4. **Freeze-only anticipator** - ACK-IA growth hold ~120 ms; never detect-suppress
 
 ### v3.17 FillGap (Current product lock on `starlink_v1`)
 
 Opt-in lever (`use_fill_gap`, constructor default **False**). Current numbers are from `python3 -m experiments.run_starlink` (FillGap + OpenSlot on; OpenSlot 0.80 not retuned). Never gates `ep:loss_burst`.
 
-When delay-clean and delivery ≥ 0.95×`bw_est` and cwnd < 0.85× delivery BDP: add **1 MSS**, capped at the 0.85× ceiling. See `docs/leoaware_v317_fillgap.md`.
+When delay-clean and delivery >= 0.95x `bw_est` and cwnd < 0.85x delivery BDP: add **1 MSS**, capped at the 0.85x ceiling. See `docs/leoaware_v317_fillgap.md`.
 
 ### v3.18 SoftCeil (REJECT vs BBR; not Current)
 
-Opt-in leftover cook after FillGap (`use_soft_ceil`, constructor default **False**). Official archive **82.35 / 76.26** vs FillGap Current **82.45 / 76.26** vs BBR **82.44 / 76.66**. Seed 13 fell 96.80 → 96.31. p95 unchanged. Do not raise the FillGap 0.85 ceiling. See `docs/leoaware_v318_softceil.md`.
+Opt-in leftover cook after FillGap (`use_soft_ceil`, constructor default **False**). Official archive **82.35 / 76.26** vs FillGap Current **82.45 / 76.26** vs BBR **82.44 / 76.66**. Seed 13 fell 96.80 -> 96.31. p95 unchanged. Do not raise the FillGap 0.85 ceiling. See `docs/leoaware_v318_softceil.md`.
 
 ### v3.19 leftover observability (research; not Current)
 
@@ -191,7 +194,7 @@ Always-on leftover counters split cruise / post-detect / REPROBE and detect vs p
 
 ### v3.21 loss-burst taxonomy (research; not Current)
 
-Follow-on to PR #27 leftover (`on_loss` / `ep:loss_burst`). Observe + taxonomy shadows. **REJECT a live loss-burst gate** — hop-covering `on_loss` looks like the 1.4s pacemaker. SoftCeil stays REJECT. Current stays FillGap. See `docs/leoaware_v321_loss_tax.md`.
+Follow-on to v3.20 leftover (`on_loss` / `ep:loss_burst`). Observe + taxonomy shadows. **REJECT a live loss-burst gate** - hop-covering `on_loss` looks like the 1.4s pacemaker. SoftCeil stays REJECT. Current stays FillGap. See `docs/leoaware_v321_loss_tax.md`.
 
 ---
 
@@ -208,22 +211,22 @@ Metrics: goodput, avg / p95 / p99 RTT, loss rate, utilization, Jain index, hando
 
 ### Primary objective: multi-seed `leo_fast_ho`
 
-Seeds 13,7,42,99,123 · 90s · **endpoint-only** default (public suite).  
+Seeds 13,7,42,99,123 * 90s * **endpoint-only** default (public suite).  
 Means only - do not market peaks.
 
-**Harness eras — do not mix in one Current table** (`docs/harness_eras.md`):
+**Harness eras - do not mix in one Current table** (`docs/harness_eras.md`):
 
 | Era | Path | Dual-gate |
 |-----|------|-----------|
-| Research (v3.6–v3.7) | `ope_v36` | relative vs BBR on the same orbit |
-| **Product (v3.17 FillGap)** | **`starlink_v1`** | **absolute gp≥75 AND p95≤138.8** |
+| Research (v3.6-v3.7) | `ope_v36` | relative vs BBR on the same orbit |
+| **Product (v3.17 FillGap)** | **`starlink_v1`** | **absolute gp>=75 AND p95<=138.8** |
 | Historical | coupled-RNG | v3.4/v3.5 numbers; different orbit per CCA |
 
 `python -m experiments.multi_seed` defaults to **`starlink_v1`**. Research: `--path-profile ope_v36`. Current FillGap numbers are from `python3 -m experiments.run_starlink` (same seeds; FillGap + OpenSlot opted in). Constructor defaults stay `use_fill_gap=False` / `use_openslot=False`.
 
 #### Current: LeoAware v3.17 FillGap on `starlink_v1`
 
-Product dual-gate lock. Same path for CUBIC + BBRv3approx + LeoAware. Soft-QIR α=0.20. Means, not peaks. Seeds **13, 7, 42, 99, 123**. Source: PR #22 archive `results/archive/20260814-v317-fillgap/`.
+Product dual-gate lock. Same path for CUBIC + BBRv3approx + LeoAware. Soft-QIR alpha=0.20. Means, not peaks. Seeds **13, 7, 42, 99, 123**. Source archive: `results/archive/20260814-v317-fillgap/`.
 
 | CCA | Goodput mean | p95 mean | Notes |
 |-----|-------------:|---------:|-------|
@@ -232,7 +235,7 @@ Product dual-gate lock. Same path for CUBIC + BBRv3approx + LeoAware. Soft-QIR �
 | **LeoAware v3.17 FillGap** | **82.45** | **76.26** | **new product dual-gate lock** |
 | LeoAware v3.9 Crest (prior lock) | 82.07 | 76.26 | prior product lock |
 
-Beats Crest on gp, matches p95, edges BBR 82.44 / 76.66. Absolute bars: gp **82.45 ≥ 75**, p95 **76.26 ≤ 138.8**, terr **79.05 ≥ 77** (p95 46 ms = path 40 + QIR). Geometry oracle 84.03 / path p95 70.79. Do not mix with `ope_v36` ~58/152.
+Beats Crest on gp, matches p95, edges BBR 82.44 / 76.66. Absolute bars: gp **82.45 >= 75**, p95 **76.26 <= 138.8**, terr **79.05 >= 77** (p95 46 ms = path 40 + QIR). Geometry oracle 84.03 / path p95 70.79. Do not mix with `ope_v36` ~58/152.
 
 Reproduce Current: `python3 -m experiments.run_starlink`. Design: `docs/leoaware_v317_fillgap.md`.
 
@@ -248,13 +251,13 @@ OPE-fair timeline (path identity identical across CCAs). **Not Current.**
 | LeoAware v3.6 Keel | 58.27 | 152.1 | first OPE-fair dual-gate pass |
 | LeoAware v3.5 Tide | 76.27 | 147.39 | coupled-RNG era (historical) |
 
-v3.7 dual gate is **relative to BBR on the OPE-fair path** (research-only). Coupled-era absolute bars (gp≥75 / p95≤138.8) mixed different orbits per CCA and are not comparable.
+v3.7 dual gate is **relative to BBR on the OPE-fair path** (research-only). Coupled-era absolute bars (gp>=75 / p95<=138.8) mixed different orbits per CCA and are not comparable.
 
 **v3.8 Step 0:** on `ope_v36` those absolute bars are **geometrically impossible** (oracle gp mean 60.48; path-base p95 mean 142.32). LeoAware is already ~97% of oracle. See `docs/leoaware_v38_step0_feasibility.md`. Do not market +0.5 vs BBR as a paid Optimizer breakthrough.
 
 #### Prior lock: v3.9 Crest on `starlink_v1`
 
-OPE-fair, same path. Soft-QIR α=0.20. Means, not peaks. **No longer Current.**
+OPE-fair, same path. Soft-QIR alpha=0.20. Means, not peaks. **No longer Current.**
 
 | CCA | Goodput mean | p95 mean | Notes |
 |-----|-------------:|---------:|-------|
@@ -351,7 +354,7 @@ See `docs/related_work.md` for LeoCC, OrbCC, SaTCP / StarQUIC-style freezing, an
 |--|--|
 | Product landing | https://orbitstack.jonbailey.xyz/ |
 | ASCENT wire | https://ascent.jonbailey.xyz/ |
-| Issues | Use GitHub Issues on this repo |
+| Changelog | `CHANGELOG.md` |
 
 ## License
 
