@@ -1,6 +1,6 @@
 [project]
 name = "leo-aware-transport"
-version = "0.1.0"
+version = "0.3.21"
 description = "LEO-aware congestion control research prototype (Starlink-class dynamics)"
 readme = "README.md"
 requires-python = ">=3.11"

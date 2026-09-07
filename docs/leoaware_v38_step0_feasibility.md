@@ -3,7 +3,7 @@
 **Date:** 2026-08-12  
 **Branch:** `cursor/v38-step0-feasibility-586b`  
 **Tip:** `5652fa0` (v3.7 OCE)  
-**Decision:** **REJECT / WIP** for product absolute dual-gate. **STOP CCA theater.** Escalate path/HO realism to Jon.
+**Decision:** **REJECT / WIP** for product absolute dual-gate. **STOP CCA theater.** Escalate path/HO realism.
 
 This is not a Current-tab bump. Paid OrbitStack copy must not change.
 
@@ -101,7 +101,7 @@ CSV demos: `traces/ope_v36_seed13.csv`, `traces/starlink_rtt_seed13.csv`, `trace
 
 `starlink_rtt` proves the p95 bar is blocked by **epoch-sticky high RTT** (12s at 150–180 ms), which is not how Starlink handovers behave (brief disruption, then a new satellite still typically 30–70 ms). Fixing RTT stickiness alone does **not** unlock gp≥75.
 
-`starlink_v1` makes the absolute bars geometrically possible by also raising the capacity band. It also raises BBR’s ceiling. **Do not treat 75/138.8 as automatically still the right product bar** on a new model — Jon must decide.
+`starlink_v1` makes the absolute bars geometrically possible by also raising the capacity band. It also raises BBR's ceiling. **Do not treat 75/138.8 as automatically still the right product bar** on a new model - a product-lock decision is required.
 
 Spec: `docs/leoaware_v38_capacity_model.md`.
 
@@ -126,9 +126,9 @@ Spec: `docs/leoaware_v38_capacity_model.md`.
 | integrity | green | **PASS** |
 | relative vs BBR | research-only | LeoAware 58.78/152.09 vs BBR 58.21/152.89 (not a product PASS) |
 
-**Decision: REJECT / WIP.** Honest Pareto: LeoAware is already on the OPE ceiling. Next work is path/HO/capacity realism under OPE, then a Jon gate decision, then CCA on the new lock if the bars remain 75/138.8.
+**Decision: REJECT / WIP.** Honest Pareto: LeoAware is already on the OPE ceiling. Next work is path/HO/capacity realism under OPE, then a product-lock gate decision, then CCA on the new lock if the bars remain 75/138.8.
 
-## Ask for Jon
+## Ask for a product-lock decision
 
 1. Keep product bars at absolute 75/138.8 and **change the default generative path** (candidate: opt-in `starlink_v1`, or real Starlink CSVs), then re-lock CCA on that era?  
 2. Or keep `ope_v36` as the fair research path and **re-derive** product bars from usable-speed + BBR on that path (not 75/138.8)?  

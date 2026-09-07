@@ -396,7 +396,7 @@ Archives:
 | terrestrial | ≥ 77 @ 40 | **78.20 PASS** |
 | integrity | green | PASS |
 
-**Decision: ACCEPT v3.4-p95 (Jon publish 2026-08-12).**  
+**Decision: ACCEPT v3.4-p95 (public publish 2026-08-12).**  
 p95 mean under BBR (**138.37 ≤ 138.8**); goodput still beats BBR (**73.57 > 70.88**); terrestrial **78.20 ≥ 77**. Product stretch floor 75 not met (~1.4 Mbps short) - documented honestly, not marketed as ≥75. Public Current tab + multi-seed primary objective update to v3.4-p95. v3.3-A retained as historical gp-peak / p95-residual tab.
 
 ---
@@ -567,7 +567,7 @@ LeoAware is **97.2% of oracle** (headroom ~1.7 Mbps). Target 75 is +14.5 Mbps ab
 
 ### Decision
 
-**REJECT / WIP — STOP CCA theater.** Absolute product dual-gate is impossible on `ope_v36`. Do not ship +0.5 vs BBR as an Optimizer breakthrough. Escalate capacity/HO realism to Jon (`docs/leoaware_v38_capacity_model.md`). No Current bump. No CA/DLC/LSG this loop.
+**REJECT / WIP - STOP CCA theater.** Absolute product dual-gate is impossible on `ope_v36`. Do not ship +0.5 vs BBR as an Optimizer breakthrough. Escalate capacity/HO realism (`docs/leoaware_v38_capacity_model.md`). No Current bump. No CA/DLC/LSG this loop.
 
 Integrity: ASCENT-D + OPE path identity **PASS**. Terrestrial gp≥77 **PASS**; p95 46 ms (path 40 + QIR 6) noted honestly.
 
@@ -654,7 +654,7 @@ Terrestrial p95 46 ms is path 40 + soft-QIR sojourn (α=0.20), not the old path-
 
 LeoAware is **97.7% of oracle** (headroom ~2.0 Mbps). Product PASS is **absolute**, not relative-to-BBR (LeoAware 82.07 vs BBR 82.44 — tied, honest).
 
-**Decision: ACCEPT v3.9 Crest** on synthetic `starlink_v1` (absolute dual-gate). **No Current bump. No paid landing. Do not merge without Jon.** Do not mix with `ope_v36` research Current (v3.7 58.78/152.1). Path is synthetic until CSV lock (`docs/starlink_csv_ingest.md`).
+**Decision: ACCEPT v3.9 Crest** on synthetic `starlink_v1` (absolute dual-gate). **No Current bump. No paid landing. Do not merge without a product-lock review.** Do not mix with `ope_v36` research Current (v3.7 58.78/152.1). Path is synthetic until CSV lock (`docs/starlink_csv_ingest.md`).
 
 ### Crest invention ablation (leo_fast_ho, same `starlink_v1` path)
 
@@ -1111,7 +1111,7 @@ Archive: `results/archive/20260814-v317-fillgap/`
 `781bd77`. FillGap / OpenSlot constructor defaults stay **False**. No new
 CCA numbers.
 
-Jon’s prior published lock was v3.9 Crest on synthetic `starlink_v1`
+The prior published lock was v3.9 Crest on synthetic `starlink_v1`
 (82.07 gp / 76.26 p95, seeds 13,7,42,99,123). PR #22 archive (same path,
 same seeds) is the new Current:
 

@@ -514,7 +514,7 @@ def detect_overfire_hook(
 
 
 # v3.21 on_loss / ep:loss_burst taxonomy. These shadows MAY classify
-# loss_burst — that is the leftover PR #27 named. Fusion stays kept.
+# loss_burst - that is the leftover v3.20 named. Fusion stays kept.
 # Path HO is still never a live detect input.
 PACEMAKER_GAP_LO_S = 1.4
 PACEMAKER_GAP_HI_S = 1.8

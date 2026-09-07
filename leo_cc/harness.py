@@ -19,7 +19,7 @@ from leo_cc.network import LeoPathConfig
 
 # Generative identity (frozen). Do not change without a new research era.
 RESEARCH_PATH_PROFILE = "ope_v36"
-# Product-lock path (Jon/Steward 2026-08-12). Suite primary objective.
+# Product-lock path (2026-08-12). Suite primary objective.
 PRODUCT_PATH_PROFILE = "starlink_v1"
 
 PRODUCT_GP_BAR = 75.0

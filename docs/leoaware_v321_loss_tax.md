@@ -9,7 +9,7 @@
 
 ## Why this exists
 
-PR #27 / v3.20 measured leftover H2: fusion is clean; the ~8× over-fire
+v3.20 measured leftover H2: fusion is clean; the ~8x over-fire
 is `on_loss` `ep:loss_burst`. Legal fusion shadows cut **0** far fires.
 This cook measured a **mobility-loss taxonomy** — when is `on_loss` a
 real hop vs cruise flicker — using endpoint signals only.

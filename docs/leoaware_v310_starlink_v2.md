@@ -49,7 +49,7 @@ product lock on this evidence.
 - Soft-QIR α frozen 0.20.
 - `ope_v36` / `starlink_v1` generative defaults unchanged.
 
-## Next if Jon cares about flicker
+## Next if a later flicker pass is wanted
 
 1. Re-tune fade/rise thresholds against per-seed delivery traces (instrumented).
 2. Or ingest real CSVs and retire the synthetic flicker generator.

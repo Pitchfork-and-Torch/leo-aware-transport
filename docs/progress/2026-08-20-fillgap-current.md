@@ -3,7 +3,7 @@
 **Audience:** orbitstack /progress (public-safe)  
 **Harness:** `starlink_v1` product lock · endpoint-only · soft-QIR α=0.20  
 **Scenario:** `leo_fast_ho` · seeds 13,7,42,99,123 · means only  
-**Source archive:** `results/archive/20260814-v317-fillgap/` (PR #22)  
+**Source archive:** `results/archive/20260814-v317-fillgap/`
 **Integrity:** constructor defaults `use_fill_gap=False` / `use_openslot=False`
 
 ## Current product dual-gate lock

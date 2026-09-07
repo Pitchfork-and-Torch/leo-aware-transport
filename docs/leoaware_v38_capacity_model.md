@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-12  
 **Status (v3.8 Step 0):** proposal.  
-**Status (v3.9):** Jon/Steward accepted option 1 — keep absolute 75/138.8 and make
+**Status (v3.9):** product lock accepted option 1 - keep absolute 75/138.8 and make
 **`starlink_v1` the product-lock path**. `ope_v36` stays the research relative-BBR
 era. See `docs/harness_eras.md` and `docs/leoaware_v39_starlink_v1.md`.
 
