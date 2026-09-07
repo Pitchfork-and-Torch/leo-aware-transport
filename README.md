@@ -80,6 +80,7 @@ experiments/
   diag_v318_softceil.py     # leftover diagnosis after FillGap
   diag_v319_leftover.py     # leftover split after SoftCeil REJECT (not a cook)
   diag_v320_detect.py       # detect over-fire measure (observe + shadow gates)
+  diag_v321_loss_tax.py     # on_loss / ep:loss_burst taxonomy (observe)
   test_starlink_observability.py
   test_ascent_d_integrity.py
   test_wetlinks_integrity.py
@@ -96,6 +97,7 @@ docs/
   leoaware_v318_softceil.md   # leftover cook after FillGap — REJECT vs BBR
   leoaware_v319_starlink_obs.md  # leftover scorecard hooks; not Current
   leoaware_v320_detect_overfire.md  # detect over-fire measure; not Current
+  leoaware_v321_loss_tax.md # on_loss taxonomy after PR #27; not Current
   ascent_d_orbcc_hybrid.md
   related_work.md
   cloudflare_starlink_bridge.md
@@ -186,6 +188,10 @@ Opt-in leftover cook after FillGap (`use_soft_ceil`, constructor default **False
 ### v3.19 leftover observability (research; not Current)
 
 Always-on leftover counters split cruise / post-detect / REPROBE and detect vs path HO. Scorecard hook only. No new lever. Current stays FillGap. See `docs/leoaware_v319_starlink_obs.md`.
+
+### v3.21 loss-burst taxonomy (research; not Current)
+
+Follow-on to PR #27 leftover (`on_loss` / `ep:loss_burst`). Observe + taxonomy shadows only. SoftCeil stays REJECT. Current stays FillGap. See `docs/leoaware_v321_loss_tax.md`.
 
 ---
 
