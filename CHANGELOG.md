@@ -7,6 +7,18 @@ Dual-gate bars stay gp >= 75 and p95 <= 138.8 on `starlink_v1`.
 Current means stay 82.45 / 76.26 (v3.17 FillGap). This file does not
 retune congestion-control math.
 
+## 0.3.22 - 2026-09-17
+
+- Declare `reedsolo>=1.7` in `pyproject.toml`. `leo_cc.ascent_d` imports
+  it at module load and `leo_cc.sim` pulls it in transitively, so
+  `pip install .` produced a package whose `leo-run` entry point and
+  `import leo_cc.sim` failed with `ModuleNotFoundError`. `requirements.txt`
+  already had it; the two lists now match.
+- `experiments/test_ascent_d_integrity.py` checks that every package in
+  `requirements.txt` is declared in `pyproject.toml` and that the package
+  version matches `leo_cc.__version__`.
+- No congestion-control change. Current stays v3.17 FillGap 82.45 / 76.26.
+
 ## 0.3.21 - 2026-09-07
 
 - Align package version in `pyproject.toml` and `leo_cc.__version__`

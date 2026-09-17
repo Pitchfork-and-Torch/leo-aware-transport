@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import random
+import re
 import sys
+import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+import leo_cc
 from leo_cc.ccas import LeoAwareCCA
 from leo_cc.ascent_path_hint import (
     encode_path_hint_ascent_d,
@@ -20,6 +23,33 @@ from leo_cc.ascent_path_hint import (
     bit_flip_noise,
     IngestStats,
 )
+
+
+def _dep_name(spec: str) -> str:
+    """'reedsolo>=1.7' -> 'reedsolo' (PEP 503 normalized)."""
+    name = re.split(r"[<>=!~;\[ ]", spec.strip(), maxsplit=1)[0]
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def test_pyproject_declares_runtime_deps():
+    """`pip install .` must pull every runtime dep, not only requirements.txt.
+
+    leo_cc.ascent_d imports reedsolo at module load and leo_cc.sim imports
+    it transitively, so a pyproject without reedsolo ships a broken leo-run.
+    """
+    with (ROOT / "pyproject.toml").open("rb") as f:
+        proj = tomllib.load(f)["project"]
+    declared = {_dep_name(d) for d in proj["dependencies"]}
+    required = {
+        _dep_name(line)
+        for line in (ROOT / "requirements.txt").read_text().splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+    missing = required - declared
+    assert not missing, f"pyproject.toml dependencies missing {sorted(missing)}"
+    assert "reedsolo" in declared
+    assert proj["version"] == leo_cc.__version__, (proj["version"], leo_cc.__version__)
+    print(f"ok: pyproject declares {sorted(declared)}; version {proj['version']}")
 
 
 def test_roundtrip_ok():
@@ -143,6 +173,7 @@ def test_skypulse_does_not_gate_loss_burst():
 
 
 if __name__ == "__main__":
+    test_pyproject_declares_runtime_deps()
     test_roundtrip_ok()
     test_erase_on_corruption()
     test_fail_closed_no_rate_change()
