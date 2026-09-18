@@ -46,6 +46,17 @@ def encode_path_hint_unit(
     role: str = "pilot",
 ) -> bytes:
     """Build a greppable ASCENT path-hint unit (P0-style text, all bytes < 0x80)."""
+    # ROLE is a single line token. Newlines/spaces used to inject a second
+    # PATHHINT line whose epoch/-1 sentinels bleed into parse_path_hint_unit.
+    if (
+        not isinstance(role, str)
+        or not role
+        or not role.isascii()
+        or not role.isprintable()
+        or any(ch.isspace() for ch in role)
+        or ":" in role
+    ):
+        raise ValueError("path-hint role must be a single printable ASCII token")
     parts = [
         "ASCENT/1.0",
         f"ROLE:{role}",
