@@ -57,6 +57,16 @@ def encode_path_hint_unit(
         or ":" in role
     ):
         raise ValueError("path-hint role must be a single printable ASCII token")
+    # Negatives used to serialize onto the wire (cap_bps=-5) and then vanish
+    # at parse (c > 0 → None), so callers thought a blackout hint applied.
+    for name, val in (
+        ("capacity_bps", capacity_bps),
+        ("next_capacity_bps", next_capacity_bps),
+        ("rtt_s", rtt_s),
+        ("freeze_remaining_s", freeze_remaining_s),
+    ):
+        if val is not None and val < 0:
+            raise ValueError(f"path-hint {name} must be >= 0")
     parts = [
         "ASCENT/1.0",
         f"ROLE:{role}",
