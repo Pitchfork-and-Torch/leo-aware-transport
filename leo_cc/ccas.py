@@ -967,10 +967,26 @@ class LeoAwareCCA(BaseCCA):
         # Endpoint-only default: ignore all hints unless enabled
         if not self.use_path_hints:
             return
+        # Non-finite / bool capacity used to poison hint_capacity_bps (inf/1.0)
+        # when path_hint_mode=direct bypasses encode/parse guards. Mirror the
+        # freeze_remaining_s ignore path.
+        def _finite_cap(val):
+            if val is None:
+                return None
+            if (
+                isinstance(val, bool)
+                or not isinstance(val, (int, float))
+                or not math.isfinite(float(val))
+            ):
+                return None
+            return float(val)
+
+        next_capacity_bps = _finite_cap(next_capacity_bps)
+        capacity_bps = _finite_cap(capacity_bps)
         if next_capacity_bps and next_capacity_bps > 0:
-            self.hint_capacity_bps = float(next_capacity_bps)
+            self.hint_capacity_bps = next_capacity_bps
         if capacity_bps and capacity_bps > 0:
-            self.hint_capacity_bps = float(capacity_bps)
+            self.hint_capacity_bps = capacity_bps
 
         # ASCENT / SkyPulse freeze
         # Non-finite freeze_remaining_s (inf/nan) used to set freeze_until=inf
