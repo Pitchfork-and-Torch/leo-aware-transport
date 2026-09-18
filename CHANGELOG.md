@@ -17,6 +17,9 @@ retune congestion-control math.
 - `experiments/test_ascent_d_integrity.py` checks that every package in
   `requirements.txt` is declared in `pyproject.toml` and that the package
   version matches `leo_cc.__version__`.
+- README `**Package:**` line now matches 0.3.22 (was left at 0.3.21); the
+  integrity test asserts that README line stays lockstep with
+  `leo_cc.__version__`.
 - No congestion-control change. Current stays v3.17 FillGap 82.45 / 76.26.
 
 ## 0.3.21 - 2026-09-07

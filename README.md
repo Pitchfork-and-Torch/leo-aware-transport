@@ -2,7 +2,7 @@
 
 **LEO-aware congestion control research prototype** for Starlink-class satellite paths.
 
-**Package:** 0.3.21 (see `CHANGELOG.md`)  
+**Package:** 0.3.22 (see `CHANGELOG.md`)  
 **Current product lock:** LeoAware v3.17 FillGap on `starlink_v1` (82.45 / 76.26)
 
 **Product brief:** [orbitstack.jonbailey.xyz](https://orbitstack.jonbailey.xyz/)  
