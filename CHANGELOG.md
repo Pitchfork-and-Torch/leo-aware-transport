@@ -7,6 +7,13 @@ Dual-gate bars stay gp >= 75 and p95 <= 138.8 on `starlink_v1`.
 Current means stay 82.45 / 76.26 (v3.17 FillGap). This file does not
 retune congestion-control math.
 
+## 0.3.23 - 2026-09-17
+
+- `encode_path_hint_unit(role=...)` rejects whitespace/newlines/non-printable
+  ROLE tokens. A newline in `role` previously injected a second PATHHINT line
+  whose epoch bled through when the real unit used the `-1` sentinel.
+  Integrity test: `experiments/test_path_hint_role_token.py`. No CCA change.
+
 ## 0.3.22 - 2026-09-17
 
 - Congestive enqueue drops in `leo_cc.sim` now `on_sent` before `on_loss`.
