@@ -973,6 +973,14 @@ class LeoAwareCCA(BaseCCA):
             self.hint_capacity_bps = float(capacity_bps)
 
         # ASCENT / SkyPulse freeze
+        # Non-finite freeze_remaining_s (inf/nan) used to set freeze_until=inf
+        # forever when path_hint_mode=direct bypasses encode/parse guards.
+        if freeze_remaining_s is not None and (
+            isinstance(freeze_remaining_s, bool)
+            or not isinstance(freeze_remaining_s, (int, float))
+            or not math.isfinite(float(freeze_remaining_s))
+        ):
+            freeze_remaining_s = None
         if freeze_active or (freeze_remaining_s is not None and freeze_remaining_s > 0):
             rem = float(freeze_remaining_s or 0.0)
             self.freeze_until = max(self.freeze_until, t + rem)
