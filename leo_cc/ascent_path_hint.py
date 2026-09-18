@@ -13,6 +13,8 @@ Outer: ASCENT-D encode_p9(unit) when integrity protection is requested.
 """
 from __future__ import annotations
 
+import math
+
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
@@ -59,13 +61,21 @@ def encode_path_hint_unit(
         raise ValueError("path-hint role must be a single printable ASCII token")
     # Negatives used to serialize onto the wire (cap_bps=-5) and then vanish
     # at parse (c > 0 → None), so callers thought a blackout hint applied.
+    # Non-finite (NaN/Inf) likewise used to land on the wire (rtt_s=inf) and
+    # parse as usable control (freeze_s=inf → freeze_active=True).
     for name, val in (
         ("capacity_bps", capacity_bps),
         ("next_capacity_bps", next_capacity_bps),
         ("rtt_s", rtt_s),
         ("freeze_remaining_s", freeze_remaining_s),
     ):
-        if val is not None and val < 0:
+        if val is None:
+            continue
+        if isinstance(val, bool) or not isinstance(val, (int, float)):
+            raise ValueError(f"path-hint {name} must be a finite number")
+        if not math.isfinite(float(val)):
+            raise ValueError(f"path-hint {name} must be finite")
+        if val < 0:
             raise ValueError(f"path-hint {name} must be >= 0")
     parts = [
         "ASCENT/1.0",
