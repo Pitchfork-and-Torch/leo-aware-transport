@@ -49,6 +49,12 @@ def test_pyproject_declares_runtime_deps():
     assert not missing, f"pyproject.toml dependencies missing {sorted(missing)}"
     assert "reedsolo" in declared
     assert proj["version"] == leo_cc.__version__, (proj["version"], leo_cc.__version__)
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    m = re.search(r"\*\*Package:\*\*\s*([0-9.]+)", readme)
+    assert m, "README.md missing **Package:** version line"
+    assert m.group(1) == leo_cc.__version__, (
+        f"README Package {m.group(1)} != leo_cc.__version__ {leo_cc.__version__}"
+    )
     print(f"ok: pyproject declares {sorted(declared)}; version {proj['version']}")
 
 
