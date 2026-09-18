@@ -140,7 +140,10 @@ def parse_path_hint_unit(unit: bytes) -> PathHint:
         reconfigured = kv.get("reconfig", "0") in ("1", "true", "True")
         if "epoch" in kv and kv["epoch"] not in ("-1", ""):
             try:
-                epoch = int(kv["epoch"])
+                e = int(kv["epoch"])
+                # Encode rejects negatives; wire still used to apply epoch=-5 as a
+                # real hint_epoch rewind. Treat any negative as unset (like -1).
+                epoch = e if e >= 0 else None
             except ValueError:
                 epoch = None
         if "cap_bps" in kv:
