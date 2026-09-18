@@ -97,8 +97,10 @@ class Flow:
 def _should_emit_hint(st: PathState, prev_epoch: int, prev_freeze: bool) -> bool:
     """Emit control frames on reconfig or freeze edge (not every freeze slot).
 
-    Full ASCENT-D RS encode every 10 ms slot is too expensive for the research
-    harness; edges capture predictive freeze lead + reconfig with low cost.
+    Shared by path_hint_mode direct / ascent_d / ascent_plain. Full ASCENT-D RS
+    encode every 10 ms slot is too expensive; more importantly, LeoAware
+    on_path_hint applies a 0.97x cwnd cut on each freeze ingest, so per-slot
+    direct emits were not equivalent to the ascent_d edge path.
     """
     freeze_now = bool(st.freeze_active or (st.freeze_remaining_s and st.freeze_remaining_s > 0))
     freeze_edge = freeze_now and not prev_freeze
@@ -173,8 +175,12 @@ def run_sim(
         if mode == "none":
             pass
         elif mode == "direct":
-            for fl in flows:
-                _apply_direct_hint(fl.cca, t, st)
+            # Same edge gate as ascent_d / ascent_plain. Calling every slot
+            # re-applied the freeze cwnd * 0.97 cut ~15x per freeze window and
+            # made direct mode harsher than the ASCENT-D path it stands in for.
+            if _should_emit_hint(st, prev_epoch, prev_freeze):
+                for fl in flows:
+                    _apply_direct_hint(fl.cca, t, st)
         elif mode in ("ascent_d", "ascent_plain") and _should_emit_hint(
             st, prev_epoch, prev_freeze
         ):
