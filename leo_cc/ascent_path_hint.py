@@ -138,18 +138,22 @@ def parse_path_hint_unit(unit: bytes) -> PathHint:
         if "cap_bps" in kv:
             try:
                 c = float(kv["cap_bps"])
-                capacity_bps = c if c > 0 else None
+                # Non-finite used to parse as usable control (cap_bps=inf).
+                capacity_bps = c if math.isfinite(c) and c > 0 else None
             except ValueError:
                 pass
         if "rtt_s" in kv:
             try:
                 r = float(kv["rtt_s"])
-                rtt_s = r if r > 0 else None
+                rtt_s = r if math.isfinite(r) and r > 0 else None
             except ValueError:
                 pass
         if "freeze_s" in kv:
             try:
-                freeze_remaining_s = max(0.0, float(kv["freeze_s"]))
+                f = float(kv["freeze_s"])
+                # freeze_s=inf used to force freeze_active=True forever.
+                if math.isfinite(f):
+                    freeze_remaining_s = max(0.0, f)
             except ValueError:
                 pass
         if "freeze_active" in kv:
@@ -157,7 +161,7 @@ def parse_path_hint_unit(unit: bytes) -> PathHint:
         if "next_cap_bps" in kv:
             try:
                 n = float(kv["next_cap_bps"])
-                next_capacity_bps = n if n > 0 else None
+                next_capacity_bps = n if math.isfinite(n) and n > 0 else None
             except ValueError:
                 pass
 
