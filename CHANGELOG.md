@@ -9,6 +9,11 @@ retune congestion-control math.
 
 ## 0.3.22 - 2026-09-17
 
+- Congestive enqueue drops in `leo_cc.sim` now `on_sent` before `on_loss`.
+  `on_loss` always calls `on_delivered`, so a drop of a never-sent MSS used to
+  free prior inflight and let cwnd admit an extra segment. Integrity test:
+  `experiments/test_congestive_enqueue_inflight.py`. No CCA / dual-gate change.
+
 - `path_hint_mode="direct"` now edge-gates on reconfig / freeze-enter like
   `ascent_d` / `ascent_plain`. Per-slot direct emits re-applied LeoAware's
   freeze `cwnd * 0.97` cut every 10 ms (~15x per freeze window) and made

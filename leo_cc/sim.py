@@ -288,6 +288,10 @@ def run_sim(
             while send_budget >= MSS:
                 # congestive drop if buffer full
                 if buffer_bytes + MSS > cfg.buffer_bytes:
+                    # Packet was never on_sent. on_loss→on_delivered would free
+                    # inflight we never took and let cwnd admit an extra MSS.
+                    # Account as sent-then-lost at the bottleneck instead.
+                    fl.cca.on_sent(MSS)
                     fl.cca.on_loss(t, MSS, congestive=True)
                     fl.log.lost_bytes += MSS
                     fl.log.loss_events.append((t, "congestive"))
