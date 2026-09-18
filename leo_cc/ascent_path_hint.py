@@ -77,6 +77,14 @@ def encode_path_hint_unit(
             raise ValueError(f"path-hint {name} must be finite")
         if val < 0:
             raise ValueError(f"path-hint {name} must be >= 0")
+    # epoch=-1 is the wire "unset" sentinel when epoch is None. Floats/bools
+    # used to serialize (epoch=3.7 / epoch=True) then vanish at int() parse;
+    # other negatives applied as real epochs and could rewind hint_epoch.
+    if epoch is not None:
+        if isinstance(epoch, bool) or not isinstance(epoch, int):
+            raise ValueError("path-hint epoch must be an int >= 0")
+        if epoch < 0:
+            raise ValueError("path-hint epoch must be >= 0")
     parts = [
         "ASCENT/1.0",
         f"ROLE:{role}",
