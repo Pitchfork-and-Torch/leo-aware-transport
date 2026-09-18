@@ -9,6 +9,13 @@ retune congestion-control math.
 
 ## 0.3.22 - 2026-09-17
 
+- `path_hint_mode="direct"` now edge-gates on reconfig / freeze-enter like
+  `ascent_d` / `ascent_plain`. Per-slot direct emits re-applied LeoAware's
+  freeze `cwnd * 0.97` cut every 10 ms (~15x per freeze window) and made
+  direct harsher than the ASCENT-D path it stands in for. Endpoint-only
+  (`use_path_hints=False`) product path unchanged. Integrity test:
+  `experiments/test_direct_hint_edge_gate.py`.
+
 - Declare `reedsolo>=1.7` in `pyproject.toml`. `leo_cc.ascent_d` imports
   it at module load and `leo_cc.sim` pulls it in transitively, so
   `pip install .` produced a package whose `leo-run` entry point and
